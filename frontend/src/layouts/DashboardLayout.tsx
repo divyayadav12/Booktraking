@@ -1,0 +1,183 @@
+import React, { useState } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import {
+  LayoutDashboard,
+  Upload,
+  History,
+  Boxes,
+  Truck,
+  BookOpen,
+  Users,
+  FileBarChart2,
+  ShieldAlert,
+  LogOut,
+  Menu,
+  X,
+  FileCheck2,
+  Clock,
+  UserCheck,
+} from 'lucide-react';
+
+export const DashboardLayout: React.FC = () => {
+  const { user, logout, isAdmin, isEmployee } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const adminNavItems = [
+    { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { label: 'Upload Excel', path: '/admin/upload-excel', icon: <Upload className="w-5 h-5" /> },
+    { label: 'Import History', path: '/admin/import-history', icon: <History className="w-5 h-5" /> },
+    { label: 'All Orders', path: '/admin/orders', icon: <Boxes className="w-5 h-5" /> },
+    { label: 'Outgoing Orders', path: '/admin/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: 'Dispatch History', path: '/admin/dispatch-history', icon: <FileCheck2 className="w-5 h-5" /> },
+    { label: 'Book Summary', path: '/admin/book-summary', icon: <BookOpen className="w-5 h-5" /> },
+    { label: 'Employees', path: '/admin/employees', icon: <Users className="w-5 h-5" /> },
+    { label: 'Reports', path: '/admin/reports', icon: <FileBarChart2 className="w-5 h-5" /> },
+    { label: 'Audit Logs', path: '/admin/audit-logs', icon: <ShieldAlert className="w-5 h-5" /> },
+  ];
+
+  const employeeNavItems = [
+    { label: 'Dashboard', path: '/employee/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { label: 'Outgoing Orders', path: '/employee/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: 'My Dispatch History', path: '/employee/my-history', icon: <Clock className="w-5 h-5" /> },
+  ];
+
+  const navItems = isAdmin ? adminNavItems : employeeNavItems;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+      {/* Mobile Header */}
+      <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+            BT
+          </div>
+          <span className="font-bold text-slate-800 text-base">BookDispatch</span>
+        </div>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"
+        >
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </header>
+
+      {/* Sidebar for Desktop & Mobile Overlay */}
+      <aside
+        className={`fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-slate-900 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out md:translate-x-0 ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div>
+          {/* Logo / Header */}
+          <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                BT
+              </div>
+              <div>
+                <h1 className="font-bold text-white text-base tracking-tight leading-tight">BookDispatch</h1>
+                <p className="text-xs text-slate-400">Tracking & Logistics</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="md:hidden text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* User Profile Pill in Sidebar */}
+          <div className="px-4 py-3 mx-3 my-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-semibold text-sm">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-xs font-semibold text-white truncate">{user?.name || 'User'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span
+                  className={`text-[10px] font-medium px-1.5 py-0.2 rounded ${
+                    isAdmin ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'
+                  }`}
+                >
+                  {user?.role}
+                </span>
+                <span className="text-[10px] text-slate-400 truncate">{user?.email}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="px-3 py-2 space-y-1 overflow-y-auto max-h-[calc(100vh-230px)]">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Logout Bottom Button */}
+        <div className="p-4 border-t border-slate-800">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Container */}
+      <main className="flex-1 min-w-0 flex flex-col min-h-screen">
+        {/* Desktop Top Navbar */}
+        <div className="hidden md:flex h-16 bg-white border-b border-slate-200 px-8 items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <span className="font-semibold text-slate-800 capitalize">
+              {location.pathname.split('/')[2]?.replace('-', ' ') || 'Dashboard'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-400 font-medium">Timezone: Asia/Kolkata (IST)</span>
+            <div className="h-4 w-px bg-slate-200" />
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-semibold text-slate-700">{user?.name}</span>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">
+                {user?.role}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Page Inner Container */}
+        <div className="p-4 sm:p-6 lg:p-8 flex-1">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};

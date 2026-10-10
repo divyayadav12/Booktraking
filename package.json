@@ -1,0 +1,19 @@
+{
+  "name": "book-tracking-dispatch-system",
+  "version": "1.0.0",
+  "description": "Full Stack Book Tracking & Dispatch Management System",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "db:push": "cd backend && npx prisma db push",
+    "db:seed": "cd backend && npm run prisma:seed",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test": "npm run test:backend && npm run test:frontend",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build",
+    "start:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npm run dev"
+  },
+  "keywords": ["book-tracking", "dispatch-management", "express", "react", "postgresql", "prisma"],
+  "author": "",
+  "license": "ISC"
+}

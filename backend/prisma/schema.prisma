@@ -1,0 +1,148 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum ImportStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id                   String                 @id @default(uuid())
+  name                 String
+  email                String                 @unique
+  passwordHash         String
+  role                 Role                   @default(EMPLOYEE)
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  importBatches        ImportBatch[]
+  dispatchLogs         DispatchLog[]
+  verificationAttempts VerificationAttempt[]
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+model ImportBatch {
+  id               String       @id @default(uuid())
+  originalFileName String
+  uploadedByUserId String
+  uploadedByUser   User         @relation(fields: [uploadedByUserId], references: [id])
+  uploadedAt       DateTime     @default(now())
+  status           ImportStatus @default(PENDING)
+  totalRows        Int          @default(0)
+  validRows        Int          @default(0)
+  invalidRows      Int          @default(0)
+  importedRows     Int          @default(0)
+  fileHash         String
+  errorSummary     Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  orders           Order[]
+
+  @@index([fileHash])
+  @@index([uploadedByUserId])
+  @@map("import_batches")
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  studentName   String
+  mobileNumber  String
+  email         String?
+  trackingId    String
+  importBatchId String
+  importBatch   ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  items         OrderItem[]
+
+  @@index([trackingId])
+  @@index([mobileNumber])
+  @@index([studentName])
+  @@index([importBatchId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                   String                @id @default(uuid())
+  orderId              String
+  order                Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  bookCode             String
+  bookName             String
+  requiredQuantity     Int
+  dispatchedQuantity   Int                   @default(0)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  dispatchLogs         DispatchLog[]
+  verificationAttempts VerificationAttempt[]
+
+  @@index([orderId])
+  @@index([bookCode])
+  @@map("order_items")
+}
+
+model DispatchLog {
+  id               String    @id @default(uuid())
+  orderItemId      String
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         User      @relation(fields: [employeeId], references: [id])
+  verifiedBookCode String
+  quantity         Int       @default(1)
+  dispatchedAt     DateTime  @default(now())
+  requestId        String?   @unique
+  result           String    @default("SUCCESS")
+  createdAt        DateTime  @default(now())
+
+  @@index([orderItemId])
+  @@index([employeeId])
+  @@index([dispatchedAt])
+  @@map("dispatch_logs")
+}
+
+model VerificationAttempt {
+  id              String    @id @default(uuid())
+  orderItemId     String
+  orderItem       OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        User      @relation(fields: [employeeId], references: [id])
+  enteredBookCode String
+  success         Boolean
+  failureReason   String?
+  attemptedAt     DateTime  @default(now())
+
+  @@index([orderItemId])
+  @@index([employeeId])
+  @@index([attemptedAt])
+  @@map("verification_attempts")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
