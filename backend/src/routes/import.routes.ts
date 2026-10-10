@@ -2,8 +2,6 @@ import { Router } from 'express';
 import multer from 'multer';
 import * as importController from '../controllers/import.controller';
 import { authenticate, requireRole } from '../middleware/auth';
-import { Role } from '@prisma/client';
-
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
@@ -25,7 +23,7 @@ const upload = multer({
 const router = Router();
 
 // Admin-only routes
-router.use(authenticate, requireRole(Role.ADMIN));
+router.use(authenticate, requireRole('ADMIN'));
 
 router.post('/preview', upload.single('file'), importController.previewImport);
 router.post('/download-invalid', importController.downloadInvalidRows);
