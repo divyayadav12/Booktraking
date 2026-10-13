@@ -260,38 +260,82 @@ export const ExcelUploadPage: React.FC = () => {
             </div>
 
             {/* Column Guide Card */}
-            <div className="p-4 rounded-xl bg-slate-100/80 border border-slate-200 text-xs text-slate-600">
-              <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-blue-600" /> Excel Column Requirements & Specifications
-              </h4>
+            <div className="p-4 rounded-xl bg-slate-100/80 border border-slate-200 text-xs text-slate-600 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Info className="w-4 h-4 text-blue-600" /> Supported Excel Sheet Formats
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const csvContent =
+                        'data:text/csv;charset=utf-8,Student Name,Mobile Number,Email,Tracking ID,Book Code,Book Name,Quantity\nRahul Sharma,9876543210,rahul@example.com,TR101,QB101,Quantitative Bank,2\nRahul Sharma,9876543210,rahul@example.com,TR101,MCQ201,MCQ Book,1\nPriya Verma,9876543211,priya@example.com,TR102,QB101,Quantitative Bank,3';
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement('a');
+                      link.setAttribute('href', encodedUri);
+                      link.setAttribute('download', 'Standard_Book_Dispatch_Template.csv');
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Standard Template (.csv)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const csvContent =
+                        'data:text/csv;charset=utf-8,name,phone,product_name,tracking_number,dispatch_date,courier\nRahul Sharma,919584510000,CA Inter IDT Full Book Set 8.0,C1144011340IN,03-10-2026,India Post\nPriya Patel,918889888034,CA Final Tax Fast Track Book,DT987654321IN,03-10-2026,DTDC Courier';
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement('a');
+                      link.setAttribute('href', encodedUri);
+                      link.setAttribute('download', 'FAST_Courier_Dispatch_Template.csv');
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> FAST Template (.csv)
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Student Name</span>
-                  <p className="text-slate-400 text-[10px]">Text, required</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">name / Student Name</span>
+                  <p className="text-slate-400 text-[10px]">Student / Customer Name</p>
                 </div>
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Mobile Number</span>
-                  <p className="text-slate-400 text-[10px]">Digits, keeps zeros</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">phone / Mobile Number</span>
+                  <p className="text-slate-400 text-[10px]">10-12 digit phone number</p>
                 </div>
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Tracking ID</span>
-                  <p className="text-slate-400 text-[10px]">Text/ID, required</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">tracking_number / ID</span>
+                  <p className="text-slate-400 text-[10px]">Courier Tracking / AWB No.</p>
                 </div>
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Book Code</span>
-                  <p className="text-slate-400 text-[10px]">e.g. QB101, MCQ201</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">product_name / Book Name</span>
+                  <p className="text-slate-400 text-[10px]">Book / Course title</p>
                 </div>
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Book Name</span>
-                  <p className="text-slate-400 text-[10px]">Book Title</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">book_code (Optional)</span>
+                  <p className="text-slate-400 text-[10px]">Auto-derived if missing</p>
                 </div>
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Quantity</span>
-                  <p className="text-slate-400 text-[10px]">Integer &gt; 0</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">quantity (Optional)</span>
+                  <p className="text-slate-400 text-[10px]">Defaults to 1 if missing</p>
                 </div>
-                <div className="bg-white p-2 rounded border border-slate-200">
-                  <span className="font-bold text-slate-700">Email</span>
-                  <p className="text-slate-400 text-[10px]">Optional format</p>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">dispatch_date (Optional)</span>
+                  <p className="text-slate-400 text-[10px]">Dispatch date</p>
+                </div>
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-800">courier (Optional)</span>
+                  <p className="text-slate-400 text-[10px]">Courier partner name</p>
                 </div>
               </div>
             </div>

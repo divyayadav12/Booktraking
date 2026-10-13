@@ -33,6 +33,16 @@ export interface ImportPreviewResult {
   invalidRows: ParsedRowData[];
 }
 
+export function deriveBookCodeFromTitle(title: string): string {
+  if (!title) return 'BK101';
+  const clean = title.replace(/[^a-zA-Z0-9\s.-]/g, '').trim();
+  const words = clean.split(/\s+/).filter(
+    (w) => !['the', 'of', 'and', 'for', 'in', 'full', 'book', 'module', 'set'].includes(w.toLowerCase())
+  );
+  if (words.length === 0) return 'BK101';
+  return words.slice(0, 3).map((w) => w.toUpperCase()).join('-');
+}
+
 export async function parseAndPreviewExcel(
   buffer: Buffer,
   originalFileName: string
@@ -65,22 +75,62 @@ export async function parseAndPreviewExcel(
 
   headerRow.eachCell((cell, colNumber) => {
     const val = String(cell.value || '').trim().toLowerCase();
-    if (val.includes('student') && val.includes('name')) columnMap['studentName'] = colNumber;
-    else if (val.includes('mobile') || val.includes('phone') || val.includes('contact')) columnMap['mobileNumber'] = colNumber;
-    else if (val.includes('email')) columnMap['email'] = colNumber;
-    else if (val.includes('tracking')) columnMap['trackingId'] = colNumber;
-    else if (val.includes('book') && val.includes('code')) columnMap['bookCode'] = colNumber;
-    else if (val.includes('book') && val.includes('name')) columnMap['bookName'] = colNumber;
-    else if (val.includes('quantity') || val.includes('qty')) columnMap['quantity'] = colNumber;
+    
+    // Student Name: matches student name, customer name, or simple "name"
+    if ((val.includes('student') || val.includes('customer') || val.includes('client')) && val.includes('name')) {
+      columnMap['studentName'] = colNumber;
+    } else if (val === 'name' || val === 'student' || val === 'student_name' || val === 'customer_name') {
+      columnMap['studentName'] = colNumber;
+    }
+    // Mobile Number: matches mobile, phone, contact, tel
+    else if (val.includes('mobile') || val.includes('phone') || val.includes('contact') || val === 'tel') {
+      columnMap['mobileNumber'] = colNumber;
+    }
+    // Email: matches email, mail
+    else if (val.includes('email') || val.includes('mail')) {
+      columnMap['email'] = colNumber;
+    }
+    // Tracking ID: matches tracking, awb, docket, waybill, consignment
+    else if (
+      val.includes('tracking') ||
+      val.includes('awb') ||
+      val.includes('docket') ||
+      val.includes('waybill') ||
+      val.includes('consignment')
+    ) {
+      columnMap['trackingId'] = colNumber;
+    }
+    // Book Code: matches book code, item code, sku, isbn, code
+    else if (val.includes('book') && val.includes('code')) {
+      columnMap['bookCode'] = colNumber;
+    } else if (val === 'book_code' || val === 'item_code' || val === 'sku' || val === 'isbn' || val === 'code') {
+      columnMap['bookCode'] = colNumber;
+    }
+    // Book Name: matches book name, product name, item name, title
+    else if (val.includes('book') && val.includes('name')) {
+      columnMap['bookName'] = colNumber;
+    } else if (
+      val.includes('product') ||
+      val.includes('item') ||
+      val.includes('title') ||
+      val === 'book' ||
+      val === 'description'
+    ) {
+      columnMap['bookName'] = colNumber;
+    }
+    // Quantity: matches quantity, qty, pcs, count
+    else if (val.includes('quantity') || val.includes('qty') || val === 'count' || val === 'pcs') {
+      columnMap['quantity'] = colNumber;
+    }
   });
 
-  const requiredCols = ['studentName', 'mobileNumber', 'trackingId', 'bookCode', 'bookName', 'quantity'];
+  const requiredCols = ['studentName', 'mobileNumber', 'trackingId', 'bookName'];
   const missingCols = requiredCols.filter((col) => !columnMap[col]);
 
   if (missingCols.length > 0) {
     throw {
       statusCode: 400,
-      message: `Missing required Excel columns: ${missingCols.join(', ')}. Required columns are: Student Name, Mobile Number, Email, Tracking ID, Book Code, Book Name, Quantity`,
+      message: `Missing required Excel columns: ${missingCols.join(', ')}. Required columns are: Student Name (or Name), Mobile Number (or Phone), Tracking ID (or Tracking Number), and Book Name (or Product Name).`,
       code: 'MISSING_COLUMNS',
     };
   }
@@ -105,23 +155,25 @@ export async function parseAndPreviewExcel(
     const rawMobile = row.getCell(columnMap['mobileNumber']).value;
     const rawEmail = columnMap['email'] ? row.getCell(columnMap['email']).value : null;
     const rawTrackingId = row.getCell(columnMap['trackingId']).value;
-    const rawBookCode = row.getCell(columnMap['bookCode']).value;
     const rawBookName = row.getCell(columnMap['bookName']).value;
-    const rawQuantity = row.getCell(columnMap['quantity']).value;
+    const bookName = rawBookName ? String(rawBookName).trim() : '';
+
+    const rawBookCode = columnMap['bookCode'] ? row.getCell(columnMap['bookCode']).value : null;
+    const bookCode = rawBookCode ? normalizeBookCode(rawBookCode as any) : deriveBookCodeFromTitle(bookName);
+
+    const rawQuantity = columnMap['quantity'] ? row.getCell(columnMap['quantity']).value : 1;
 
     const studentName = rawStudentName ? String(rawStudentName).trim() : '';
     const mobileNumber = normalizeMobileNumber(rawMobile as any);
     const email = rawEmail ? normalizeEmail(String(rawEmail)) : null;
     const trackingId = normalizeTrackingId(rawTrackingId as any);
-    const bookCode = normalizeBookCode(rawBookCode as any);
-    const bookName = rawBookName ? String(rawBookName).trim() : '';
-    
-    let quantity = 0;
+
+    let quantity = 1;
     if (typeof rawQuantity === 'number') {
       quantity = Math.floor(rawQuantity);
     } else if (rawQuantity) {
       const parsed = parseInt(String(rawQuantity).trim(), 10);
-      quantity = isNaN(parsed) ? 0 : parsed;
+      quantity = isNaN(parsed) || parsed <= 0 ? 1 : parsed;
     }
 
     if (!studentName) rowErrors.push('Student name is required.');
