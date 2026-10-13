@@ -209,13 +209,53 @@ describe('Book Tracking System Backend API Tests (MongoDB & Mongoose)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.message).toBe('Book code verified. One copy dispatched successfully.');
+      expect(res.body.message).toContain('dispatched successfully');
       expect(res.body.data.orderItem.dispatchedQuantity).toBe(initialDispatched + 1);
 
       // Check DB updated
       const refreshedOrder = await Order.findById(order!._id);
       const refreshedItem = refreshedOrder!.items.find((i) => i._id.toString() === itemId);
       expect(refreshedItem!.dispatchedQuantity).toBe(initialDispatched + 1);
+    });
+
+    it('should dispatch by orderId and enteredBookCode directly from Order Dispatch Box', async () => {
+      const allOrders = await Order.find();
+      const order = allOrders.find((o) => o.items.some((i) => i.dispatchedQuantity < i.requiredQuantity));
+      expect(order).toBeDefined();
+
+      const item = order!.items.find((i) => i.dispatchedQuantity < i.requiredQuantity)!;
+      const initialDispatched = item.dispatchedQuantity;
+      const initialOrderPending = order!.items.reduce(
+        (acc, i) => acc + Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
+        0
+      );
+
+      const res = await request(app)
+        .post('/api/dispatch/verify')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({
+          orderId: order!._id.toString(),
+          enteredBookCode: item.bookCode.toLowerCase(),
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.orderItem.bookCode).toBe(item.bookCode);
+      expect(res.body.data.orderItem.dispatchedQuantity).toBe(initialDispatched + 1);
+      expect(res.body.data.order.totalPending).toBe(initialOrderPending - 1);
+
+      // Check wrong code rejection at order level
+      const wrongRes = await request(app)
+        .post('/api/dispatch/verify')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({
+          orderId: order!._id.toString(),
+          enteredBookCode: 'INVALID_ORDER_CODE_999',
+        });
+
+      expect(wrongRes.status).toBe(400);
+      expect(wrongRes.body.success).toBe(false);
+      expect(wrongRes.body.code).toBe('BOOK_CODE_MISMATCH');
     });
 
     it('should support idempotency key to prevent duplicate submissions', async () => {

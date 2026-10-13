@@ -13,7 +13,7 @@ export interface IVerificationAttempt extends Document {
 const VerificationAttemptSchema = new Schema<IVerificationAttempt>(
   {
     orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true, index: true },
-    orderItemId: { type: String, required: true, index: true },
+    orderItemId: { type: String, required: false, default: null, index: true },
     employeeId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     enteredBookCode: { type: String, required: true },
     success: { type: Boolean, required: true },

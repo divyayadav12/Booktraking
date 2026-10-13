@@ -23,6 +23,7 @@ export interface ListOrdersParams {
   search?: string;
   status?: string;
   bookCode?: string;
+  batchId?: string;
   dateFilter?: string;
   startDate?: string;
   endDate?: string;
@@ -39,6 +40,10 @@ export async function listOrders(params: ListOrdersParams) {
   const { startDate, endDate } = parseDateFilter(params.dateFilter, params.startDate, params.endDate);
 
   const query: any = {};
+
+  if (params.batchId && params.batchId.trim()) {
+    query.importBatchId = params.batchId.trim();
+  }
 
   if (startDate && endDate) {
     query.createdAt = {
@@ -64,16 +69,18 @@ export async function listOrders(params: ListOrdersParams) {
     query['items.bookCode'] = params.bookCode.trim().toUpperCase();
   }
 
-  const allMatchingOrders = await Order.find(query).sort({ createdAt: -1 });
+  const allMatchingOrders = await Order.find(query)
+    .populate('importBatchId', 'originalFileName uploadedAt')
+    .sort({ createdAt: -1 });
 
   // Map orders with computed status and totals
-  const mappedOrders = allMatchingOrders.map((order) => {
-    const totalRequired = order.items.reduce((acc, item) => acc + item.requiredQuantity, 0);
-    const totalDispatched = order.items.reduce((acc, item) => acc + item.dispatchedQuantity, 0);
+  const mappedOrders = allMatchingOrders.map((order: any) => {
+    const totalRequired = order.items.reduce((acc: number, item: any) => acc + item.requiredQuantity, 0);
+    const totalDispatched = order.items.reduce((acc: number, item: any) => acc + item.dispatchedQuantity, 0);
     const totalPending = Math.max(0, totalRequired - totalDispatched);
     const status = computeOrderStatus(order.items);
 
-    const itemsWithStatus = order.items.map((item) => ({
+    const itemsWithStatus = order.items.map((item: any) => ({
       id: item._id.toString(),
       orderId: order._id.toString(),
       bookCode: item.bookCode,
@@ -90,7 +97,14 @@ export async function listOrders(params: ListOrdersParams) {
       mobileNumber: order.mobileNumber,
       email: order.email,
       trackingId: order.trackingId,
-      importBatchId: order.importBatchId.toString(),
+      importBatchId: order.importBatchId?._id?.toString() || order.importBatchId?.toString(),
+      importBatch: order.importBatchId && typeof order.importBatchId === 'object'
+        ? {
+            id: order.importBatchId._id?.toString(),
+            originalFileName: order.importBatchId.originalFileName,
+            uploadedAt: order.importBatchId.uploadedAt,
+          }
+        : undefined,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       totalRequired,
@@ -111,6 +125,13 @@ export async function listOrders(params: ListOrdersParams) {
 
   const paginatedOrders = filtered.slice(skip, skip + limit);
 
+  const stats = {
+    totalOrders: filtered.length,
+    totalRequiredCopies: filtered.reduce((acc, o) => acc + o.totalRequired, 0),
+    totalDispatchedCopies: filtered.reduce((acc, o) => acc + o.totalDispatched, 0),
+    totalPendingCopies: filtered.reduce((acc, o) => acc + o.totalPending, 0),
+  };
+
   return {
     orders: paginatedOrders,
     pagination: {
@@ -119,6 +140,7 @@ export async function listOrders(params: ListOrdersParams) {
       total: filtered.length,
       totalPages: Math.ceil(filtered.length / limit),
     },
+    stats,
   };
 }
 

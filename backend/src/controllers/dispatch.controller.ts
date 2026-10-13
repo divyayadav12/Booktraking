@@ -14,6 +14,7 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
 
     const result = await dispatchService.verifyAndDispatchBook({
       orderItemId: validated.orderItemId,
+      orderId: validated.orderId,
       enteredBookCode: validated.enteredBookCode,
       employeeId: req.user.id,
       requestId: validated.requestId,

@@ -18,7 +18,11 @@ import {
   Eye,
   Info,
   Check,
+  PackageOpen,
+  ArrowRightCircle,
 } from 'lucide-react';
+import { Order } from '../../types';
+import { DispatchBoxModal } from '../../components/dispatch/DispatchBoxModal';
 
 export const ExcelUploadPage: React.FC = () => {
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
@@ -50,6 +54,9 @@ export const ExcelUploadPage: React.FC = () => {
   // Confirmation Modal
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [importSummary, setImportSummary] = useState<any>(null);
+  const [batchOrders, setBatchOrders] = useState<Order[]>([]);
+  const [selectedDispatchOrder, setSelectedDispatchOrder] = useState<Order | null>(null);
+  const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -139,10 +146,21 @@ export const ExcelUploadPage: React.FC = () => {
       });
 
       if (res.data.success) {
-        setImportSummary(res.data.data);
+        const summary = res.data.data;
+        setImportSummary(summary);
         setConfirmModalOpen(false);
         setCurrentStep(3);
-        toastSuccess('Student orders imported into PostgreSQL successfully!');
+        toastSuccess('Student orders imported into database successfully!');
+
+        // Fetch newly created orders for this batch so they display in outgoing sheet view immediately
+        try {
+          const batchRes = await api.get(`/orders/outgoing?batchId=${summary.batchId}&limit=50`);
+          if (batchRes.data.success) {
+            setBatchOrders(batchRes.data.data.orders);
+          }
+        } catch (fetchErr) {
+          console.error('Failed to load batch orders:', fetchErr);
+        }
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Database import failed.';
@@ -441,48 +459,148 @@ export const ExcelUploadPage: React.FC = () => {
         </div>
       )}
 
-      {/* STEP 3: Final Import Summary */}
+      {/* STEP 3: Final Import Summary & Immediate Outgoing Sheet View */}
       {currentStep === 3 && importSummary && (
-        <Card title="Import Completed Successfully!">
-          <div className="text-center py-8 max-w-md mx-auto space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-800">Orders Ready for Dispatch</h3>
-            <p className="text-xs text-slate-500">
-              The database transaction committed successfully. Quantities have been recalculated and added to the outgoing orders queue.
-            </p>
+        <div className="space-y-6">
+          <Card title="Import Completed Successfully!">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-2">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-xs shrink-0">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">
+                    {importSummary.fileName} Imported Successfully
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Orders have been created and added directly into the Outgoing Sheet queue.
+                  </p>
+                </div>
+              </div>
 
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs text-left space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Import Batch ID:</span>
-                <span className="font-mono font-bold text-slate-800">{importSummary.batchId.slice(0, 13)}...</span>
+              <div className="flex items-center gap-6 text-center bg-slate-50 border border-slate-200/80 rounded-xl px-5 py-3">
+                <div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase">Orders Created</div>
+                  <div className="text-xl font-bold font-mono text-emerald-600">{importSummary.importedOrders}</div>
+                </div>
+                <div className="h-8 w-px bg-slate-200" />
+                <div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase">Book Items</div>
+                  <div className="text-xl font-bold font-mono text-slate-800">{importSummary.importedItems}</div>
+                </div>
+                <div className="h-8 w-px bg-slate-200" />
+                <div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase">Valid Rows</div>
+                  <div className="text-xl font-bold font-mono text-blue-600">{importSummary.validRows}</div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Student Orders Created:</span>
-                <span className="font-bold text-emerald-700">{importSummary.importedOrders}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Total Book Items Created:</span>
-                <span className="font-bold text-emerald-700">{importSummary.importedItems}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Valid Rows Processed:</span>
-                <span className="font-bold text-slate-800">{importSummary.validRows}</span>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-center gap-3 pt-4">
-              <Button variant="outline" onClick={resetWizard}>
-                Upload Another File
-              </Button>
-              <Button variant="primary" onClick={() => navigate('/admin/outgoing-orders')}>
-                View Outgoing Orders
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" onClick={resetWizard}>
+                  Upload Another File
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/admin/outgoing-orders')}
+                  icon={<ArrowRightCircle className="w-4 h-4" />}
+                >
+                  Open Full Outgoing Sheet
+                </Button>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+
+          {/* Newly Imported Orders in Outgoing Sheet ("jo exel upload kare vo outgoing sheet me bhi dekhna chahiye") */}
+          <Card
+            title={`Newly Uploaded Orders in Outgoing Sheet (${batchOrders.length})`}
+            subtitle="These student orders are now live. Click 'Dispatch Box' to verify & dispatch books."
+          >
+            {batchOrders.length === 0 ? (
+              <div className="text-center py-6 text-xs text-slate-400">
+                Loading newly imported orders...
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm">
+                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4">Student & Mobile</th>
+                      <th className="py-3 px-4">Tracking ID</th>
+                      <th className="py-3 px-4">Books Required</th>
+                      <th className="py-3 px-4 text-center">Required</th>
+                      <th className="py-3 px-4 text-center">Pending</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Dispatch Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {batchOrders.map((ord) => (
+                      <tr key={ord.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-slate-800">{ord.studentName}</div>
+                          <div className="text-[11px] font-mono text-slate-500">{ord.mobileNumber}</div>
+                        </td>
+                        <td className="py-3 px-4 font-mono font-bold text-blue-600">
+                          {ord.trackingId}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {ord.items.map((it) => (
+                              <span
+                                key={it.id}
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold"
+                              >
+                                {it.bookCode} ×{it.requiredQuantity}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-700">
+                          {ord.totalRequired}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-amber-600">
+                          {ord.totalPending}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge status={ord.status} />
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedDispatchOrder(ord);
+                              setIsDispatchBoxOpen(true);
+                            }}
+                            icon={<PackageOpen className="w-3.5 h-3.5" />}
+                          >
+                            Dispatch Box
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
       )}
+
+      {/* Dispatch Box Modal */}
+      <DispatchBoxModal
+        isOpen={isDispatchBoxOpen}
+        onClose={() => {
+          setIsDispatchBoxOpen(false);
+          setSelectedDispatchOrder(null);
+        }}
+        order={selectedDispatchOrder}
+        onOrderUpdated={(updated) => {
+          setBatchOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+          setSelectedDispatchOrder(updated);
+        }}
+      />
 
       {/* Confirmation Modal */}
       <Modal

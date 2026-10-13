@@ -5,28 +5,36 @@ import { logAudit } from '../utils/audit';
 import { computeItemStatus, computeOrderStatus } from './order.service';
 
 export interface VerifyDispatchParams {
-  orderItemId: string;
+  orderItemId?: string;
+  orderId?: string;
   enteredBookCode: string;
   employeeId: string;
   requestId?: string;
 }
 
 export async function verifyAndDispatchBook(params: {
-  orderItemId: string;
+  orderItemId?: string;
+  orderId?: string;
   enteredBookCode: string;
   employeeId: string;
   requestId?: string;
 }) {
-  const { orderItemId, enteredBookCode, employeeId, requestId } = params;
+  const { orderItemId, orderId, enteredBookCode, employeeId, requestId } = params;
 
   // Check idempotency if requestId provided
   if (requestId) {
     const existingLog = await DispatchLog.findOne({ requestId });
     if (existingLog) {
       const order = await Order.findById(existingLog.orderId);
-      const item = order?.items.find((i) => i._id.toString() === orderItemId);
-      if (item) {
+      const item = order?.items.find((i) =>
+        orderItemId ? i._id.toString() === orderItemId : i._id.toString() === existingLog.orderItemId
+      );
+      if (item && order) {
         const pendingQuantity = Math.max(0, item.requiredQuantity - item.dispatchedQuantity);
+        const totalRequired = order.items.reduce((acc, i) => acc + i.requiredQuantity, 0);
+        const totalDispatched = order.items.reduce((acc, i) => acc + i.dispatchedQuantity, 0);
+        const totalPending = Math.max(0, totalRequired - totalDispatched);
+        const orderStatus = computeOrderStatus(order.items);
         return {
           alreadyProcessed: true,
           success: true,
@@ -40,46 +48,113 @@ export async function verifyAndDispatchBook(params: {
             pendingQuantity,
             status: computeItemStatus(item.requiredQuantity, item.dispatchedQuantity),
           },
+          order: {
+            id: order._id.toString(),
+            studentName: order.studentName,
+            trackingId: order.trackingId,
+            mobileNumber: order.mobileNumber,
+            totalRequired,
+            totalDispatched,
+            totalPending,
+            status: orderStatus,
+            items: order.items.map((i) => ({
+              id: i._id.toString(),
+              bookCode: i.bookCode,
+              bookName: i.bookName,
+              requiredQuantity: i.requiredQuantity,
+              dispatchedQuantity: i.dispatchedQuantity,
+              pendingQuantity: Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
+              status: computeItemStatus(i.requiredQuantity, i.dispatchedQuantity),
+            })),
+          },
+          orderStatus,
         };
       }
     }
   }
 
-  // Find order containing this item
-  const order = await Order.findOne({ 'items._id': new mongoose.Types.ObjectId(orderItemId) });
-
-  if (!order) {
-    throw { statusCode: 404, message: 'Order item not found', code: 'ITEM_NOT_FOUND' };
-  }
-
-  const currentItem = order.items.find((i) => i._id.toString() === orderItemId);
-  if (!currentItem) {
-    throw { statusCode: 404, message: 'Order item not found in order', code: 'ITEM_NOT_FOUND' };
+  // Find order
+  let order: any;
+  if (orderItemId) {
+    order = await Order.findOne({ 'items._id': new mongoose.Types.ObjectId(orderItemId) });
+    if (!order) {
+      throw { statusCode: 404, message: 'Order item not found', code: 'ITEM_NOT_FOUND' };
+    }
+  } else if (orderId) {
+    order = await Order.findById(orderId);
+    if (!order) {
+      throw { statusCode: 404, message: 'Order not found', code: 'ORDER_NOT_FOUND' };
+    }
+  } else {
+    throw { statusCode: 400, message: 'Either orderItemId or orderId must be provided', code: 'MISSING_PARAMS' };
   }
 
   const normalizedEnteredCode = normalizeBookCode(enteredBookCode);
-  const normalizedExpectedCode = normalizeBookCode(currentItem.bookCode);
 
-  // Check Book Code Mismatch
-  if (normalizedEnteredCode !== normalizedExpectedCode) {
-    const mismatchWarning = 'Warning: Book code does not match this order. Please verify the book.';
+  // Match item in order
+  let currentItem: any;
+  let resolvedItemId: string;
 
-    await VerificationAttempt.create({
-      orderId: order._id,
-      orderItemId,
-      employeeId: new mongoose.Types.ObjectId(employeeId),
-      enteredBookCode: enteredBookCode.trim(),
-      success: false,
-      failureReason: mismatchWarning,
-    });
+  if (orderItemId) {
+    currentItem = order.items.find((i: any) => i._id.toString() === orderItemId);
+    if (!currentItem) {
+      throw { statusCode: 404, message: 'Order item not found in order', code: 'ITEM_NOT_FOUND' };
+    }
+    const normalizedExpectedCode = normalizeBookCode(currentItem.bookCode);
+    if (normalizedEnteredCode !== normalizedExpectedCode) {
+      const mismatchWarning = 'Warning: Book code does not match this order. Please verify the book.';
+      await VerificationAttempt.create({
+        orderId: order._id,
+        orderItemId,
+        employeeId: new mongoose.Types.ObjectId(employeeId),
+        enteredBookCode: enteredBookCode.trim(),
+        success: false,
+        failureReason: mismatchWarning,
+      });
+      throw {
+        statusCode: 400,
+        message: mismatchWarning,
+        code: 'BOOK_CODE_MISMATCH',
+        expectedCode: currentItem.bookCode,
+        enteredCode: enteredBookCode,
+      };
+    }
+    resolvedItemId = orderItemId;
+  } else {
+    // Look up item in order.items matching the code
+    const matchingItems = order.items.filter(
+      (i: any) => normalizeBookCode(i.bookCode) === normalizedEnteredCode
+    );
 
-    throw {
-      statusCode: 400,
-      message: mismatchWarning,
-      code: 'BOOK_CODE_MISMATCH',
-      expectedCode: currentItem.bookCode,
-      enteredCode: enteredBookCode,
-    };
+    if (matchingItems.length === 0) {
+      const mismatchWarning = 'Warning: Book code does not match this order. Please verify the book.';
+      await VerificationAttempt.create({
+        orderId: order._id,
+        employeeId: new mongoose.Types.ObjectId(employeeId),
+        enteredBookCode: enteredBookCode.trim(),
+        success: false,
+        failureReason: mismatchWarning,
+      });
+      throw {
+        statusCode: 400,
+        message: mismatchWarning,
+        code: 'BOOK_CODE_MISMATCH',
+        enteredCode: enteredBookCode,
+      };
+    }
+
+    // Find the item with pending copies
+    currentItem = matchingItems.find((i: any) => i.requiredQuantity > i.dispatchedQuantity);
+    if (!currentItem) {
+      // All copies of this book are already dispatched!
+      throw {
+        statusCode: 400,
+        message: `All copies of book code "${enteredBookCode}" have already been dispatched for this student.`,
+        code: 'NO_PENDING_QUANTITY',
+        enteredCode: enteredBookCode,
+      };
+    }
+    resolvedItemId = currentItem._id.toString();
   }
 
   // Check pending quantity
@@ -98,7 +173,7 @@ export async function verifyAndDispatchBook(params: {
       _id: order._id,
       items: {
         $elemMatch: {
-          _id: new mongoose.Types.ObjectId(orderItemId),
+          _id: new mongoose.Types.ObjectId(resolvedItemId),
           dispatchedQuantity: { $lt: currentItem.requiredQuantity },
         },
       },
@@ -117,14 +192,14 @@ export async function verifyAndDispatchBook(params: {
     };
   }
 
-  const updatedItem = updatedOrder.items.find((i) => i._id.toString() === orderItemId)!;
+  const updatedItem = updatedOrder.items.find((i: any) => i._id.toString() === resolvedItemId)!;
 
   // Create immutable dispatch log
   const dispatchLog = await DispatchLog.create({
     orderId: order._id,
-    orderItemId,
+    orderItemId: resolvedItemId,
     employeeId: new mongoose.Types.ObjectId(employeeId),
-    verifiedBookCode: normalizedExpectedCode,
+    verifiedBookCode: normalizeBookCode(updatedItem.bookCode),
     quantity: 1,
     requestId: requestId || undefined,
     result: 'SUCCESS',
@@ -133,7 +208,7 @@ export async function verifyAndDispatchBook(params: {
   // Record successful verification attempt
   await VerificationAttempt.create({
     orderId: order._id,
-    orderItemId,
+    orderItemId: resolvedItemId,
     employeeId: new mongoose.Types.ObjectId(employeeId),
     enteredBookCode: normalizedEnteredCode,
     success: true,
@@ -144,7 +219,7 @@ export async function verifyAndDispatchBook(params: {
     actorUserId: employeeId,
     action: 'BOOK_DISPATCHED',
     entityType: 'OrderItem',
-    entityId: orderItemId,
+    entityId: resolvedItemId,
     metadata: {
       bookCode: currentItem.bookCode,
       bookName: currentItem.bookName,
@@ -154,12 +229,30 @@ export async function verifyAndDispatchBook(params: {
     },
   });
 
+  const totalRequired = updatedOrder.items.reduce((acc: number, i: any) => acc + i.requiredQuantity, 0);
+  const totalDispatched = updatedOrder.items.reduce((acc: number, i: any) => acc + i.dispatchedQuantity, 0);
+  const totalPending = Math.max(0, totalRequired - totalDispatched);
   const orderStatus = computeOrderStatus(updatedOrder.items);
   const newPending = Math.max(0, updatedItem.requiredQuantity - updatedItem.dispatchedQuantity);
 
+  const itemsWithStatus = updatedOrder.items.map((i: any) => ({
+    id: i._id.toString(),
+    bookCode: i.bookCode,
+    bookName: i.bookName,
+    requiredQuantity: i.requiredQuantity,
+    dispatchedQuantity: i.dispatchedQuantity,
+    pendingQuantity: Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
+    status: computeItemStatus(i.requiredQuantity, i.dispatchedQuantity),
+  }));
+
+  const copyInfo =
+    updatedItem.requiredQuantity > 1
+      ? ` (Copy ${updatedItem.dispatchedQuantity} of ${updatedItem.requiredQuantity})`
+      : '';
+
   return {
     success: true,
-    message: 'Book code verified. One copy dispatched successfully.',
+    message: `Book code "${updatedItem.bookCode}" verified! 1 copy dispatched successfully.${copyInfo}`,
     orderItem: {
       id: updatedItem._id.toString(),
       bookCode: updatedItem.bookCode,
@@ -168,6 +261,18 @@ export async function verifyAndDispatchBook(params: {
       dispatchedQuantity: updatedItem.dispatchedQuantity,
       pendingQuantity: newPending,
       status: computeItemStatus(updatedItem.requiredQuantity, updatedItem.dispatchedQuantity),
+    },
+    order: {
+      id: updatedOrder._id.toString(),
+      studentName: updatedOrder.studentName,
+      trackingId: updatedOrder.trackingId,
+      mobileNumber: updatedOrder.mobileNumber,
+      email: updatedOrder.email,
+      totalRequired,
+      totalDispatched,
+      totalPending,
+      status: orderStatus,
+      items: itemsWithStatus,
     },
     orderStatus,
     dispatchLogId: dispatchLog._id.toString(),

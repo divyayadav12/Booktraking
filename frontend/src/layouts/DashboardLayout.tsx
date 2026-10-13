@@ -35,7 +35,7 @@ export const DashboardLayout: React.FC = () => {
     { label: 'Upload Excel', path: '/admin/upload-excel', icon: <Upload className="w-5 h-5" /> },
     { label: 'Import History', path: '/admin/import-history', icon: <History className="w-5 h-5" /> },
     { label: 'All Orders', path: '/admin/orders', icon: <Boxes className="w-5 h-5" /> },
-    { label: 'Outgoing Orders', path: '/admin/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: 'Outgoing Sheet', path: '/admin/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
     { label: 'Dispatch History', path: '/admin/dispatch-history', icon: <FileCheck2 className="w-5 h-5" /> },
     { label: 'Book Summary', path: '/admin/book-summary', icon: <BookOpen className="w-5 h-5" /> },
     { label: 'Employees', path: '/admin/employees', icon: <Users className="w-5 h-5" /> },
@@ -45,7 +45,7 @@ export const DashboardLayout: React.FC = () => {
 
   const employeeNavItems = [
     { label: 'Dashboard', path: '/employee/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { label: 'Outgoing Orders', path: '/employee/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: 'Outgoing Sheet', path: '/employee/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
     { label: 'My Dispatch History', path: '/employee/my-history', icon: <Clock className="w-5 h-5" /> },
   ];
 

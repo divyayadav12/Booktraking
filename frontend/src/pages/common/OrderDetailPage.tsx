@@ -22,7 +22,9 @@ import {
   ShieldCheck,
   Clock,
   History,
+  PackageOpen,
 } from 'lucide-react';
+import { DispatchBoxModal } from '../../components/dispatch/DispatchBoxModal';
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +34,7 @@ export const OrderDetailPage: React.FC = () => {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
 
   // Verification Modal State
   const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
@@ -216,7 +219,19 @@ export const OrderDetailPage: React.FC = () => {
       {/* Book Items List */}
       <Card
         title="Books in This Order"
-        subtitle="Select a pending book to verify code and record outgoing dispatch"
+        subtitle="Select a pending book or use the Dispatch Box to scan codes rapidly"
+        action={
+          order.totalPending > 0 ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsDispatchBoxOpen(true)}
+              icon={<PackageOpen className="w-4 h-4" />}
+            >
+              Open Dispatch Box
+            </Button>
+          ) : undefined
+        }
       >
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm">
@@ -406,6 +421,14 @@ export const OrderDetailPage: React.FC = () => {
           </form>
         )}
       </Modal>
+
+      {/* RAPID DISPATCH BOX MODAL */}
+      <DispatchBoxModal
+        isOpen={isDispatchBoxOpen}
+        onClose={() => setIsDispatchBoxOpen(false)}
+        order={order}
+        onOrderUpdated={(updated) => setOrder(updated)}
+      />
     </div>
   );
 };
