@@ -28,6 +28,7 @@ import {
   Zap,
   X,
   Tag,
+  Trash2,
 } from 'lucide-react';
 
 export const OutgoingOrdersPage: React.FC = () => {
@@ -58,6 +59,25 @@ export const OutgoingOrdersPage: React.FC = () => {
   // Dispatch Box Modal State
   const [selectedOrderForDispatch, setSelectedOrderForDispatch] = useState<Order | null>(null);
   const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearAllData = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete ALL existing orders, batches, and dispatch history? This will completely reset the database.'
+    );
+    if (!confirmed) return;
+
+    setIsClearing(true);
+    try {
+      await api.post('/orders/clear-all');
+      alert('All orders and data have been wiped successfully.');
+      fetchOutgoingOrders(1);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to clear orders.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   // ─── Global Scanner State ────────────────────────────────────────────────────
   const [scannerCode, setScannerCode] = useState('');
@@ -324,6 +344,15 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         {isAdmin && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleClearAllData}
+              disabled={isClearing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+              title="Delete all current orders and reset database"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {isClearing ? 'Clearing...' : 'Clear All Orders'}
+            </button>
             <Link to="/admin/upload-excel">
               <Button variant="primary" size="sm" icon={<Upload className="w-4 h-4" />}>
                 Upload New Excel Sheet

@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import * as orderService from '../services/order.service';
-import { successResponse } from '../utils/response';
+import { successResponse, errorResponse } from '../utils/response';
 
 export async function getOrders(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -101,3 +101,16 @@ export async function getBarcodeSheet(req: AuthenticatedRequest, res: Response, 
     next(error);
   }
 }
+
+export async function clearAllOrders(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    if (!req.user || req.user.role !== 'ADMIN') {
+      return errorResponse(res, 'Only administrators can clear database orders', 'UNAUTHORIZED', 403);
+    }
+    const result = await orderService.clearAllOrders(req.user.id);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}
+

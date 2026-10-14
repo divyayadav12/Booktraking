@@ -1,4 +1,5 @@
-import { Order, DispatchLog, ImportBatch } from '../models';
+import { Order, DispatchLog, ImportBatch, VerificationAttempt } from '../models';
+import { logAudit } from '../utils/audit';
 import { parseDateFilter } from '../utils/date';
 
 export type ItemStatus = 'PENDING' | 'PARTIALLY_DISPATCHED' | 'COMPLETED';
@@ -336,4 +337,30 @@ export async function getBarcodeSheetData(params: {
       })),
     };
   });
+}
+
+export async function clearAllOrders(userId: string) {
+  const deletedOrders = await Order.deleteMany({});
+  const deletedBatches = await ImportBatch.deleteMany({});
+  const deletedLogs = await DispatchLog.deleteMany({});
+  const deletedAttempts = await VerificationAttempt.deleteMany({});
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'ALL_ORDERS_CLEARED',
+    entityType: 'Order',
+    entityId: 'ALL',
+    metadata: {
+      ordersRemoved: deletedOrders.deletedCount,
+      batchesRemoved: deletedBatches.deletedCount,
+      logsRemoved: deletedLogs.deletedCount,
+      attemptsRemoved: deletedAttempts.deletedCount,
+    },
+  });
+
+  return {
+    message: 'All orders, batches, and dispatch history have been deleted successfully.',
+    ordersRemoved: deletedOrders.deletedCount,
+    batchesRemoved: deletedBatches.deletedCount,
+  };
 }

@@ -15,6 +15,10 @@ router.get('/barcode-sheet', requireRole('ADMIN'), orderController.getBarcodeShe
 router.get('/:id', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderById);
 router.get('/:id/items', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderItems);
 
+// Clear all orders and dispatch history (Admin only)
+router.post('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders);
+router.delete('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders);
+
 // All orders list is accessible to ADMIN
 router.get('/', requireRole('ADMIN'), orderController.getOrders);
 
