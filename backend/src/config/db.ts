@@ -8,6 +8,12 @@ export async function connectDatabase() {
     await mongoose.connect(ENV.MONGODB_URI);
     console.log('✅ Connected to MongoDB database via Mongoose');
 
+    // Clean up legacy unique index on productCode if it exists
+    try {
+      await mongoose.connection.collection('orders').dropIndex('productCode_1');
+      console.log('🧹 Cleaned up legacy unique index productCode_1');
+    } catch (e) {}
+
     // Auto-seed Admin if not exists
     const adminExists = await User.findOne({ email: ENV.ADMIN_DEFAULT_EMAIL });
     if (!adminExists) {

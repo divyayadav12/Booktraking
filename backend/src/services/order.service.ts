@@ -340,6 +340,10 @@ export async function getBarcodeSheetData(params: {
 }
 
 export async function clearAllOrders(userId: string) {
+  try {
+    await Order.collection.dropIndex('productCode_1');
+  } catch (e) {}
+
   const deletedOrders = await Order.deleteMany({});
   const deletedBatches = await ImportBatch.deleteMany({});
   const deletedLogs = await DispatchLog.deleteMany({});

@@ -29,7 +29,10 @@ import {
   X,
   Tag,
   Trash2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+import { playSuccessChime, playErrorTone, playOrderCompleteFanfare } from '../../utils/sound';
 
 export const OutgoingOrdersPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -81,6 +84,8 @@ export const OutgoingOrdersPage: React.FC = () => {
 
   // ─── Global Scanner State ────────────────────────────────────────────────────
   const [scannerCode, setScannerCode] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastScannedOrder, setLastScannedOrder] = useState<any>(null);
   const [scanResult, setScanResult] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -92,12 +97,27 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-focus barcode scanner input perpetually for hands-free scanning
+  useEffect(() => {
+    const focusTimer = setInterval(() => {
+      if (!isDispatchBoxOpen) {
+        const activeTag = document.activeElement?.tagName?.toLowerCase();
+        if (activeTag !== 'input' && activeTag !== 'textarea' && activeTag !== 'select') {
+          scanInputRef.current?.focus();
+        }
+      }
+    }, 1200);
+    return () => clearInterval(focusTimer);
+  }, [isDispatchBoxOpen]);
+
   const handleGlobalScan = useCallback(async (code: string) => {
-    if (!code.trim()) return;
+    if (!code.trim() || isScanning) return;
+    const cleanCode = code.trim().toUpperCase();
     setIsScanning(true);
     setScanResult({ type: null, message: '' });
+
     try {
-      const res = await api.post('/dispatch/verify', { enteredCode: code.trim() });
+      const res = await api.post('/dispatch/verify', { enteredCode: cleanCode });
       if (res.data.success) {
         const data = res.data.data;
         let scanType = '📖 Book Code';
@@ -107,23 +127,43 @@ export const OutgoingOrdersPage: React.FC = () => {
           scanType = '📦 Product Code';
         }
 
-        setScanResult({
-          type: 'success',
-          message: data.message,
-          scanType,
-          studentName: data.order?.studentName,
-          trackingId: data.order?.trackingId,
-          itemsDispatched: data.itemsDispatched,
-        });
+        const updatedOrder = data.order;
+        const isComplete = updatedOrder ? updatedOrder.totalPending === 0 : false;
 
-        // Live update orders list
-        if (data.order) {
-          setOrders(prev => prev.map(o => o.id === data.order?.id ? {
+        // Play audio feedback
+        if (soundEnabled) {
+          if (isComplete || data.scanType === 'ORDER_CODE') {
+            playOrderCompleteFanfare();
+          } else {
+            playSuccessChime();
+          }
+        }
+
+        if (updatedOrder) {
+          setLastScannedOrder({
+            id: updatedOrder.id,
+            orderCode: updatedOrder.orderCode,
+            productCode: updatedOrder.productCode,
+            studentName: updatedOrder.studentName,
+            mobileNumber: updatedOrder.mobileNumber,
+            trackingId: updatedOrder.trackingId,
+            status: updatedOrder.status,
+            scanType,
+            message: data.message,
+            itemsDispatched: data.itemsDispatched || 1,
+            totalRequired: updatedOrder.totalRequired,
+            totalDispatched: updatedOrder.totalDispatched,
+            totalPending: updatedOrder.totalPending,
+            items: updatedOrder.items || [],
+          });
+
+          // Live update orders list in table
+          setOrders(prev => prev.map(o => o.id === updatedOrder.id ? {
             ...o,
-            totalDispatched: data.order.totalDispatched,
-            totalPending: data.order.totalPending,
-            status: data.order.status,
-            items: data.order.items || o.items,
+            totalDispatched: updatedOrder.totalDispatched,
+            totalPending: updatedOrder.totalPending,
+            status: updatedOrder.status,
+            items: updatedOrder.items || o.items,
           } : o));
         }
 
@@ -133,19 +173,31 @@ export const OutgoingOrdersPage: React.FC = () => {
           totalDispatchedCopies: prev.totalDispatchedCopies + countDispatched,
           totalPendingCopies: Math.max(0, prev.totalPendingCopies - countDispatched),
         }));
+
+        setScanResult({
+          type: 'success',
+          message: data.message,
+          scanType,
+          studentName: updatedOrder?.studentName,
+          trackingId: updatedOrder?.trackingId,
+          itemsDispatched: countDispatched,
+        });
       }
     } catch (err: any) {
+      if (soundEnabled) playErrorTone();
       setScanResult({
         type: 'error',
-        message: err.response?.data?.message || 'Scan failed. Please try again.',
+        message: err.response?.data?.message || `Code "${cleanCode}" could not be verified or has no pending books.`,
       });
     } finally {
       setIsScanning(false);
       setScannerCode('');
-      // Auto-clear result after 5 seconds
-      setTimeout(() => setScanResult({ type: null, message: '' }), 5000);
+      // Instantly refocus so employee never touches keyboard or mouse
+      setTimeout(() => {
+        scanInputRef.current?.focus();
+      }, 50);
     }
-  }, []);
+  }, [isScanning, soundEnabled]);
 
   // Load available Excel batches for filter dropdown
   useEffect(() => {
@@ -257,12 +309,22 @@ export const OutgoingOrdersPage: React.FC = () => {
         scanResult.type === 'error' ? 'border-rose-400 bg-rose-50/70' :
         'border-blue-300 bg-blue-50/60'
       }`}>
-        <div className="flex items-center gap-2 mb-3">
-          <ScanLine size={20} className="text-blue-600" />
-          <span className="font-bold text-blue-900 text-sm">3-Tier Global Barcode Scanner</span>
-          <span className="text-xs text-blue-700 bg-blue-100 font-medium px-2.5 py-0.5 rounded-full">
-            Ready for Barcode Scanner or Keyboard Input
-          </span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ScanLine size={20} className="text-blue-600 animate-pulse" />
+            <span className="font-bold text-blue-900 text-sm">3-Tier Global Barcode Scanner Station</span>
+            <span className="text-xs text-blue-700 bg-blue-100 font-semibold px-2.5 py-0.5 rounded-full">
+              Hands-Free Continuous Scanning Active
+            </span>
+          </div>
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-white border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50 shadow-2xs"
+            title="Toggle Scan Sound Feedback"
+          >
+            {soundEnabled ? <Volume2 size={14} className="text-emerald-600" /> : <VolumeX size={14} className="text-slate-400" />}
+            <span>{soundEnabled ? 'Chime ON' : 'Muted'}</span>
+          </button>
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -272,8 +334,8 @@ export const OutgoingOrdersPage: React.FC = () => {
               value={scannerCode}
               onChange={e => setScannerCode(e.target.value.toUpperCase())}
               onKeyDown={e => { if (e.key === 'Enter' && scannerCode.trim()) handleGlobalScan(scannerCode); }}
-              placeholder="🔍 Scan Order Code (ORD-...), Product Code (PRD-...), or Book Code here..."
-              className="w-full px-4 py-3 text-sm font-mono border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-600 bg-white shadow-xs"
+              placeholder="⚡ Aim scanner at Order Barcode (ORD-...), Product Barcode, or Book Barcode and scan..."
+              className="w-full px-4 py-3.5 text-sm font-mono border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 bg-white shadow-xs font-bold"
               autoFocus
               disabled={isScanning}
             />
@@ -286,16 +348,16 @@ export const OutgoingOrdersPage: React.FC = () => {
           <button
             onClick={() => handleGlobalScan(scannerCode)}
             disabled={!scannerCode.trim() || isScanning}
-            className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-semibold flex items-center gap-2 shrink-0 shadow-xs"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-semibold flex items-center gap-2 shrink-0 shadow-xs"
           >
-            <Zap size={16} /> {isScanning ? 'Scanning...' : 'Dispatch'}
+            <Zap size={16} /> {isScanning ? 'Verifying...' : 'Verify & Dispatch'}
           </button>
         </div>
 
         {/* Scan Result Feedback */}
         {scanResult.type && (
           <div className={`mt-3 p-3.5 rounded-lg text-sm font-medium border flex items-start gap-3 ${
-            scanResult.type === 'success' ? 'bg-emerald-100/80 border-emerald-300 text-emerald-950' : 'bg-rose-100/80 border-rose-300 text-rose-950'
+            scanResult.type === 'success' ? 'bg-emerald-100/90 border-emerald-300 text-emerald-950' : 'bg-rose-100/90 border-rose-300 text-rose-950'
           }`}>
             <span className="text-xl shrink-0 mt-0.5">{scanResult.type === 'success' ? '✅' : '❌'}</span>
             <div className="flex-1">
@@ -321,9 +383,118 @@ export const OutgoingOrdersPage: React.FC = () => {
         {/* Hint */}
         <div className="mt-2.5 flex flex-wrap gap-4 text-xs text-blue-700 font-medium">
           <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>ORD-YYMM-NNNNN</strong>: Dispatches all books for whole order</span>
-          <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>PRD-...</strong>: Dispatches all books under that product</span>
-          <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Book Code</strong>: Dispatches 1 book copy</span>
+          <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>Product Code</strong>: Dispatches all books in that combo</span>
+          <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Book Code</strong>: Dispatches 1 single book copy</span>
         </div>
+
+        {/* ─── Zero-Click Live Verification Deck (Shows immediately on scan) ──── */}
+        {lastScannedOrder && (
+          <div className="mt-4 bg-slate-900 text-white rounded-2xl p-5 shadow-xl border border-slate-700 transition-all">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <span className="font-mono text-xs font-bold bg-blue-600 text-white px-2.5 py-1 rounded">
+                  {lastScannedOrder.trackingId}
+                </span>
+                <span className="text-lg font-bold text-white">
+                  {lastScannedOrder.studentName}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  📞 {lastScannedOrder.mobileNumber}
+                </span>
+                {lastScannedOrder.orderCode && (
+                  <span className="text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-600 px-2 py-0.5 rounded font-bold">
+                    🔖 {lastScannedOrder.orderCode}
+                  </span>
+                )}
+                {lastScannedOrder.productCode && (
+                  <span className="text-xs font-mono bg-purple-950 text-purple-300 border border-purple-600 px-2 py-0.5 rounded font-bold">
+                    📦 {lastScannedOrder.productCode}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                  lastScannedOrder.totalPending === 0
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}>
+                  {lastScannedOrder.totalPending === 0 ? '✓ Order Completed' : 'In Progress'}
+                </span>
+                <button
+                  onClick={() => setLastScannedOrder(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+                  title="Close preview"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Metric counters: Total Required, Dispatched, Remaining */}
+            <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+              <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80">
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Required</div>
+                <div className="text-2xl font-black text-white font-mono mt-0.5">{lastScannedOrder.totalRequired}</div>
+              </div>
+              <div className="bg-emerald-950/40 rounded-xl p-3 border border-emerald-800/60">
+                <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Dispatched</div>
+                <div className="text-2xl font-black text-emerald-400 font-mono mt-0.5">{lastScannedOrder.totalDispatched}</div>
+              </div>
+              <div className="bg-amber-950/40 rounded-xl p-3 border border-amber-800/60">
+                <div className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Remaining Left</div>
+                <div className="text-2xl font-black text-amber-400 font-mono mt-0.5">{lastScannedOrder.totalPending}</div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-800 rounded-full h-2 mb-4 overflow-hidden">
+              <div
+                className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                style={{
+                  width: `${lastScannedOrder.totalRequired > 0
+                    ? Math.round((lastScannedOrder.totalDispatched / lastScannedOrder.totalRequired) * 100)
+                    : 0}%`
+                }}
+              />
+            </div>
+
+            {/* Books in this order */}
+            <div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Books In This Order ({lastScannedOrder.items.length} titles)</span>
+                <span className="text-[11px] text-emerald-400 font-medium animate-pulse">Ready for next barcode scan</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {lastScannedOrder.items.map((item: any, i: number) => {
+                  const isDone = item.dispatchedQuantity >= item.requiredQuantity;
+                  return (
+                    <div
+                      key={item.id || i}
+                      className={`p-2.5 rounded-lg border text-xs flex items-center justify-between transition-colors ${
+                        isDone
+                          ? 'bg-emerald-950/30 border-emerald-800/80 text-emerald-200'
+                          : 'bg-slate-800/90 border-slate-700 text-slate-200'
+                      }`}
+                    >
+                      <div className="truncate mr-2">
+                        <span className="font-mono font-bold text-white mr-1.5">{item.bookCode}</span>
+                        <span className="text-slate-400 truncate">{item.bookName}</span>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-1 font-mono">
+                        <span className="font-bold">{item.dispatchedQuantity}/{item.requiredQuantity}</span>
+                        {isDone ? (
+                          <span className="text-emerald-400 font-bold ml-1">✓ Done</span>
+                        ) : (
+                          <span className="text-amber-400 text-[10px] ml-1 font-semibold">Pending</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Page Header */}

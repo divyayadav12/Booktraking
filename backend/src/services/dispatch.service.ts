@@ -73,6 +73,8 @@ export async function verifyAndDispatchBook(params: {
     }
   }
 
+  const normalizedEnteredCode = normalizeBookCode(enteredBookCode);
+
   // Find order
   let order: any;
   if (orderItemId) {
@@ -86,10 +88,27 @@ export async function verifyAndDispatchBook(params: {
       throw { statusCode: 404, message: 'Order not found', code: 'ORDER_NOT_FOUND' };
     }
   } else {
-    throw { statusCode: 400, message: 'Either orderItemId or orderId must be provided', code: 'MISSING_PARAMS' };
-  }
+    // Global Book Scan: Find first active order that has this book code pending
+    const candidates = await Order.find({
+      'items.bookCode': normalizedEnteredCode,
+    }).sort({ createdAt: 1 });
 
-  const normalizedEnteredCode = normalizeBookCode(enteredBookCode);
+    order = candidates.find((o: any) =>
+      o.items.some(
+        (i: any) =>
+          normalizeBookCode(i.bookCode) === normalizedEnteredCode &&
+          i.dispatchedQuantity < i.requiredQuantity
+      )
+    );
+
+    if (!order) {
+      throw {
+        statusCode: 404,
+        message: `No active order found with pending copies for Book Code "${enteredBookCode}".`,
+        code: 'BOOK_NOT_FOUND_OR_DISPATCHED',
+      };
+    }
+  }
 
   // Match item in order
   let currentItem: any;
@@ -264,6 +283,8 @@ export async function verifyAndDispatchBook(params: {
     },
     order: {
       id: updatedOrder._id.toString(),
+      orderCode: updatedOrder.orderCode,
+      productCode: updatedOrder.productCode,
       studentName: updatedOrder.studentName,
       trackingId: updatedOrder.trackingId,
       mobileNumber: updatedOrder.mobileNumber,

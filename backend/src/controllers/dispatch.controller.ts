@@ -31,13 +31,12 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return successResponse(res, result.message, result);
     }
 
-    // Tier 2: Product Code (starts with "PRD-" or matches order/item productCode)
-    const isProductCodeFormat = scannedCode.startsWith('PRD-');
-    const matchedByProduct = isProductCodeFormat
-      ? await Order.findOne({ $or: [{ productCode: scannedCode }, { 'items.productCode': scannedCode }] })
-      : null;
+    // Tier 2: Product Code (matches order productCode or item productCode)
+    const matchedByProduct = await Order.findOne({
+      $or: [{ productCode: scannedCode }, { 'items.productCode': scannedCode }],
+    });
 
-    if (matchedByProduct || isProductCodeFormat) {
+    if (matchedByProduct) {
       const result = await dispatchService.dispatchByProductCode({
         productCode: scannedCode,
         orderId,
