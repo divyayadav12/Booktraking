@@ -31,7 +31,10 @@ import {
   Trash2,
   Volume2,
   VolumeX,
+  Smartphone,
+  QrCode,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement } from '../../utils/sound';
 
 export const OutgoingOrdersPage: React.FC = () => {
@@ -248,6 +251,43 @@ export const OutgoingOrdersPage: React.FC = () => {
       }, 50);
     }
   }, [isScanning, soundEnabled, lastScannedOrder]);
+
+  // ─── Mobile Camera Wireless Sync State ─────────────────────────────────────
+  const [stationSessionId] = useState<string>(() => {
+    const existing = localStorage.getItem('PACKING_STATION_SESSION_ID');
+    if (existing) return existing;
+    const newId = 'STN-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    localStorage.setItem('PACKING_STATION_SESSION_ID', newId);
+    return newId;
+  });
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+  const [connectedPhonesCount, setConnectedPhonesCount] = useState(0);
+
+  // Poll Scans from Connected Mobile Camera every 800ms
+  useEffect(() => {
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get(`/scanner-sync/poll?session=${stationSessionId}`);
+        if (isMounted && res.data && res.data.success) {
+          if (typeof res.data.connectedPhones === 'number') {
+            setConnectedPhonesCount(res.data.connectedPhones);
+          }
+          const scans: string[] = res.data.scans || [];
+          for (const code of scans) {
+            handleGlobalScan(code);
+          }
+        }
+      } catch (err) {
+        // Quiet background polling error
+      }
+    }, 800);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [stationSessionId, handleGlobalScan]);
 
   const handleManualFinish = async () => {
     if (!lastScannedOrder?.id || isScanning) return;
@@ -580,14 +620,29 @@ export const OutgoingOrdersPage: React.FC = () => {
               Hands-Free Continuous Scanning Active
             </span>
           </div>
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-white border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50 shadow-2xs"
-            title="Toggle Scan Sound Feedback"
-          >
-            {soundEnabled ? <Volume2 size={14} className="text-emerald-600" /> : <VolumeX size={14} className="text-slate-400" />}
-            <span>{soundEnabled ? 'Chime ON' : 'Muted'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsMobileModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
+              title="Connect Mobile Phone Camera as Barcode Scanner"
+            >
+              <Smartphone size={14} />
+              <span>📱 Connect Mobile Camera</span>
+              {connectedPhonesCount > 0 && (
+                <span className="ml-1 bg-emerald-400 text-slate-900 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {connectedPhonesCount} Connected
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 bg-white border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50 shadow-2xs cursor-pointer"
+              title="Toggle Scan Sound Feedback"
+            >
+              {soundEnabled ? <Volume2 size={14} className="text-emerald-600" /> : <VolumeX size={14} className="text-slate-400" />}
+              <span>{soundEnabled ? 'Chime ON' : 'Muted'}</span>
+            </button>
+          </div>
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -1185,6 +1240,69 @@ export const OutgoingOrdersPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* ─── MOBILE CAMERA SCANNER PAIRING MODAL ───────────────────────── */}
+      {isMobileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setIsMobileModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center mb-3 shadow-inner">
+              <Smartphone size={28} />
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+              Connect Mobile Phone Camera
+            </h3>
+            <p className="text-xs text-slate-500 mt-1.5 max-w-xs mx-auto leading-relaxed">
+              Open your phone's normal camera and scan this QR code. Your mobile will turn into a high-speed wireless barcode scanner!
+            </p>
+
+            {/* QR Code Canvas */}
+            <div className="my-5 p-4 bg-white border-2 border-dashed border-blue-200 rounded-2xl inline-block shadow-xs">
+              <QRCodeSVG
+                value={`${window.location.origin}/mobile-scanner?session=${stationSessionId}`}
+                size={200}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left text-xs space-y-2">
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="font-semibold text-slate-600">Station Code:</span>
+                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  {stationSessionId}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="font-semibold text-slate-600">Sync Status:</span>
+                <span className="inline-flex items-center gap-1.5 font-bold text-emerald-600">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  {connectedPhonesCount > 0 ? `${connectedPhonesCount} Mobile Connected` : 'Ready & Listening'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <p className="text-[11px] text-slate-400 text-left">
+                No app installation required. Runs directly in browser!
+              </p>
+              <button
+                onClick={() => setIsMobileModalOpen(false)}
+                className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DISPATCH BOX MODAL */}
       <DispatchBoxModal

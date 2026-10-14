@@ -7,6 +7,7 @@ import dispatchRoutes from './dispatch.routes';
 import reportRoutes from './report.routes';
 import employeeRoutes from './employee.routes';
 import auditRoutes from './audit.routes';
+import scannerSyncRoutes from './scannerSync.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/dispatch', dispatchRoutes);
 router.use('/reports', reportRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/audit', auditRoutes);
+router.use('/scanner-sync', scannerSyncRoutes);
 
 export default router;

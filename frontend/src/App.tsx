@@ -21,6 +21,7 @@ import { BarcodeSheetPage } from './pages/BarcodeSheetPage';
 // Common Pages
 import { OutgoingOrdersPage } from './pages/common/OutgoingOrdersPage';
 import { OrderDetailPage } from './pages/common/OrderDetailPage';
+import { MobileScannerPage } from './pages/MobileScannerPage';
 
 // Employee Pages
 import { EmployeeDashboardPage } from './pages/employee/EmployeeDashboardPage';
@@ -78,6 +79,7 @@ export const App: React.FC = () => {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/mobile-scanner" element={<MobileScannerPage />} />
             <Route path="/" element={<RootRedirect />} />
 
             {/* Admin Routes */}

@@ -1,0 +1,102 @@
+import { Request, Response } from 'express';
+import { successResponse, errorResponse } from '../utils/response';
+
+interface SessionData {
+  queue: string[];
+  lastActivity: number;
+  connectedPhones: number;
+}
+
+// In-memory sessions store
+const sessions = new Map<string, SessionData>();
+
+// Periodic cleanup of stale sessions (> 1 hour inactivity)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of sessions.entries()) {
+    if (now - val.lastActivity > 60 * 60 * 1000) {
+      sessions.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
+function getOrCreateSession(sessionId: string): SessionData {
+  let session = sessions.get(sessionId);
+  if (!session) {
+    session = { queue: [], lastActivity: Date.now(), connectedPhones: 0 };
+    sessions.set(sessionId, session);
+  }
+  session.lastActivity = Date.now();
+  return session;
+}
+
+/**
+ * Mobile camera sends scanned barcode to the station session
+ */
+export async function pushScan(req: Request, res: Response) {
+  try {
+    const { session, code } = req.body;
+    if (!session || !code) {
+      return errorResponse(res, 'Session and code are required', 'MISSING_PARAMS', 400);
+    }
+
+    const cleanCode = String(code).trim().toUpperCase();
+    const sessionData = getOrCreateSession(session);
+    sessionData.queue.push(cleanCode);
+
+    return successResponse(res, `Code "${cleanCode}" transmitted to desktop station`, {
+      code: cleanCode,
+      queueLength: sessionData.queue.length,
+    });
+  } catch (error: any) {
+    return errorResponse(res, error.message || 'Failed to push scan', 'PUSH_ERROR', 500);
+  }
+}
+
+/**
+ * Desktop station polls for newly arrived scans from paired mobile
+ */
+export async function pollScans(req: Request, res: Response) {
+  try {
+    const session = String(req.query.session || '').trim();
+    if (!session) {
+      return errorResponse(res, 'Session ID is required', 'SESSION_REQUIRED', 400);
+    }
+
+    const sessionData = sessions.get(session);
+    if (!sessionData || sessionData.queue.length === 0) {
+      return successResponse(res, 'No new scans', { codes: [] });
+    }
+
+    // Drain and return all queued codes
+    const codes = [...sessionData.queue];
+    sessionData.queue = [];
+    sessionData.lastActivity = Date.now();
+
+    return successResponse(res, `Retrieved ${codes.length} scan(s)`, { codes });
+  } catch (error: any) {
+    return errorResponse(res, error.message || 'Failed to poll scans', 'POLL_ERROR', 500);
+  }
+}
+
+/**
+ * Mobile phone registers heart-beat / connection to session
+ */
+export async function registerPhone(req: Request, res: Response) {
+  try {
+    const { session } = req.body;
+    if (!session) {
+      return errorResponse(res, 'Session ID required', 'SESSION_REQUIRED', 400);
+    }
+
+    const sessionData = getOrCreateSession(session);
+    sessionData.connectedPhones += 1;
+
+    return successResponse(res, 'Mobile scanner paired successfully', {
+      connected: true,
+      session,
+    });
+  } catch (error: any) {
+    return errorResponse(res, error.message || 'Failed to register phone', 'CONNECT_ERROR', 500);
+  }
+}
