@@ -585,8 +585,17 @@ export const ExcelUploadPage: React.FC = () => {
                           <div className="font-semibold text-slate-800">{ord.studentName}</div>
                           <div className="text-[11px] font-mono text-slate-500">{ord.mobileNumber}</div>
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-blue-600">
-                          {ord.trackingId}
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className="font-mono font-bold text-blue-600">
+                              {ord.trackingId}
+                            </span>
+                            {ord.productCode && (
+                              <span className="font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Product Code">
+                                📦 {ord.productCode}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1 max-w-xs">

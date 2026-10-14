@@ -29,6 +29,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  productCode?: string;
   studentName: string;
   mobileNumber: string;
   email: string | null;

@@ -139,7 +139,16 @@ export const AllOrdersPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {orders.map((order) => (
                     <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600">{order.trackingId}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="font-mono font-bold text-blue-600">{order.trackingId}</span>
+                          {order.productCode && (
+                            <span className="font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Product Code">
+                              📦 {order.productCode}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 px-4">
                         <div className="font-semibold text-slate-800">{order.studentName}</div>
                         <div className="text-xs text-slate-500 font-mono">{order.mobileNumber}</div>

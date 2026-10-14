@@ -281,7 +281,7 @@ export const OutgoingOrdersPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-              Outgoing Sheet (आउटगोइंग शीट)
+              Outgoing Sheet
             </h1>
             <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full border border-blue-200">
               Active Dispatch Station
@@ -464,11 +464,18 @@ export const OutgoingOrdersPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Tracking ID */}
+                        {/* Tracking ID & Product Code */}
                         <td className="py-3 px-4">
-                          <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs">
-                            {order.trackingId}
-                          </span>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs">
+                              {order.trackingId}
+                            </span>
+                            {order.productCode && (
+                              <span className="font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Product Code">
+                                📦 {order.productCode}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Excel Source File */}

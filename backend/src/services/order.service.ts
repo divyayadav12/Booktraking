@@ -42,7 +42,12 @@ export async function listOrders(params: ListOrdersParams) {
   const query: any = {};
 
   if (params.batchId && params.batchId.trim()) {
-    query.importBatchId = params.batchId.trim();
+    try {
+      const mongoose = require('mongoose');
+      query.importBatchId = new mongoose.Types.ObjectId(params.batchId.trim());
+    } catch {
+      query.importBatchId = params.batchId.trim();
+    }
   }
 
   if (startDate && endDate) {
@@ -60,6 +65,7 @@ export async function listOrders(params: ListOrdersParams) {
       { mobileNumber: regex },
       { email: regex },
       { trackingId: regex },
+      { productCode: regex },
       { 'items.bookCode': regex },
       { 'items.bookName': regex },
     ];
@@ -93,6 +99,7 @@ export async function listOrders(params: ListOrdersParams) {
 
     return {
       id: order._id.toString(),
+      productCode: order.productCode,
       studentName: order.studentName,
       mobileNumber: order.mobileNumber,
       email: order.email,
@@ -188,6 +195,7 @@ export async function getOrderById(orderId: string) {
 
   return {
     id: order._id.toString(),
+    productCode: order.productCode,
     studentName: order.studentName,
     mobileNumber: order.mobileNumber,
     email: order.email,
