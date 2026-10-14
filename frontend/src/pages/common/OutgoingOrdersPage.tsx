@@ -666,9 +666,10 @@ export const OutgoingOrdersPage: React.FC = () => {
                 <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                   <tr>
                     <th className="py-3 px-4">Student & Contact</th>
+                    <th className="py-3 px-4">Order Code (Tier 1)</th>
+                    <th className="py-3 px-4">Product Code (Tier 2)</th>
                     <th className="py-3 px-4">Tracking ID</th>
-                    <th className="py-3 px-4">Excel Source</th>
-                    <th className="py-3 px-4">Books Required</th>
+                    <th className="py-3 px-4">Books Required (Tier 3)</th>
                     <th className="py-3 px-4 text-center">Required</th>
                     <th className="py-3 px-4 text-center">Dispatched</th>
                     <th className="py-3 px-4 text-center">Pending</th>
@@ -694,52 +695,41 @@ export const OutgoingOrdersPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Tracking ID, Order Code & Product Code */}
+                        {/* Order Unique Code */}
                         <td className="py-3 px-4">
-                          <div className="flex flex-col gap-1 items-start">
-                            {order.orderCode && (
-                              <span className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300" title="Order Unique Code">
-                                🔖 {order.orderCode}
-                              </span>
-                            )}
-                            <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs">
-                              {order.trackingId}
-                            </span>
-                            {order.productCode && (
-                              <span className="font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Product Code">
-                                📦 {order.productCode}
-                              </span>
-                            )}
-                          </div>
+                          <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded border border-emerald-300 inline-flex items-center gap-1 shadow-2xs" title="Order Unique Barcode (Tier 1)">
+                            🔖 {order.orderCode || 'ORD-GEN'}
+                          </span>
                         </td>
 
-                        {/* Excel Source File */}
+                        {/* Product Code */}
                         <td className="py-3 px-4">
-                          {order.importBatch?.originalFileName ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 max-w-[150px] truncate" title={order.importBatch.originalFileName}>
-                              <FileSpreadsheet className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span className="truncate">{order.importBatch.originalFileName}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-slate-400">Direct Batch</span>
-                          )}
+                          <span className="font-mono text-xs font-bold text-purple-800 bg-purple-50 px-2.5 py-1 rounded border border-purple-300 inline-flex items-center gap-1 shadow-2xs" title="Product Combo Barcode (Tier 2)">
+                            📦 {order.productCode || 'PRD-01'}
+                          </span>
+                        </td>
+
+                        {/* Tracking ID */}
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs inline-block">
+                            {order.trackingId}
+                          </span>
                         </td>
 
                         {/* Books Preview Pills */}
                         <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1 max-w-xs">
+                          <div className="flex flex-wrap gap-1.5 max-w-sm">
                             {order.items.map((it) => (
                               <span
                                 key={it.id}
-                                className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-semibold border ${
+                                className={`text-[11px] font-mono px-2 py-1 rounded font-semibold border flex items-center gap-1 shadow-2xs ${
                                   it.pendingQuantity === 0
                                     ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
-                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : 'bg-amber-50 text-amber-900 border-amber-300'
                                 }`}
-                                title={`${it.bookName}${it.productCode ? ` [Product: ${it.productCode}]` : ''} (${it.pendingQuantity} pending)`}
+                                title={`${it.bookName} (${it.pendingQuantity} pending)`}
                               >
-                                {it.productCode && <span className="text-purple-700 font-bold opacity-80">{it.productCode} • </span>}
-                                {it.bookCode}
+                                📖 {it.bookCode}
                                 {it.requiredQuantity > 1 ? ` ×${it.requiredQuantity}` : ''}
                                 {it.pendingQuantity > 0 && it.dispatchedQuantity > 0 ? ` (${it.pendingQuantity} left)` : ''}
                               </span>

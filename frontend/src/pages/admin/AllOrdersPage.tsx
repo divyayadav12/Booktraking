@@ -126,9 +126,11 @@ export const AllOrdersPage: React.FC = () => {
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                   <tr>
+                    <th className="py-3 px-4">Student & Contact</th>
+                    <th className="py-3 px-4">Order Code (Tier 1)</th>
+                    <th className="py-3 px-4">Product Code (Tier 2)</th>
                     <th className="py-3 px-4">Tracking ID</th>
-                    <th className="py-3 px-4">Student Details</th>
-                    <th className="py-3 px-4">Books Required</th>
+                    <th className="py-3 px-4">Books Required (Tier 3)</th>
                     <th className="py-3 px-4 text-center">Required</th>
                     <th className="py-3 px-4 text-center">Dispatched</th>
                     <th className="py-3 px-4 text-center">Pending</th>
@@ -140,18 +142,23 @@ export const AllOrdersPage: React.FC = () => {
                   {orders.map((order) => (
                     <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1 items-start">
-                          <span className="font-mono font-bold text-blue-600">{order.trackingId}</span>
-                          {order.productCode && (
-                            <span className="font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Product Code">
-                              📦 {order.productCode}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
                         <div className="font-semibold text-slate-800">{order.studentName}</div>
                         <div className="text-xs text-slate-500 font-mono">{order.mobileNumber}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded border border-emerald-300 inline-flex items-center gap-1 shadow-2xs" title="Order Unique Barcode (Tier 1)">
+                          🔖 {order.orderCode || 'ORD-GEN'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono text-xs font-bold text-purple-800 bg-purple-50 px-2.5 py-1 rounded border border-purple-300 inline-flex items-center gap-1 shadow-2xs" title="Product Combo Barcode (Tier 2)">
+                          📦 {order.productCode || 'PRD-01'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs inline-block">
+                          {order.trackingId}
+                        </span>
                       </td>
                       <td className="py-3 px-4 max-w-xs">
                         <div className="flex flex-wrap gap-1">

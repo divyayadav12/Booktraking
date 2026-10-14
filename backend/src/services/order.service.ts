@@ -90,6 +90,8 @@ export async function listOrders(params: ListOrdersParams) {
     const itemsWithStatus = order.items.map((item: any) => ({
       id: item._id.toString(),
       orderId: order._id.toString(),
+      productCode: item.productCode || order.productCode,
+      productName: item.productName || 'Product',
       bookCode: item.bookCode,
       bookName: item.bookName,
       requiredQuantity: item.requiredQuantity,
