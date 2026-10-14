@@ -162,7 +162,11 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
             employeeId: req.user.id,
             requestId,
           });
-          return successResponse(res, result.message, result);
+          return successResponse(
+            res,
+            `Product Code "${scannedCode}" Scanned & Verified! All combo books verified & dispatched for ${activeOrder.studentName}.`,
+            result
+          );
         }
 
         // B. Check if scannedCode matches any book in this active order
@@ -187,7 +191,11 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
             employeeId: req.user.id,
             requestId,
           });
-          return successResponse(res, result.message, { ...result, scanType: 'BOOK_CODE', verifiedBookCode: scannedCode });
+          return successResponse(
+            res,
+            `Book Code "${scannedCode}" Scanned & Verified! 1 copy verified for ${activeOrder.studentName}.`,
+            { ...result, scanType: 'BOOK_CODE', verifiedBookCode: scannedCode }
+          );
         }
 
         // C. Scanned code does NOT belong to active order!

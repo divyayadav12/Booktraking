@@ -617,25 +617,11 @@ export const OutgoingOrdersPage: React.FC = () => {
                     🔖 {lastScannedOrder.orderCode}
                   </span>
                 )}
-                {lastScannedOrder.productCode && (() => {
-                  const isProductDone = lastScannedOrder.items
-                    .filter((i: any) => !i.productCode || i.productCode === lastScannedOrder.productCode)
-                    .every((i: any) => i.dispatchedQuantity >= i.requiredQuantity);
-                  return (
-                    <span className={`text-xs font-mono px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-all ${
-                      isProductDone
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-500'
-                        : 'bg-purple-950/80 text-purple-300 border border-purple-500/60'
-                    }`}>
-                      📦 {lastScannedOrder.productCode}
-                      {isProductDone ? (
-                        <span className="bg-emerald-500 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-black">✓ VERIFIED</span>
-                      ) : (
-                        <span className="text-amber-300 text-[10px] font-normal animate-pulse">(Scan Product Code)</span>
-                      )}
-                    </span>
-                  );
-                })()}
+                {lastScannedOrder.productCode && (
+                  <span className="text-xs font-mono bg-purple-950 text-purple-300 border border-purple-600 px-2.5 py-1 rounded font-bold">
+                    📦 {lastScannedOrder.productCode}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -687,40 +673,117 @@ export const OutgoingOrdersPage: React.FC = () => {
               />
             </div>
 
-            {/* Books in this order */}
+            {/* ─── 1. Dedicated Product Code Verification Box ──── */}
+            {lastScannedOrder.productCode && (() => {
+              const isProductDone = lastScannedOrder.items
+                .filter((i: any) => !i.productCode || i.productCode === lastScannedOrder.productCode)
+                .every((i: any) => i.dispatchedQuantity >= i.requiredQuantity);
+              return (
+                <div className={`mb-4 p-4 rounded-xl border-2 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  isProductDone
+                    ? 'bg-emerald-950/60 border-emerald-500 shadow-md ring-1 ring-emerald-500/40'
+                    : 'bg-purple-950/40 border-purple-500/70 shadow-sm'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 ${
+                      isProductDone ? 'bg-emerald-500 text-slate-950' : 'bg-purple-600 text-white'
+                    }`}>
+                      <Package size={22} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Product Package Code (Combo)</span>
+                        <span className="text-xs bg-purple-900/80 text-purple-200 border border-purple-600 px-2 py-0.5 rounded font-mono font-bold">
+                          {lastScannedOrder.productCode}
+                        </span>
+                      </div>
+                      <div className="text-sm font-semibold text-white mt-0.5">
+                        {isProductDone
+                          ? `All ${lastScannedOrder.items.length} book(s) in combo verified & dispatched`
+                          : `Scan product barcode or click mark to verify & dispatch all combo books`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Verification Mark / Box for Product */}
+                  <div className="shrink-0">
+                    {isProductDone ? (
+                      <div className="flex items-center gap-2 bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md">
+                        <CheckCircle2 size={18} className="text-slate-950" />
+                        <span>Code Verified & Done</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleGlobalScan(lastScannedOrder.productCode)}
+                        disabled={isScanning}
+                        className="flex items-center gap-2.5 bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-400 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all hover:scale-102 cursor-pointer group disabled:opacity-50"
+                        title="Scan product barcode or click this mark to verify and dispatch entire combo"
+                      >
+                        <div className="w-5 h-5 rounded-md border-2 border-white/70 group-hover:border-white flex items-center justify-center bg-purple-700/50">
+                          {/* Unchecked square box */}
+                        </div>
+                        <span>Scan or Click Mark to Verify & Done</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ─── 2. Dedicated Individual Book Codes Verification Boxes ──── */}
             <div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                <span>Books In This Order ({lastScannedOrder.items.length} titles)</span>
-                <span className="text-[11px] text-emerald-400 font-medium animate-pulse">
-                  {lastScannedOrder.totalPending === 0 ? '✓ All Items Verified' : 'Scan Product or Book Barcode to Verify'}
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <span>Individual Book Codes ({lastScannedOrder.items.length} titles)</span>
+                <span className="text-[11px] text-emerald-400 font-medium">
+                  {lastScannedOrder.totalPending === 0 ? '✓ All Books Verified & Done' : 'Scan book barcode or click mark to verify & dispatch'}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              <div className="space-y-2">
                 {lastScannedOrder.items.map((item: any, i: number) => {
                   const isDone = item.dispatchedQuantity >= item.requiredQuantity;
                   return (
                     <div
                       key={item.id || i}
-                      className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${
+                      className={`p-3.5 rounded-xl border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
                         isDone
                           ? 'bg-emerald-950/40 border-emerald-500 text-emerald-200 ring-1 ring-emerald-500/40'
-                          : 'bg-slate-800/90 border-slate-700 text-slate-200'
+                          : 'bg-slate-800/90 border-slate-700 hover:border-slate-600 text-slate-200'
                       }`}
                     >
-                      <div className="truncate mr-2">
-                        <div className="font-mono font-bold text-white text-sm">{item.bookCode}</div>
-                        <div className="text-slate-400 text-[11px] truncate">{item.bookName}</div>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                          isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-700 text-slate-300'
+                        }`}>
+                          <BookOpen size={18} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-white text-base">{item.bookCode}</span>
+                            <span className="text-xs text-slate-400 font-mono">Qty: {item.dispatchedQuantity}/{item.requiredQuantity}</span>
+                          </div>
+                          <div className="text-slate-300 text-xs mt-0.5">{item.bookName}</div>
+                        </div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-slate-300">{item.dispatchedQuantity}/{item.requiredQuantity}</span>
+
+                      {/* Verification Mark / Box for Book */}
+                      <div className="shrink-0 flex items-center gap-2">
                         {isDone ? (
-                          <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">
-                            ✓ Verified
-                          </span>
+                          <div className="flex items-center gap-2 bg-emerald-500 text-slate-950 px-3.5 py-2 rounded-lg font-bold text-xs shadow-xs">
+                            <CheckCircle2 size={16} className="text-slate-950" />
+                            <span>Code Verified & Done ({item.dispatchedQuantity}/{item.requiredQuantity})</span>
+                          </div>
                         ) : (
-                          <span className="flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] font-semibold animate-pulse">
-                            ⏳ Scan Book
-                          </span>
+                          <button
+                            onClick={() => handleGlobalScan(item.bookCode)}
+                            disabled={isScanning}
+                            className="flex items-center gap-2 bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white border border-slate-600 hover:border-blue-400 px-3.5 py-2 rounded-lg font-bold text-xs transition-all hover:scale-102 cursor-pointer group disabled:opacity-50"
+                            title={`Scan barcode or click mark to verify & dispatch ${item.bookCode}`}
+                          >
+                            <div className="w-4 h-4 rounded border-2 border-slate-400 group-hover:border-white flex items-center justify-center bg-slate-900/50">
+                              {/* Unchecked square box */}
+                            </div>
+                            <span>Scan or Click Mark to Verify ({item.dispatchedQuantity}/{item.requiredQuantity})</span>
+                          </button>
                         )}
                       </div>
                     </div>
