@@ -134,22 +134,35 @@ export const OutgoingOrdersPage: React.FC = () => {
     setScanResult({ type: null, message: '' });
 
     try {
-      const res = await api.post('/dispatch/verify', { enteredCode: cleanCode });
+      // If code starts with ORD- or UNQ-, it's a new Order Code scan (do not pass active orderId)
+      const isNewOrderCode = cleanCode.startsWith('ORD-') || cleanCode.startsWith('UNQ-');
+      const activeOrderId = !isNewOrderCode && lastScannedOrder?.id && lastScannedOrder.totalPending > 0
+        ? lastScannedOrder.id
+        : undefined;
+
+      const res = await api.post('/dispatch/verify', {
+        enteredCode: cleanCode,
+        orderId: activeOrderId,
+      });
+
       if (res.data.success) {
         const data = res.data.data;
         let scanType = '📖 Book Code';
-        if (data.scanType === 'ORDER_CODE') {
-          scanType = '🔖 Order Unique Code';
+        if (data.scanType === 'ORDER_LOADED') {
+          scanType = '🔖 Order Loaded';
+        } else if (data.scanType === 'ORDER_CODE') {
+          scanType = '🔖 Order Dispatched';
         } else if (data.scanType === 'PRODUCT_CODE') {
-          scanType = '📦 Product Code';
+          scanType = '📦 Product Verified';
         }
 
         const updatedOrder = data.order;
         const isComplete = updatedOrder ? updatedOrder.totalPending === 0 : false;
+        const isLoadedOnly = data.scanType === 'ORDER_LOADED';
 
         // Play audio feedback
         if (soundEnabled) {
-          if (isComplete || data.scanType === 'ORDER_CODE') {
+          if (isComplete && !isLoadedOnly) {
             playOrderCompleteFanfare();
           } else {
             playSuccessChime();
@@ -167,7 +180,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             status: updatedOrder.status,
             scanType,
             message: data.message,
-            itemsDispatched: data.itemsDispatched || 1,
+            itemsDispatched: data.itemsDispatched || 0,
             totalRequired: updatedOrder.totalRequired,
             totalDispatched: updatedOrder.totalDispatched,
             totalPending: updatedOrder.totalPending,
@@ -184,12 +197,14 @@ export const OutgoingOrdersPage: React.FC = () => {
           } : o));
         }
 
-        const countDispatched = data.itemsDispatched || 1;
-        setQueueStats(prev => ({
-          ...prev,
-          totalDispatchedCopies: prev.totalDispatchedCopies + countDispatched,
-          totalPendingCopies: Math.max(0, prev.totalPendingCopies - countDispatched),
-        }));
+        const countDispatched = data.itemsDispatched || 0;
+        if (countDispatched > 0) {
+          setQueueStats(prev => ({
+            ...prev,
+            totalDispatchedCopies: prev.totalDispatchedCopies + countDispatched,
+            totalPendingCopies: Math.max(0, prev.totalPendingCopies - countDispatched),
+          }));
+        }
 
         setScanResult({
           type: 'success',
@@ -197,11 +212,11 @@ export const OutgoingOrdersPage: React.FC = () => {
           scanType,
           studentName: updatedOrder?.studentName,
           trackingId: updatedOrder?.trackingId,
-          itemsDispatched: countDispatched,
+          itemsDispatched: countDispatched > 0 ? countDispatched : undefined,
         });
 
         // 🌟 Auto-close preview card and feedback after 2.5 seconds when the order is DONE / fully dispatched
-        if (isComplete) {
+        if (isComplete && !isLoadedOnly) {
           autoCloseTimerRef.current = setTimeout(() => {
             setLastScannedOrder(null);
             setScanResult({ type: null, message: '' });
@@ -226,7 +241,104 @@ export const OutgoingOrdersPage: React.FC = () => {
         scanInputRef.current?.focus();
       }, 50);
     }
-  }, [isScanning, soundEnabled]);
+  }, [isScanning, soundEnabled, lastScannedOrder]);
+
+  const handleManualFinish = async () => {
+    if (!lastScannedOrder?.id || isScanning) return;
+    setIsScanning(true);
+    try {
+      const res = await api.post('/dispatch/verify', {
+        action: 'MANUAL_FINISH_ORDER',
+        orderId: lastScannedOrder.id,
+      });
+      if (res.data.success) {
+        if (soundEnabled) playSuccessChime();
+        const data = res.data.data;
+        const updatedOrder = data.order;
+        if (updatedOrder) {
+          setOrders(prev => prev.map(o => o.id === updatedOrder.id ? {
+            ...o,
+            totalDispatched: updatedOrder.totalDispatched,
+            totalPending: updatedOrder.totalPending,
+            status: updatedOrder.status,
+            items: updatedOrder.items || o.items,
+          } : o));
+        }
+        setScanResult({
+          type: 'success',
+          message: res.data.message,
+          scanType: '📦 Partial Order Finished',
+          studentName: updatedOrder?.studentName,
+          trackingId: updatedOrder?.trackingId,
+        });
+        autoCloseTimerRef.current = setTimeout(() => {
+          setLastScannedOrder(null);
+          setScanResult({ type: null, message: '' });
+        }, 2500);
+      }
+    } catch (err: any) {
+      if (soundEnabled) playErrorTone();
+      setScanResult({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to update order.',
+      });
+    } finally {
+      setIsScanning(false);
+      setTimeout(() => scanInputRef.current?.focus(), 50);
+    }
+  };
+
+  const handleQuickDispatchAll = async () => {
+    if (!lastScannedOrder?.id || isScanning) return;
+    setIsScanning(true);
+    try {
+      const res = await api.post('/dispatch/verify', {
+        action: 'QUICK_DISPATCH_ALL',
+        orderId: lastScannedOrder.id,
+      });
+      if (res.data.success) {
+        if (soundEnabled) playOrderCompleteFanfare();
+        const data = res.data.data;
+        const updatedOrder = data.order;
+        if (updatedOrder) {
+          setOrders(prev => prev.map(o => o.id === updatedOrder.id ? {
+            ...o,
+            totalDispatched: updatedOrder.totalDispatched,
+            totalPending: updatedOrder.totalPending,
+            status: updatedOrder.status,
+            items: updatedOrder.items || o.items,
+          } : o));
+          setLastScannedOrder((prev: any) => prev ? {
+            ...prev,
+            totalDispatched: updatedOrder.totalDispatched,
+            totalPending: 0,
+            status: 'COMPLETED',
+            items: updatedOrder.items,
+          } : null);
+        }
+        setScanResult({
+          type: 'success',
+          message: res.data.message,
+          scanType: '⚡ Quick Dispatched',
+          studentName: updatedOrder?.studentName,
+          trackingId: updatedOrder?.trackingId,
+        });
+        autoCloseTimerRef.current = setTimeout(() => {
+          setLastScannedOrder(null);
+          setScanResult({ type: null, message: '' });
+        }, 2500);
+      }
+    } catch (err: any) {
+      if (soundEnabled) playErrorTone();
+      setScanResult({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to dispatch all items.',
+      });
+    } finally {
+      setIsScanning(false);
+      setTimeout(() => scanInputRef.current?.focus(), 50);
+    }
+  };
 
   // Auto-trigger verification as soon as number/code is entered (no Enter click required)
   useEffect(() => {
@@ -250,12 +362,11 @@ export const OutgoingOrdersPage: React.FC = () => {
       return;
     }
 
-    // Auto-trigger for complete product codes or book codes when scanner finishes or user pauses typing (500ms)
-    // Requires at least 5 characters (e.g. "BK-01", "PRD-1")
-    if (trimmed.length >= 5) {
+    // Auto-trigger for complete product codes or book codes when scanner finishes or user pauses typing (400ms)
+    if (trimmed.length >= 4) {
       const timer = setTimeout(() => {
         handleGlobalScan(trimmed);
-      }, 500);
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [scannerCode, isScanning, handleGlobalScan]);
@@ -395,7 +506,11 @@ export const OutgoingOrdersPage: React.FC = () => {
               value={scannerCode}
               onChange={e => setScannerCode(e.target.value.toUpperCase())}
               onKeyDown={e => { if (e.key === 'Enter' && scannerCode.trim()) handleGlobalScan(scannerCode); }}
-              placeholder="⚡ Aim scanner at Order Barcode (ORD-...), Product Barcode, or Book Barcode and scan..."
+              placeholder={
+                lastScannedOrder && lastScannedOrder.totalPending > 0
+                  ? `⚡ Step 2: Now scan Product Barcode (${lastScannedOrder.productCode || 'PRD-...'}) or individual Book Barcodes...`
+                  : "⚡ Step 1: Aim scanner at Student Order Barcode (ORD-...) to load details..."
+              }
               className="w-full px-4 py-3.5 text-sm font-mono border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 bg-white shadow-xs font-bold"
               autoFocus
               disabled={isScanning}
@@ -411,7 +526,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             disabled={!scannerCode.trim() || isScanning}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-semibold flex items-center gap-2 shrink-0 shadow-xs"
           >
-            <Zap size={16} /> {isScanning ? 'Verifying...' : 'Verify & Dispatch'}
+            <Zap size={16} /> {isScanning ? 'Verifying...' : lastScannedOrder && lastScannedOrder.totalPending > 0 ? 'Verify Item' : 'Load Order'}
           </button>
         </div>
 
@@ -455,9 +570,9 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         {/* Hint */}
         <div className="mt-2.5 flex flex-wrap gap-4 text-xs text-blue-700 font-medium">
-          <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>ORD-YYMM-NNNNN</strong>: Dispatches all books for whole order</span>
-          <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>Product Code</strong>: Dispatches all books in that combo</span>
-          <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Book Code</strong>: Dispatches 1 single book copy</span>
+          <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>Step 1</strong>: Scan <strong>ORD-YYMM-NNNNN</strong> to load order</span>
+          <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>Step 2 (Combo)</strong>: Scan <strong>Product Barcode</strong> to tick & dispatch all books</span>
+          <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Step 2 (Single)</strong>: Scan individual <strong>Book Barcodes</strong> to tick one-by-one</span>
         </div>
 
         {/* ─── Zero-Click Live Verification Deck (Shows immediately on scan) ──── */}
@@ -475,15 +590,29 @@ export const OutgoingOrdersPage: React.FC = () => {
                   📞 {lastScannedOrder.mobileNumber}
                 </span>
                 {lastScannedOrder.orderCode && (
-                  <span className="text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-600 px-2 py-0.5 rounded font-bold">
+                  <span className="text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-600 px-2.5 py-1 rounded font-bold">
                     🔖 {lastScannedOrder.orderCode}
                   </span>
                 )}
-                {lastScannedOrder.productCode && (
-                  <span className="text-xs font-mono bg-purple-950 text-purple-300 border border-purple-600 px-2 py-0.5 rounded font-bold">
-                    📦 {lastScannedOrder.productCode}
-                  </span>
-                )}
+                {lastScannedOrder.productCode && (() => {
+                  const isProductDone = lastScannedOrder.items
+                    .filter((i: any) => !i.productCode || i.productCode === lastScannedOrder.productCode)
+                    .every((i: any) => i.dispatchedQuantity >= i.requiredQuantity);
+                  return (
+                    <span className={`text-xs font-mono px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                      isProductDone
+                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-500'
+                        : 'bg-purple-950/80 text-purple-300 border border-purple-500/60'
+                    }`}>
+                      📦 {lastScannedOrder.productCode}
+                      {isProductDone ? (
+                        <span className="bg-emerald-500 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-black">✓ VERIFIED</span>
+                      ) : (
+                        <span className="text-amber-300 text-[10px] font-normal animate-pulse">(Scan Product Code)</span>
+                      )}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -539,7 +668,9 @@ export const OutgoingOrdersPage: React.FC = () => {
             <div>
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
                 <span>Books In This Order ({lastScannedOrder.items.length} titles)</span>
-                <span className="text-[11px] text-emerald-400 font-medium animate-pulse">Ready for next barcode scan</span>
+                <span className="text-[11px] text-emerald-400 font-medium animate-pulse">
+                  {lastScannedOrder.totalPending === 0 ? '✓ All Items Verified' : 'Scan Product or Book Barcode to Verify'}
+                </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {lastScannedOrder.items.map((item: any, i: number) => {
@@ -547,28 +678,63 @@ export const OutgoingOrdersPage: React.FC = () => {
                   return (
                     <div
                       key={item.id || i}
-                      className={`p-2.5 rounded-lg border text-xs flex items-center justify-between transition-colors ${
+                      className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${
                         isDone
-                          ? 'bg-emerald-950/30 border-emerald-800/80 text-emerald-200'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-200 ring-1 ring-emerald-500/40'
                           : 'bg-slate-800/90 border-slate-700 text-slate-200'
                       }`}
                     >
                       <div className="truncate mr-2">
-                        <span className="font-mono font-bold text-white mr-1.5">{item.bookCode}</span>
-                        <span className="text-slate-400 truncate">{item.bookName}</span>
+                        <div className="font-mono font-bold text-white text-sm">{item.bookCode}</div>
+                        <div className="text-slate-400 text-[11px] truncate">{item.bookName}</div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-1 font-mono">
-                        <span className="font-bold">{item.dispatchedQuantity}/{item.requiredQuantity}</span>
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-slate-300">{item.dispatchedQuantity}/{item.requiredQuantity}</span>
                         {isDone ? (
-                          <span className="text-emerald-400 font-bold ml-1">✓ Done</span>
+                          <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">
+                            ✓ Verified
+                          </span>
                         ) : (
-                          <span className="text-amber-400 text-[10px] ml-1 font-semibold">Pending</span>
+                          <span className="flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] font-semibold animate-pulse">
+                            ⏳ Scan Book
+                          </span>
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Action buttons for manual or quick dispatch */}
+              {lastScannedOrder.totalPending > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs text-slate-400">
+                    ⚡ Aim scanner gun at <strong>Product Barcode</strong> or <strong>Book Barcodes</strong> to verify each item.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {lastScannedOrder.totalDispatched > 0 && (
+                      <button
+                        onClick={handleManualFinish}
+                        disabled={isScanning}
+                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 transition-colors shadow-xs"
+                        title="Dispatch only scanned books, keep remaining as Pending"
+                      >
+                        <CheckCircle2 size={14} />
+                        Finish Partial Order ({lastScannedOrder.totalDispatched}/{lastScannedOrder.totalRequired})
+                      </button>
+                    )}
+                    <button
+                      onClick={handleQuickDispatchAll}
+                      disabled={isScanning}
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-colors shadow-xs"
+                      title="Quickly dispatch all remaining books for this order without scanning"
+                    >
+                      <Zap size={14} />
+                      Quick Dispatch All Books
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

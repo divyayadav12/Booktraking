@@ -4,6 +4,9 @@ import { verifyDispatchSchema } from '../validators/dispatch.validator';
 import * as dispatchService from '../services/dispatch.service';
 import { Order } from '../models';
 import { successResponse, errorResponse } from '../utils/response';
+import { computeOrderStatus, computeItemStatus } from '../services/order.service';
+import { normalizeBookCode } from '../utils/normalize';
+import { logAudit } from '../utils/audit';
 
 export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -11,8 +14,67 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return errorResponse(res, 'Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const { orderItemId, orderId, enteredBookCode, enteredCode, requestId } = req.body;
+    const { orderItemId, orderId, enteredBookCode, enteredCode, requestId, action } = req.body;
     const scannedCode = (enteredCode || enteredBookCode || '').trim().toUpperCase();
+
+    // 0. Manual action: Finish partial order or quick dispatch all
+    if (action === 'MANUAL_FINISH_ORDER' && orderId) {
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return errorResponse(res, 'Order not found', 'ORDER_NOT_FOUND', 404);
+      }
+      const totalRequired = order.items.reduce((acc: number, i: any) => acc + i.requiredQuantity, 0);
+      const totalDispatched = order.items.reduce((acc: number, i: any) => acc + i.dispatchedQuantity, 0);
+      const totalPending = Math.max(0, totalRequired - totalDispatched);
+      const orderStatus = computeOrderStatus(order.items);
+
+      await logAudit({
+        actorUserId: req.user.id,
+        action: 'ORDER_MANUALLY_DISPATCHED',
+        entityType: 'Order',
+        entityId: order._id.toString(),
+        metadata: { student: order.studentName, totalDispatched, totalPending },
+      });
+
+      return successResponse(res, `Order for ${order.studentName} updated. Dispatched: ${totalDispatched}/${totalRequired}. Remaining: ${totalPending} (marked Pending).`, {
+        order: {
+          id: order._id.toString(),
+          orderCode: order.orderCode,
+          productCode: order.productCode,
+          studentName: order.studentName,
+          trackingId: order.trackingId,
+          totalRequired,
+          totalDispatched,
+          totalPending,
+          status: orderStatus,
+          items: order.items.map((i: any) => ({
+            id: i._id.toString(),
+            productCode: i.productCode || order.productCode,
+            productName: i.productName || 'Product',
+            bookCode: i.bookCode,
+            bookName: i.bookName,
+            requiredQuantity: i.requiredQuantity,
+            dispatchedQuantity: i.dispatchedQuantity,
+            pendingQuantity: Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
+            status: computeItemStatus(i.requiredQuantity, i.dispatchedQuantity),
+          })),
+        },
+        action: 'ORDER_FINISHED',
+      });
+    }
+
+    if (action === 'QUICK_DISPATCH_ALL' && orderId) {
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return errorResponse(res, 'Order not found', 'ORDER_NOT_FOUND', 404);
+      }
+      const result = await dispatchService.dispatchByOrderCode({
+        orderCode: order.orderCode,
+        employeeId: req.user.id,
+        requestId,
+      });
+      return successResponse(res, result.message, result);
+    }
 
     if (!scannedCode) {
       return errorResponse(res, 'No code entered. Please scan or type a code.', 'CODE_REQUIRED', 400);
@@ -22,20 +84,124 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return errorResponse(res, `Incomplete code "${scannedCode}". Please scan or enter the complete barcode.`, 'INCOMPLETE_CODE', 400);
     }
 
-    // Tier 1: Order Unique Code (starts with "ORD-" or "UNQ-" or matches an order's orderCode)
+    // 1. Order Unique Code Scan (starts with "ORD-" or "UNQ-")
+    // When an Order Code is scanned, we check if it was already completed (double scan prevented).
+    // If pending, we LOAD the order details for the employee to verify with physical items.
     const isOrderCodeFormat = (scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-')) && scannedCode.length >= 10;
     const matchedByOrderCode = isOrderCodeFormat ? await Order.findOne({ orderCode: scannedCode }) : null;
 
-    if (matchedByOrderCode || isOrderCodeFormat) {
-      const result = await dispatchService.dispatchByOrderCode({
-        orderCode: scannedCode,
-        employeeId: req.user.id,
-        requestId,
+    if (isOrderCodeFormat) {
+      if (!matchedByOrderCode) {
+        return errorResponse(res, `No order found with Order Unique Code "${scannedCode}". Please verify barcode.`, 'ORDER_NOT_FOUND', 404);
+      }
+
+      const totalRequired = matchedByOrderCode.items.reduce((acc: number, i: any) => acc + i.requiredQuantity, 0);
+      const totalDispatched = matchedByOrderCode.items.reduce((acc: number, i: any) => acc + i.dispatchedQuantity, 0);
+      const totalPending = Math.max(0, totalRequired - totalDispatched);
+
+      // Duplicate scan prevention: If order is already completed, throw error!
+      if (totalPending === 0) {
+        return errorResponse(
+          res,
+          `❌ Order "${scannedCode}" has ALREADY been fully dispatched! Cannot scan again.`,
+          'ORDER_ALREADY_COMPLETED',
+          400
+        );
+      }
+
+      // Order is active: Load details for physical verification
+      return successResponse(res, `Order "${scannedCode}" loaded for ${matchedByOrderCode.studentName}. Scan Product Code or Book Barcodes to verify.`, {
+        scanType: 'ORDER_LOADED',
+        order: {
+          id: matchedByOrderCode._id.toString(),
+          orderCode: matchedByOrderCode.orderCode,
+          productCode: matchedByOrderCode.productCode,
+          studentName: matchedByOrderCode.studentName,
+          mobileNumber: matchedByOrderCode.mobileNumber,
+          trackingId: matchedByOrderCode.trackingId,
+          totalRequired,
+          totalDispatched,
+          totalPending,
+          status: computeOrderStatus(matchedByOrderCode.items),
+          items: matchedByOrderCode.items.map((i: any) => ({
+            id: i._id.toString(),
+            productCode: i.productCode || matchedByOrderCode.productCode,
+            productName: i.productName || 'Product',
+            bookCode: i.bookCode,
+            bookName: i.bookName,
+            requiredQuantity: i.requiredQuantity,
+            dispatchedQuantity: i.dispatchedQuantity,
+            pendingQuantity: Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
+            status: computeItemStatus(i.requiredQuantity, i.dispatchedQuantity),
+          })),
+        },
       });
-      return successResponse(res, result.message, result);
     }
 
-    // Tier 2: Product Code (matches order productCode or item productCode)
+    // 2. Active Order Context (Order is currently loaded on screen)
+    if (orderId) {
+      const activeOrder = await Order.findById(orderId);
+      if (activeOrder) {
+        const orderRemaining = activeOrder.items.reduce(
+          (acc: number, i: any) => acc + Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
+          0
+        );
+        if (orderRemaining === 0) {
+          return errorResponse(res, `Order "${activeOrder.orderCode}" is already fully dispatched!`, 'ORDER_ALREADY_COMPLETED', 400);
+        }
+
+        // A. Check if scannedCode matches this active order's product code
+        const isMatchingProduct =
+          (activeOrder.productCode && activeOrder.productCode.toUpperCase() === scannedCode) ||
+          activeOrder.items.some((i: any) => i.productCode && i.productCode.toUpperCase() === scannedCode);
+
+        if (isMatchingProduct) {
+          const result = await dispatchService.dispatchByProductCode({
+            productCode: scannedCode,
+            orderId: activeOrder._id.toString(),
+            employeeId: req.user.id,
+            requestId,
+          });
+          return successResponse(res, result.message, result);
+        }
+
+        // B. Check if scannedCode matches any book in this active order
+        const matchingItem = activeOrder.items.find(
+          (i: any) => normalizeBookCode(i.bookCode) === normalizeBookCode(scannedCode)
+        );
+
+        if (matchingItem) {
+          if (matchingItem.dispatchedQuantity >= matchingItem.requiredQuantity) {
+            return errorResponse(
+              res,
+              `❌ Book "${matchingItem.bookName || scannedCode}" is already verified for this order! Double scan prevented.`,
+              'ALREADY_VERIFIED',
+              400
+            );
+          }
+
+          const result = await dispatchService.verifyAndDispatchBook({
+            orderItemId: matchingItem._id.toString(),
+            orderId: activeOrder._id.toString(),
+            enteredBookCode: scannedCode,
+            employeeId: req.user.id,
+            requestId,
+          });
+          return successResponse(res, result.message, { ...result, scanType: 'BOOK_CODE', verifiedBookCode: scannedCode });
+        }
+
+        // C. Scanned code does NOT belong to active order!
+        return errorResponse(
+          res,
+          `❌ Barcode "${scannedCode}" does NOT belong to order "${activeOrder.orderCode}" for ${activeOrder.studentName}.`,
+          'CODE_MISMATCH_FOR_ORDER',
+          400
+        );
+      }
+    }
+
+    // 3. Fallback when no order is loaded on screen:
+    // Try matching product code across active orders
     const matchedByProduct = await Order.findOne({
       $or: [{ productCode: scannedCode }, { 'items.productCode': scannedCode }],
     });
@@ -50,7 +216,7 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return successResponse(res, result.message, result);
     }
 
-    // Tier 3: Book Code (dispatches 1 copy of that specific book)
+    // Try matching book code across active orders
     const result = await dispatchService.verifyAndDispatchBook({
       orderItemId,
       orderId,
