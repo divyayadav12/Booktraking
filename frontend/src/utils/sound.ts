@@ -104,3 +104,23 @@ export function playOrderCompleteFanfare() {
     osc.stop(noteStart + 0.4);
   });
 }
+
+/**
+ * Speaks a clear human voice announcement (Paytm Soundbox style)
+ * e.g., "Done! Next order." or "Order Verified!"
+ */
+export function speakVoiceAnnouncement(text: string) {
+  try {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+  } catch (e) {
+    console.error('Speech synthesis error:', e);
+  }
+}

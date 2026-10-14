@@ -32,7 +32,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { playSuccessChime, playErrorTone, playOrderCompleteFanfare } from '../../utils/sound';
+import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement } from '../../utils/sound';
 
 export const OutgoingOrdersPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -86,6 +86,8 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [scannerCode, setScannerCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastScannedOrder, setLastScannedOrder] = useState<any>(null);
+  const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
+  const [completedStudentName, setCompletedStudentName] = useState('');
   const [scanResult, setScanResult] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -160,10 +162,11 @@ export const OutgoingOrdersPage: React.FC = () => {
         const isComplete = updatedOrder ? updatedOrder.totalPending === 0 : false;
         const isLoadedOnly = data.scanType === 'ORDER_LOADED';
 
-        // Play audio feedback
+        // Play audio feedback & voice announcement
         if (soundEnabled) {
           if (isComplete && !isLoadedOnly) {
             playOrderCompleteFanfare();
+            speakVoiceAnnouncement('Done! Next order.');
           } else {
             playSuccessChime();
           }
@@ -215,9 +218,12 @@ export const OutgoingOrdersPage: React.FC = () => {
           itemsDispatched: countDispatched > 0 ? countDispatched : undefined,
         });
 
-        // 🌟 Auto-close preview card and feedback after 2.5 seconds when the order is DONE / fully dispatched
+        // 🌟 Auto-close preview card, show Paytm circular checkmark, and feedback after 2.5s
         if (isComplete && !isLoadedOnly) {
+          setShowPaytmSuccess(true);
+          setCompletedStudentName(updatedOrder?.studentName || '');
           autoCloseTimerRef.current = setTimeout(() => {
+            setShowPaytmSuccess(false);
             setLastScannedOrder(null);
             setScanResult({ type: null, message: '' });
           }, 2500);
@@ -323,7 +329,15 @@ export const OutgoingOrdersPage: React.FC = () => {
           studentName: updatedOrder?.studentName,
           trackingId: updatedOrder?.trackingId,
         });
+
+        setShowPaytmSuccess(true);
+        setCompletedStudentName(updatedOrder?.studentName || '');
+        if (soundEnabled) {
+          playOrderCompleteFanfare();
+          speakVoiceAnnouncement('Done! Next order.');
+        }
         autoCloseTimerRef.current = setTimeout(() => {
+          setShowPaytmSuccess(false);
           setLastScannedOrder(null);
           setScanResult({ type: null, message: '' });
         }, 2500);
@@ -498,6 +512,60 @@ export const OutgoingOrdersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* ─── Paytm-style Circular Checkmark Success Overlay ─────────── */}
+      {showPaytmSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl text-center transform scale-100 transition-all border border-emerald-100 relative overflow-hidden">
+            {/* Soft background ambient glow */}
+            <div className="absolute -top-12 -left-12 w-36 h-36 bg-emerald-100 rounded-full blur-2xl opacity-70" />
+            <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-teal-100 rounded-full blur-2xl opacity-70" />
+
+            {/* Paytm Circular Checkmark with Ripple Waves */}
+            <div className="relative flex items-center justify-center w-28 h-28 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full bg-emerald-400/25 animate-ping" />
+              <div className="absolute inset-2 rounded-full bg-emerald-500/20 animate-pulse" />
+              
+              <svg className="w-24 h-24 text-emerald-500 relative z-10 drop-shadow-md" viewBox="0 0 52 52">
+                <circle
+                  className="animate-paytm-circle"
+                  cx="26"
+                  cy="26"
+                  r="24"
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="3.5"
+                />
+                <path
+                  className="animate-paytm-check"
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M14.1 27.2l7.1 7.2 16.7-16.8"
+                />
+              </svg>
+            </div>
+
+            {/* Confirmation Banner */}
+            <div className="inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full mb-2 border border-emerald-200">
+              ✓ ORDER VERIFIED & DISPATCHED
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {completedStudentName ? completedStudentName : 'Order Completed!'}
+            </h3>
+            <p className="text-sm font-semibold text-emerald-600 mt-1 flex items-center justify-center gap-1.5">
+              <span>All Books Verified & Done</span>
+            </p>
+            
+            <div className="mt-5 pt-3.5 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-center gap-2 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+              <span className="font-bold text-slate-700">Done! Ready for Next Order</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Global Scanner Box ───────────────────────────────────────────────── */}
       <div className={`rounded-xl border-2 p-4 transition-all shadow-xs ${
         scanResult.type === 'success' ? 'border-emerald-400 bg-emerald-50/70' :
