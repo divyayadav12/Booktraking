@@ -99,6 +99,7 @@ export async function listOrders(params: ListOrdersParams) {
 
     return {
       id: order._id.toString(),
+      orderCode: order.orderCode || order.productCode,
       productCode: order.productCode,
       studentName: order.studentName,
       mobileNumber: order.mobileNumber,
@@ -183,6 +184,8 @@ export async function getOrderById(orderId: string) {
     return {
       id: item._id.toString(),
       orderId: order._id.toString(),
+      productCode: item.productCode || order.productCode,
+      productName: item.productName || 'Product',
       bookCode: item.bookCode,
       bookName: item.bookName,
       requiredQuantity: item.requiredQuantity,
@@ -195,6 +198,7 @@ export async function getOrderById(orderId: string) {
 
   return {
     id: order._id.toString(),
+    orderCode: order.orderCode || order.productCode,
     productCode: order.productCode,
     studentName: order.studentName,
     mobileNumber: order.mobileNumber,
@@ -287,28 +291,49 @@ export async function getBarcodeSheetData(params: {
   }
 
   const orders = await Order.find(query)
-    .select('productCode studentName mobileNumber email trackingId items createdAt')
-    .sort({ productCode: 1 });
+    .select('orderCode productCode studentName mobileNumber email trackingId items createdAt')
+    .sort({ orderCode: 1 });
 
-  return orders.map((order: any) => ({
-    id: order._id.toString(),
-    productCode: order.productCode,
-    studentName: order.studentName,
-    mobileNumber: order.mobileNumber,
-    email: order.email,
-    trackingId: order.trackingId,
-    createdAt: order.createdAt,
-    totalRequired: order.items.reduce((s: number, i: any) => s + i.requiredQuantity, 0),
-    totalDispatched: order.items.reduce((s: number, i: any) => s + i.dispatchedQuantity, 0),
-    status: computeOrderStatus(order.items),
-    items: order.items.map((item: any) => ({
-      id: item._id.toString(),
-      bookCode: item.bookCode,
-      bookName: item.bookName,
-      requiredQuantity: item.requiredQuantity,
-      dispatchedQuantity: item.dispatchedQuantity,
-      pendingQuantity: Math.max(0, item.requiredQuantity - item.dispatchedQuantity),
-      status: computeItemStatus(item.requiredQuantity, item.dispatchedQuantity),
-    })),
-  }));
+  return orders.map((order: any) => {
+    // Extract distinct products in this order
+    const productsMap = new Map<string, string>();
+    order.items.forEach((item: any) => {
+      const pCode = item.productCode || order.productCode || 'PRD-01';
+      const pName = item.productName || 'Product';
+      if (!productsMap.has(pCode)) {
+        productsMap.set(pCode, pName);
+      }
+    });
+
+    const products = Array.from(productsMap.entries()).map(([code, name]) => ({
+      productCode: code,
+      productName: name,
+    }));
+
+    return {
+      id: order._id.toString(),
+      orderCode: order.orderCode || order.productCode,
+      productCode: order.productCode,
+      products,
+      studentName: order.studentName,
+      mobileNumber: order.mobileNumber,
+      email: order.email,
+      trackingId: order.trackingId,
+      createdAt: order.createdAt,
+      totalRequired: order.items.reduce((s: number, i: any) => s + i.requiredQuantity, 0),
+      totalDispatched: order.items.reduce((s: number, i: any) => s + i.dispatchedQuantity, 0),
+      status: computeOrderStatus(order.items),
+      items: order.items.map((item: any) => ({
+        id: item._id.toString(),
+        productCode: item.productCode || order.productCode,
+        productName: item.productName || 'Product',
+        bookCode: item.bookCode,
+        bookName: item.bookName,
+        requiredQuantity: item.requiredQuantity,
+        dispatchedQuantity: item.dispatchedQuantity,
+        pendingQuantity: Math.max(0, item.requiredQuantity - item.dispatchedQuantity),
+        status: computeItemStatus(item.requiredQuantity, item.dispatchedQuantity),
+      })),
+    };
+  });
 }

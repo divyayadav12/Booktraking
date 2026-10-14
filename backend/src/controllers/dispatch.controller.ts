@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { verifyDispatchSchema } from '../validators/dispatch.validator';
 import * as dispatchService from '../services/dispatch.service';
+import { Order } from '../models';
 import { successResponse, errorResponse } from '../utils/response';
 
 export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -17,17 +18,36 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return errorResponse(res, 'No code entered. Please scan or type a code.', 'CODE_REQUIRED', 400);
     }
 
-    // Auto-detect: if code starts with "PRD-", treat as Product Code scan
-    if (scannedCode.startsWith('PRD-')) {
-      const result = await dispatchService.dispatchByProductCode({
-        productCode: scannedCode,
+    // Tier 1: Order Unique Code (starts with "ORD-" or "UNQ-" or matches an order's orderCode)
+    const isOrderCodeFormat = scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-');
+    const matchedByOrderCode = isOrderCodeFormat ? await Order.findOne({ orderCode: scannedCode }) : null;
+
+    if (matchedByOrderCode || isOrderCodeFormat) {
+      const result = await dispatchService.dispatchByOrderCode({
+        orderCode: scannedCode,
         employeeId: req.user.id,
         requestId,
       });
-      return successResponse(res, result.message, { ...result, scanType: 'PRODUCT_CODE' });
+      return successResponse(res, result.message, result);
     }
 
-    // Otherwise treat as Book Code scan (existing logic)
+    // Tier 2: Product Code (starts with "PRD-" or matches order/item productCode)
+    const isProductCodeFormat = scannedCode.startsWith('PRD-');
+    const matchedByProduct = isProductCodeFormat
+      ? await Order.findOne({ $or: [{ productCode: scannedCode }, { 'items.productCode': scannedCode }] })
+      : null;
+
+    if (matchedByProduct || isProductCodeFormat) {
+      const result = await dispatchService.dispatchByProductCode({
+        productCode: scannedCode,
+        orderId,
+        employeeId: req.user.id,
+        requestId,
+      });
+      return successResponse(res, result.message, result);
+    }
+
+    // Tier 3: Book Code (dispatches 1 copy of that specific book)
     const result = await dispatchService.verifyAndDispatchBook({
       orderItemId,
       orderId,

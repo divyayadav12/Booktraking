@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Download, Printer, Search, RefreshCw, Package, BookOpen } from 'lucide-react';
+import { Download, Printer, Search, RefreshCw, Package, BookOpen, Tag } from 'lucide-react';
 import { BarcodeDisplay } from '../components/common/BarcodeDisplay';
 import api from '../services/api';
 
 interface OrderItem {
   id: string;
+  productCode?: string;
+  productName?: string;
   bookCode: string;
   bookName: string;
   requiredQuantity: number;
@@ -13,9 +15,16 @@ interface OrderItem {
   status: string;
 }
 
+interface ProductSummary {
+  productCode: string;
+  productName: string;
+}
+
 interface BarcodeOrder {
   id: string;
+  orderCode?: string;
   productCode: string;
+  products?: ProductSummary[];
   studentName: string;
   mobileNumber: string;
   email: string | null;
@@ -67,17 +76,19 @@ export const BarcodeSheetPage: React.FC = () => {
         <head>
           <title>Barcode Sheet - Book Dispatch</title>
           <style>
-            body { font-family: Arial, sans-serif; background: white; }
+            body { font-family: Arial, sans-serif; background: white; margin: 20px; color: #111827; }
             .page-title { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 20px; }
-            .order-card { border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; margin-bottom: 20px; page-break-inside: avoid; }
+            .order-card { border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; margin-bottom: 24px; page-break-inside: avoid; }
             .order-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
             .student-name { font-size: 16px; font-weight: bold; }
             .meta { font-size: 12px; color: #6b7280; }
-            .barcodes-section { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 12px; }
-            .barcode-block { text-align: center; }
-            .barcode-label { font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 4px; }
-            .product-section { border-top: 2px solid #3b82f6; padding-top: 12px; }
-            .book-section { border-top: 1px dashed #9ca3af; padding-top: 8px; margin-top: 8px; }
+            .section-box { border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+            .order-code-box { background: #ecfdf5; border: 1px solid #a7f3d0; text-align: center; }
+            .product-box { background: #eff6ff; border: 1px solid #bfdbfe; margin-bottom: 12px; }
+            .books-box { border: 1px dashed #d1d5db; padding: 12px; border-radius: 8px; }
+            .barcode-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+            .barcode-item { border: 1px solid #e5e7eb; background: #fafafa; border-radius: 6px; padding: 8px; text-align: center; }
+            .badge { display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: bold; border-radius: 9999px; }
             @media print { body { margin: 0; } }
           </style>
         </head>
@@ -94,18 +105,32 @@ export const BarcodeSheetPage: React.FC = () => {
   };
 
   const handleDownloadCSV = () => {
-    const rows = [['Product Code', 'Student Name', 'Mobile', 'Tracking ID', 'Book Code', 'Book Name', 'Required Qty']];
+    const rows = [
+      ['Order Code', 'Product Code', 'Product Name', 'Student Name', 'Mobile', 'Tracking ID', 'Book Code', 'Book Name', 'Required Qty', 'Status']
+    ];
     orders.forEach(order => {
+      const ordCode = order.orderCode || order.productCode;
       order.items.forEach(item => {
-        rows.push([order.productCode, order.studentName, order.mobileNumber, order.trackingId, item.bookCode, item.bookName, String(item.requiredQuantity)]);
+        rows.push([
+          ordCode,
+          item.productCode || order.productCode,
+          item.productName || 'Product',
+          order.studentName,
+          order.mobileNumber,
+          order.trackingId,
+          item.bookCode,
+          item.bookName,
+          String(item.requiredQuantity),
+          item.status
+        ]);
       });
     });
-    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `barcode_sheet_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `barcode_sheet_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -122,13 +147,21 @@ export const BarcodeSheetPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Barcode Sheet</h1>
-          <p className="text-sm text-gray-500 mt-1">Print or download barcode sheets for all orders</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Print or download 3-tier barcodes (Order Unique Code, Product Codes & Book Codes)
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-            <Printer size={16} /> Print All
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+          >
+            <Printer size={16} /> Print Barcode Sheet
           </button>
-          <button onClick={handleDownloadCSV} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+          <button
+            onClick={handleDownloadCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
+          >
             <Download size={16} /> Download CSV
           </button>
         </div>
@@ -140,74 +173,156 @@ export const BarcodeSheetPage: React.FC = () => {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by student name, tracking ID, product code..."
+            placeholder="Search by student name, order code (ORD-...), tracking ID, product code, book code..."
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Search</button>
-        <button type="button" onClick={() => { setSearchInput(''); setSearch(''); fetchOrders(''); }}
-          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSearchInput('');
+            setSearch('');
+            fetchOrders('');
+          }}
+          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          title="Reset Search"
+        >
           <RefreshCw size={16} className="text-gray-500" />
         </button>
       </form>
 
       {/* Stats Bar */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex gap-6 text-sm">
-        <span className="text-blue-700 font-medium">Total Orders: <strong>{orders.length}</strong></span>
-        <span className="text-blue-700 font-medium">Total Books: <strong>{orders.reduce((s, o) => s + o.items.length, 0)}</strong></span>
-        <span className="text-blue-700 font-medium">Total Copies: <strong>{orders.reduce((s, o) => s + o.totalRequired, 0)}</strong></span>
+      <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 flex flex-wrap gap-8 text-sm">
+        <div>
+          <span className="text-gray-500">Total Orders: </span>
+          <strong className="text-slate-900 font-bold">{orders.length}</strong>
+        </div>
+        <div>
+          <span className="text-gray-500">Total Unique Books: </span>
+          <strong className="text-slate-900 font-bold">{orders.reduce((s, o) => s + o.items.length, 0)}</strong>
+        </div>
+        <div>
+          <span className="text-gray-500">Total Copies: </span>
+          <strong className="text-slate-900 font-bold">{orders.reduce((s, o) => s + o.totalRequired, 0)}</strong>
+        </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400">Loading barcode sheet...</div>
+        <div className="text-center py-16 text-gray-400 font-medium">Loading barcode sheet...</div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">No orders found. Upload an Excel file first.</div>
+        <div className="text-center py-16 text-gray-400 font-medium">No orders found. Upload an Excel file first.</div>
       ) : (
         <div ref={printRef} className="space-y-6">
-          {orders.map(order => (
-            <div key={order.id} className="border border-gray-200 rounded-xl p-5 shadow-sm bg-white">
-              {/* Order Header */}
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-lg font-bold text-gray-900">{order.studentName}</p>
-                  <p className="text-sm text-gray-500">📞 {order.mobileNumber} &nbsp;|&nbsp; Tracking: <strong>{order.trackingId}</strong></p>
-                  <p className="text-xs text-gray-400 mt-1">{order.totalDispatched}/{order.totalRequired} books dispatched</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor(order.status)}`}>
-                  {order.status.replace('_', ' ')}
-                </span>
-              </div>
+          {orders.map(order => {
+            const orderCode = order.orderCode || order.productCode;
+            const productList = order.products && order.products.length > 0
+              ? order.products
+              : [{ productCode: order.productCode, productName: 'Product Combo' }];
 
-              {/* Product Code Barcode */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex flex-col items-center">
-                <div className="flex items-center gap-2 mb-2">
-                  <Package size={16} className="text-blue-600" />
-                  <span className="text-sm font-bold text-blue-700">Product Code (Scan to dispatch ALL books)</span>
-                </div>
-                <BarcodeDisplay value={order.productCode} height={70} width={2} fontSize={13} />
-              </div>
-
-              {/* Individual Book Barcodes */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <BookOpen size={15} className="text-gray-500" />
-                  <span className="text-sm font-semibold text-gray-600">Individual Book Codes</span>
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  {order.items.map(item => (
-                    <div key={item.id} className={`border rounded-lg p-3 flex flex-col items-center text-center ${item.status === 'COMPLETED' ? 'border-green-200 bg-green-50 opacity-60' : 'border-gray-200 bg-gray-50'}`}>
-                      <p className="text-xs font-bold text-gray-700 mb-1 max-w-[140px] truncate" title={item.bookName}>{item.bookName}</p>
-                      <BarcodeDisplay value={item.bookCode} height={50} width={1.6} fontSize={11} />
-                      <p className="text-xs text-gray-500 mt-1">Qty: {item.dispatchedQuantity}/{item.requiredQuantity}</p>
-                      {item.status === 'COMPLETED' && <span className="text-xs text-green-600 font-semibold mt-1">✓ Done</span>}
+            return (
+              <div key={order.id} className="border border-gray-200 rounded-xl p-5 shadow-sm bg-white space-y-4">
+                {/* Order Header */}
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg font-bold text-gray-900">{order.studentName}</p>
+                      {order.orderCode && (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {order.orderCode}
+                        </span>
+                      )}
                     </div>
-                  ))}
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      📞 {order.mobileNumber} &nbsp;|&nbsp; Tracking: <strong className="font-mono text-blue-600">{order.trackingId}</strong>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5 font-medium">
+                      {order.totalDispatched}/{order.totalRequired} books dispatched
+                    </p>
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColor(order.status)}`}>
+                    {order.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                {/* 1. ORDER UNIQUE CODE BARCODE */}
+                <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 flex flex-col items-center">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Tag size={16} className="text-emerald-700" />
+                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                      Tier 1: Order Unique Barcode (Scan to dispatch ALL books in order)
+                    </span>
+                  </div>
+                  <BarcodeDisplay value={orderCode} height={65} width={2} fontSize={13} />
+                </div>
+
+                {/* 2. PRODUCT CODE BARCODE(S) */}
+                <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package size={16} className="text-blue-700" />
+                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">
+                      Tier 2: Product Barcode(s) (Scan to dispatch all books of that product)
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    {productList.map(prod => (
+                      <div
+                        key={prod.productCode}
+                        className="bg-white border border-blue-200 rounded-lg p-3 flex flex-col items-center text-center shadow-2xs"
+                      >
+                        <p className="text-xs font-bold text-blue-900 mb-1 max-w-[200px] truncate" title={prod.productName}>
+                          {prod.productName || prod.productCode}
+                        </p>
+                        <BarcodeDisplay value={prod.productCode} height={55} width={1.8} fontSize={12} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. INDIVIDUAL BOOK BARCODES */}
+                <div className="bg-slate-50/60 border border-slate-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BookOpen size={16} className="text-slate-700" />
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Tier 3: Individual Book Barcodes (Scan to dispatch 1 physical copy)
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {order.items.map(item => (
+                      <div
+                        key={item.id}
+                        className={`border rounded-lg p-3 flex flex-col items-center text-center shadow-2xs transition-all ${
+                          item.status === 'COMPLETED'
+                            ? 'border-green-300 bg-green-50/60 opacity-60'
+                            : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <p className="text-xs font-bold text-gray-800 mb-0.5 max-w-[160px] truncate" title={item.bookName}>
+                          {item.bookName}
+                        </p>
+                        {item.productCode && (
+                          <span className="text-[10px] text-blue-600 font-medium mb-1">
+                            [{item.productCode}]
+                          </span>
+                        )}
+                        <BarcodeDisplay value={item.bookCode} height={45} width={1.5} fontSize={11} />
+                        <p className="text-xs text-gray-500 mt-1 font-medium">
+                          Qty: {item.dispatchedQuantity}/{item.requiredQuantity}
+                        </p>
+                        {item.status === 'COMPLETED' && (
+                          <span className="text-xs text-green-700 font-bold mt-1">✓ Dispatched</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

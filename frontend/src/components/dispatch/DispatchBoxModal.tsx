@@ -107,7 +107,9 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
       });
 
       if (res.data.success) {
+        const isOrderScan = res.data.data.scanType === 'ORDER_CODE';
         const isProductScan = res.data.data.scanType === 'PRODUCT_CODE';
+        const isBulkScan = isOrderScan || isProductScan;
         const updatedOrderData: Order = res.data.data.order;
         const updatedItemData: OrderItem | undefined = res.data.data.orderItem;
 
@@ -117,10 +119,20 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
         }
 
         // Add to live scan log
+        const logBookName = isOrderScan
+          ? `All order books dispatched (${res.data.data.itemsDispatched} items)`
+          : isProductScan
+          ? `Product books dispatched (${res.data.data.itemsDispatched} items)`
+          : (updatedItemData?.bookName || 'Book');
+
         const newLogEntry = {
           id: idempotencyKey,
-          code: isProductScan ? (res.data.data.productCode || code) : (updatedItemData?.bookCode || code),
-          bookName: isProductScan ? `All books dispatched (${res.data.data.itemsDispatched} items)` : (updatedItemData?.bookName || 'Book'),
+          code: isOrderScan
+            ? (res.data.data.orderCode || code)
+            : isProductScan
+            ? (res.data.data.productCode || code)
+            : (updatedItemData?.bookCode || code),
+          bookName: logBookName,
           timestamp: new Date().toLocaleTimeString('en-US', { hour12: true }),
         };
         setScanHistory((prev) => [newLogEntry, ...prev.slice(0, 9)]);
@@ -132,13 +144,21 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
 
         const orderIsNowComplete = updatedOrderData.totalPending === 0;
 
-        if (orderIsNowComplete || isProductScan) {
+        if (orderIsNowComplete || isBulkScan) {
           if (soundEnabled) playOrderCompleteFanfare();
           setFeedback({
             type: 'completed',
             message: res.data.data.message || `All books for ${activeOrder.studentName} have been verified & dispatched! Order Complete.`,
-            bookTitle: isProductScan ? 'Entire Order Dispatched' : updatedItemData?.bookName,
-            bookCode: isProductScan ? (res.data.data.productCode || code) : updatedItemData?.bookCode,
+            bookTitle: isOrderScan
+              ? 'Entire Order Dispatched'
+              : isProductScan
+              ? 'Product Dispatched'
+              : updatedItemData?.bookName,
+            bookCode: isOrderScan
+              ? (res.data.data.orderCode || code)
+              : isProductScan
+              ? (res.data.data.productCode || code)
+              : updatedItemData?.bookCode,
           });
         } else {
           if (soundEnabled) playSuccessChime();

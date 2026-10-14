@@ -2,14 +2,17 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IOrderItem {
   _id: mongoose.Types.ObjectId;
-  bookCode: string;
-  bookName: string;
+  productCode: string;       // From Excel e.g. PRD-CA-01 (or default PRD-01)
+  productName: string;       // From Excel e.g. CA Foundation Full Combo
+  bookCode: string;          // From Excel e.g. QB101
+  bookName: string;          // From Excel e.g. Quantitative Bank
   requiredQuantity: number;
   dispatchedQuantity: number;
 }
 
 export interface IOrder extends Document {
-  productCode: string;       // Auto-generated unique per order e.g. PRD-2410-00001
+  orderCode: string;         // Auto-generated unique order code e.g. ORD-2410-00001
+  productCode: string;       // Primary product code (or auto code)
   studentName: string;
   mobileNumber: string;
   email: string | null;
@@ -22,6 +25,8 @@ export interface IOrder extends Document {
 
 const OrderItemSchema = new Schema<IOrderItem>(
   {
+    productCode: { type: String, uppercase: true, trim: true, default: 'PRD-01', index: true },
+    productName: { type: String, trim: true, default: 'Default Product' },
     bookCode: { type: String, required: true, uppercase: true, trim: true, index: true },
     bookName: { type: String, required: true, trim: true },
     requiredQuantity: { type: Number, required: true, min: 1 },
@@ -41,7 +46,8 @@ const OrderItemSchema = new Schema<IOrderItem>(
 
 const OrderSchema = new Schema<IOrder>(
   {
-    productCode: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    orderCode: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    productCode: { type: String, uppercase: true, trim: true, default: 'PRD-01', index: true },
     studentName: { type: String, required: true, trim: true, index: true },
     mobileNumber: { type: String, required: true, trim: true, index: true },
     email: { type: String, trim: true, lowercase: true, default: null },

@@ -27,6 +27,7 @@ import {
   Package,
   Zap,
   X,
+  Tag,
 } from 'lucide-react';
 
 export const OutgoingOrdersPage: React.FC = () => {
@@ -65,6 +66,8 @@ export const OutgoingOrdersPage: React.FC = () => {
     message: string;
     scanType?: string;
     studentName?: string;
+    trackingId?: string;
+    itemsDispatched?: number;
   }>({ type: null, message: '' });
   const [isScanning, setIsScanning] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
@@ -77,25 +80,38 @@ export const OutgoingOrdersPage: React.FC = () => {
       const res = await api.post('/dispatch/verify', { enteredCode: code.trim() });
       if (res.data.success) {
         const data = res.data.data;
-        const scanType = data.scanType === 'PRODUCT_CODE' ? '📦 Product' : '📖 Book';
+        let scanType = '📖 Book Code';
+        if (data.scanType === 'ORDER_CODE') {
+          scanType = '🔖 Order Unique Code';
+        } else if (data.scanType === 'PRODUCT_CODE') {
+          scanType = '📦 Product Code';
+        }
+
         setScanResult({
           type: 'success',
           message: data.message,
           scanType,
           studentName: data.order?.studentName,
+          trackingId: data.order?.trackingId,
+          itemsDispatched: data.itemsDispatched,
         });
+
         // Live update orders list
-        setOrders(prev => prev.map(o => o.id === data.order?.id ? {
-          ...o,
-          totalDispatched: data.order.totalDispatched,
-          totalPending: data.order.totalPending,
-          status: data.order.status,
-          items: data.order.items || o.items,
-        } : o));
+        if (data.order) {
+          setOrders(prev => prev.map(o => o.id === data.order?.id ? {
+            ...o,
+            totalDispatched: data.order.totalDispatched,
+            totalPending: data.order.totalPending,
+            status: data.order.status,
+            items: data.order.items || o.items,
+          } : o));
+        }
+
+        const countDispatched = data.itemsDispatched || 1;
         setQueueStats(prev => ({
           ...prev,
-          totalDispatchedCopies: prev.totalDispatchedCopies + (data.itemsDispatched || 1),
-          totalPendingCopies: Math.max(0, prev.totalPendingCopies - (data.itemsDispatched || 1)),
+          totalDispatchedCopies: prev.totalDispatchedCopies + countDispatched,
+          totalPendingCopies: Math.max(0, prev.totalPendingCopies - countDispatched),
         }));
       }
     } catch (err: any) {
@@ -106,8 +122,8 @@ export const OutgoingOrdersPage: React.FC = () => {
     } finally {
       setIsScanning(false);
       setScannerCode('');
-      // Auto-clear result after 4 seconds
-      setTimeout(() => setScanResult({ type: null, message: '' }), 4000);
+      // Auto-clear result after 5 seconds
+      setTimeout(() => setScanResult({ type: null, message: '' }), 5000);
     }
   }, []);
 
@@ -216,16 +232,16 @@ export const OutgoingOrdersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ─── Global Scanner Box ───────────────────────────────────────────────── */}
-      <div className={`rounded-xl border-2 p-4 transition-all ${
-        scanResult.type === 'success' ? 'border-green-400 bg-green-50' :
-        scanResult.type === 'error' ? 'border-red-400 bg-red-50' :
-        'border-blue-300 bg-blue-50'
+      <div className={`rounded-xl border-2 p-4 transition-all shadow-xs ${
+        scanResult.type === 'success' ? 'border-emerald-400 bg-emerald-50/70' :
+        scanResult.type === 'error' ? 'border-rose-400 bg-rose-50/70' :
+        'border-blue-300 bg-blue-50/60'
       }`}>
         <div className="flex items-center gap-2 mb-3">
           <ScanLine size={20} className="text-blue-600" />
-          <span className="font-bold text-blue-800 text-sm">Global Scanner</span>
-          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-            Scan Product Code OR Book Code here
+          <span className="font-bold text-blue-900 text-sm">3-Tier Global Barcode Scanner</span>
+          <span className="text-xs text-blue-700 bg-blue-100 font-medium px-2.5 py-0.5 rounded-full">
+            Ready for Barcode Scanner or Keyboard Input
           </span>
         </div>
         <div className="flex gap-2">
@@ -236,21 +252,21 @@ export const OutgoingOrdersPage: React.FC = () => {
               value={scannerCode}
               onChange={e => setScannerCode(e.target.value.toUpperCase())}
               onKeyDown={e => { if (e.key === 'Enter' && scannerCode.trim()) handleGlobalScan(scannerCode); }}
-              placeholder="🔍 Scan barcode here or type code and press Enter..."
-              className="w-full px-4 py-3 text-sm font-mono border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+              placeholder="🔍 Scan Order Code (ORD-...), Product Code (PRD-...), or Book Code here..."
+              className="w-full px-4 py-3 text-sm font-mono border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-600 bg-white shadow-xs"
               autoFocus
               disabled={isScanning}
             />
             {scannerCode && (
               <button onClick={() => setScannerCode('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X size={14} className="text-gray-400" />
+                <X size={16} className="text-gray-400 hover:text-gray-600" />
               </button>
             )}
           </div>
           <button
             onClick={() => handleGlobalScan(scannerCode)}
             disabled={!scannerCode.trim() || isScanning}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium flex items-center gap-2"
+            className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-semibold flex items-center gap-2 shrink-0 shadow-xs"
           >
             <Zap size={16} /> {isScanning ? 'Scanning...' : 'Dispatch'}
           </button>
@@ -258,21 +274,35 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         {/* Scan Result Feedback */}
         {scanResult.type && (
-          <div className={`mt-3 p-3 rounded-lg text-sm font-medium flex items-start gap-2 ${
-            scanResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          <div className={`mt-3 p-3.5 rounded-lg text-sm font-medium border flex items-start gap-3 ${
+            scanResult.type === 'success' ? 'bg-emerald-100/80 border-emerald-300 text-emerald-950' : 'bg-rose-100/80 border-rose-300 text-rose-950'
           }`}>
-            {scanResult.type === 'success' ? '✅' : '❌'}
-            <div>
-              <p>{scanResult.message}</p>
-              {scanResult.studentName && <p className="text-xs mt-0.5 opacity-80">Student: {scanResult.studentName}</p>}
+            <span className="text-xl shrink-0 mt-0.5">{scanResult.type === 'success' ? '✅' : '❌'}</span>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                {scanResult.scanType && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-white border border-current shadow-2xs">
+                    {scanResult.scanType}
+                  </span>
+                )}
+                <span className="font-semibold">{scanResult.message}</span>
+              </div>
+              {scanResult.studentName && (
+                <div className="text-xs mt-1.5 flex flex-wrap gap-4 text-emerald-900 font-medium">
+                  <span>Student: <strong>{scanResult.studentName}</strong></span>
+                  {scanResult.trackingId && <span>Tracking ID: <strong className="font-mono">{scanResult.trackingId}</strong></span>}
+                  {scanResult.itemsDispatched !== undefined && <span>Copies Dispatched: <strong>{scanResult.itemsDispatched}</strong></span>}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Hint */}
-        <div className="mt-2 flex gap-4 text-xs text-blue-600 opacity-70">
-          <span className="flex items-center gap-1"><Package size={12} /> PRD-YYMM-NNNNN = dispatch all books in order</span>
-          <span className="flex items-center gap-1"><BookOpen size={12} /> QB101 / MCQ201 = dispatch 1 copy of that book</span>
+        <div className="mt-2.5 flex flex-wrap gap-4 text-xs text-blue-700 font-medium">
+          <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>ORD-YYMM-NNNNN</strong>: Dispatches all books for whole order</span>
+          <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>PRD-...</strong>: Dispatches all books under that product</span>
+          <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Book Code</strong>: Dispatches 1 book copy</span>
         </div>
       </div>
 
@@ -464,9 +494,14 @@ export const OutgoingOrdersPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Tracking ID & Product Code */}
+                        {/* Tracking ID, Order Code & Product Code */}
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-1 items-start">
+                            {order.orderCode && (
+                              <span className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300" title="Order Unique Code">
+                                🔖 {order.orderCode}
+                              </span>
+                            )}
                             <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs">
                               {order.trackingId}
                             </span>
@@ -501,8 +536,9 @@ export const OutgoingOrdersPage: React.FC = () => {
                                     ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
                                     : 'bg-amber-50 text-amber-800 border-amber-200'
                                 }`}
-                                title={`${it.bookName} (${it.pendingQuantity} pending)`}
+                                title={`${it.bookName}${it.productCode ? ` [Product: ${it.productCode}]` : ''} (${it.pendingQuantity} pending)`}
                               >
+                                {it.productCode && <span className="text-purple-700 font-bold opacity-80">{it.productCode} • </span>}
                                 {it.bookCode}
                                 {it.requiredQuantity > 1 ? ` ×${it.requiredQuantity}` : ''}
                                 {it.pendingQuantity > 0 && it.dispatchedQuantity > 0 ? ` (${it.pendingQuantity} left)` : ''}

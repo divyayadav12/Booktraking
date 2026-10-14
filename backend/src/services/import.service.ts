@@ -11,6 +11,8 @@ export interface ParsedRowData {
   mobileNumber: string;
   email: string | null;
   trackingId: string;
+  productCode: string;
+  productName: string;
   bookCode: string;
   bookName: string;
   quantity: number;
@@ -100,6 +102,16 @@ export async function parseAndPreviewExcel(
     ) {
       columnMap['trackingId'] = colNumber;
     }
+    // Product Code: matches product code, prd code, item code, combo code
+    else if ((val.includes('product') || val.includes('prd') || val.includes('combo') || val.includes('pkg')) && val.includes('code')) {
+      columnMap['productCode'] = colNumber;
+    } else if (val === 'product_code' || val === 'prd_code' || val === 'prod_code') {
+      columnMap['productCode'] = colNumber;
+    }
+    // Product Name: matches product name, package name, combo name
+    else if ((val.includes('product') || val.includes('package') || val.includes('combo')) && val.includes('name')) {
+      columnMap['productName'] = colNumber;
+    }
     // Book Code: matches book code, item code, sku, isbn, code
     else if (val.includes('book') && val.includes('code')) {
       columnMap['bookCode'] = colNumber;
@@ -161,6 +173,13 @@ export async function parseAndPreviewExcel(
     const rawBookCode = columnMap['bookCode'] ? row.getCell(columnMap['bookCode']).value : null;
     const bookCode = rawBookCode ? normalizeBookCode(rawBookCode as any) : deriveBookCodeFromTitle(bookName);
 
+    const rawProductCode = columnMap['productCode'] ? row.getCell(columnMap['productCode']).value : null;
+    const rawProductName = columnMap['productName'] ? row.getCell(columnMap['productName']).value : null;
+    const productName = rawProductName ? String(rawProductName).trim() : 'Product';
+    const productCode = rawProductCode
+      ? normalizeBookCode(rawProductCode as any)
+      : 'PRD-' + (rawBookCode ? normalizeBookCode(rawBookCode as any).slice(0, 8) : '01');
+
     const rawQuantity = columnMap['quantity'] ? row.getCell(columnMap['quantity']).value : 1;
 
     const studentName = rawStudentName ? String(rawStudentName).trim() : '';
@@ -205,6 +224,8 @@ export async function parseAndPreviewExcel(
       mobileNumber,
       email,
       trackingId,
+      productCode,
+      productName,
       bookCode,
       bookName,
       quantity,
@@ -308,6 +329,8 @@ export async function confirmImport(
     email: string | null;
     trackingId: string;
     items: {
+      productCode: string;
+      productName: string;
       bookCode: string;
       bookName: string;
       requiredQuantity: number;
@@ -328,6 +351,8 @@ export async function confirmImport(
 
     const group = orderGroups.get(orderKey)!;
     group.items.push({
+      productCode: row.productCode || 'PRD-01',
+      productName: row.productName || 'Product',
       bookCode: row.bookCode,
       bookName: row.bookName,
       requiredQuantity: row.quantity,
@@ -336,37 +361,42 @@ export async function confirmImport(
 
   let createdOrdersCount = 0;
   let createdItemsCount = 0;
-  let productCodeCounter = 1;
+  let orderCodeCounter = 1;
 
-  // Get current month/year for product code prefix
+  // Get current month/year for order code prefix e.g. ORD-2410-00001
   const now = new Date();
   const yy = String(now.getFullYear()).slice(2);
   const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const prefix = `PRD-${yy}${mm}`;
+  const orderPrefix = `ORD-${yy}${mm}`;
 
-  // Get latest productCode counter to avoid collisions with existing orders
   const lastOrder = await Order.findOne(
-    { productCode: { $regex: `^${prefix}-` } },
-    { productCode: 1 }
-  ).sort({ productCode: -1 });
+    { orderCode: { $regex: `^${orderPrefix}-` } },
+    { orderCode: 1 }
+  ).sort({ orderCode: -1 });
 
-  if (lastOrder?.productCode) {
-    const lastNum = parseInt(lastOrder.productCode.split('-').pop() || '0', 10);
-    productCodeCounter = lastNum + 1;
+  if (lastOrder?.orderCode) {
+    const lastNum = parseInt(lastOrder.orderCode.split('-').pop() || '0', 10);
+    orderCodeCounter = lastNum + 1;
   }
 
   for (const orderData of orderGroups.values()) {
-    const productCode = `${prefix}-${String(productCodeCounter).padStart(5, '0')}`;
-    productCodeCounter++;
+    const orderCode = `${orderPrefix}-${String(orderCodeCounter).padStart(5, '0')}`;
+    orderCodeCounter++;
+
+    // Primary product code from the first item
+    const primaryProductCode = orderData.items[0]?.productCode || 'PRD-01';
 
     await Order.create({
-      productCode,
+      orderCode,
+      productCode: primaryProductCode,
       studentName: orderData.studentName,
       mobileNumber: orderData.mobileNumber,
       email: orderData.email,
       trackingId: orderData.trackingId,
       importBatchId: batch._id,
       items: orderData.items.map((item) => ({
+        productCode: item.productCode,
+        productName: item.productName,
         bookCode: item.bookCode,
         bookName: item.bookName,
         requiredQuantity: item.requiredQuantity,

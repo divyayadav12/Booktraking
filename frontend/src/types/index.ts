@@ -15,6 +15,8 @@ export type ItemStatus = 'PENDING' | 'PARTIALLY_DISPATCHED' | 'COMPLETED';
 export interface OrderItem {
   id: string;
   orderId: string;
+  productCode?: string;
+  productName?: string;
   bookCode: string;
   bookName: string;
   requiredQuantity: number;
@@ -29,6 +31,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderCode?: string;
   productCode?: string;
   studentName: string;
   mobileNumber: string;
