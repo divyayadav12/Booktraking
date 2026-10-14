@@ -16,6 +16,7 @@ import { BookSummaryPage } from './pages/admin/BookSummaryPage';
 import { EmployeesPage } from './pages/admin/EmployeesPage';
 import { ReportsPage } from './pages/admin/ReportsPage';
 import { AuditLogsPage } from './pages/admin/AuditLogsPage';
+import { BarcodeSheetPage } from './pages/BarcodeSheetPage';
 
 // Common Pages
 import { OutgoingOrdersPage } from './pages/common/OutgoingOrdersPage';
@@ -97,6 +98,7 @@ export const App: React.FC = () => {
               <Route path="dispatch-history" element={<DispatchHistoryPage />} />
               <Route path="failed-attempts" element={<FailedAttemptsPage />} />
               <Route path="book-summary" element={<BookSummaryPage />} />
+              <Route path="barcode-sheet" element={<BarcodeSheetPage />} />
               <Route path="employees" element={<EmployeesPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="audit-logs" element={<AuditLogsPage />} />

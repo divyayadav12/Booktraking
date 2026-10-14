@@ -10,17 +10,33 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return errorResponse(res, 'Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const validated = verifyDispatchSchema.parse(req.body);
+    const { orderItemId, orderId, enteredBookCode, enteredCode, requestId } = req.body;
+    const scannedCode = (enteredCode || enteredBookCode || '').trim().toUpperCase();
 
+    if (!scannedCode) {
+      return errorResponse(res, 'No code entered. Please scan or type a code.', 'CODE_REQUIRED', 400);
+    }
+
+    // Auto-detect: if code starts with "PRD-", treat as Product Code scan
+    if (scannedCode.startsWith('PRD-')) {
+      const result = await dispatchService.dispatchByProductCode({
+        productCode: scannedCode,
+        employeeId: req.user.id,
+        requestId,
+      });
+      return successResponse(res, result.message, { ...result, scanType: 'PRODUCT_CODE' });
+    }
+
+    // Otherwise treat as Book Code scan (existing logic)
     const result = await dispatchService.verifyAndDispatchBook({
-      orderItemId: validated.orderItemId,
-      orderId: validated.orderId,
-      enteredBookCode: validated.enteredBookCode,
+      orderItemId,
+      orderId,
+      enteredBookCode: scannedCode,
       employeeId: req.user.id,
-      requestId: validated.requestId,
+      requestId,
     });
 
-    return successResponse(res, result.message, result);
+    return successResponse(res, result.message, { ...result, scanType: 'BOOK_CODE' });
   } catch (error) {
     next(error);
   }

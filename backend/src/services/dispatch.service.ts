@@ -7,7 +7,7 @@ import { computeItemStatus, computeOrderStatus } from './order.service';
 export interface VerifyDispatchParams {
   orderItemId?: string;
   orderId?: string;
-  enteredBookCode: string;
+  enteredCode: string;       // Could be product code OR book code
   employeeId: string;
   requestId?: string;
 }
@@ -276,6 +276,122 @@ export async function verifyAndDispatchBook(params: {
     },
     orderStatus,
     dispatchLogId: dispatchLog._id.toString(),
+  };
+}
+
+// ─── Dispatch by Product Code ────────────────────────────────────────────────
+// When employee scans a Product Code (PRD-YYMM-NNNNN), ALL pending book items
+// in that order are dispatched atomically.
+export async function dispatchByProductCode(params: {
+  productCode: string;
+  employeeId: string;
+  requestId?: string;
+}) {
+  const { productCode, employeeId, requestId } = params;
+  const normalizedProductCode = productCode.trim().toUpperCase();
+
+  // Idempotency check
+  if (requestId) {
+    const existing = await DispatchLog.findOne({ requestId });
+    if (existing) {
+      return { alreadyProcessed: true, success: true, message: 'Already processed.' };
+    }
+  }
+
+  const order = await Order.findOne({ productCode: normalizedProductCode });
+  if (!order) {
+    throw {
+      statusCode: 404,
+      message: `No order found with Product Code "${normalizedProductCode}". Please verify the barcode.`,
+      code: 'PRODUCT_CODE_NOT_FOUND',
+    };
+  }
+
+  // Find all pending items
+  const pendingItems = order.items.filter((i: any) => i.dispatchedQuantity < i.requiredQuantity);
+  if (pendingItems.length === 0) {
+    throw {
+      statusCode: 400,
+      message: `All books in order "${normalizedProductCode}" have already been dispatched.`,
+      code: 'ORDER_FULLY_DISPATCHED',
+    };
+  }
+
+  // Dispatch all pending items — set dispatchedQuantity = requiredQuantity for each
+  const dispatchLogs = [];
+  for (const item of pendingItems) {
+    const remaining = item.requiredQuantity - item.dispatchedQuantity;
+
+    // Atomically update this item
+    await Order.updateOne(
+      { _id: order._id, 'items._id': item._id },
+      { $set: { 'items.$.dispatchedQuantity': item.requiredQuantity } }
+    );
+
+    // Create one dispatch log per book item (with quantity = remaining copies)
+    const log = await DispatchLog.create({
+      orderId: order._id,
+      orderItemId: item._id.toString(),
+      employeeId: new mongoose.Types.ObjectId(employeeId),
+      verifiedBookCode: item.bookCode,
+      quantity: remaining,
+      requestId: requestId ? `${requestId}-${item._id}` : undefined,
+      result: 'SUCCESS',
+      dispatchMode: 'PRODUCT_SCAN',
+    });
+    dispatchLogs.push(log);
+
+    await VerificationAttempt.create({
+      orderId: order._id,
+      orderItemId: item._id.toString(),
+      employeeId: new mongoose.Types.ObjectId(employeeId),
+      enteredBookCode: normalizedProductCode,
+      success: true,
+    });
+  }
+
+  // Reload updated order
+  const updatedOrder = await Order.findById(order._id);
+  const totalRequired = updatedOrder!.items.reduce((acc: number, i: any) => acc + i.requiredQuantity, 0);
+  const totalDispatched = updatedOrder!.items.reduce((acc: number, i: any) => acc + i.dispatchedQuantity, 0);
+
+  await logAudit({
+    actorUserId: employeeId,
+    action: 'ORDER_DISPATCHED_BY_PRODUCT_CODE',
+    entityType: 'Order',
+    entityId: order._id.toString(),
+    metadata: {
+      productCode: normalizedProductCode,
+      student: order.studentName,
+      itemsDispatched: pendingItems.length,
+      totalQuantityDispatched: pendingItems.reduce((a, i) => a + (i.requiredQuantity - i.dispatchedQuantity), 0),
+    },
+  });
+
+  return {
+    success: true,
+    message: `Product Code "${normalizedProductCode}" matched! All ${pendingItems.length} book(s) dispatched for ${order.studentName}.`,
+    productCode: normalizedProductCode,
+    order: {
+      id: order._id.toString(),
+      studentName: order.studentName,
+      trackingId: order.trackingId,
+      mobileNumber: order.mobileNumber,
+      totalRequired,
+      totalDispatched,
+      totalPending: Math.max(0, totalRequired - totalDispatched),
+      status: 'COMPLETED',
+      items: updatedOrder!.items.map((i: any) => ({
+        id: i._id.toString(),
+        bookCode: i.bookCode,
+        bookName: i.bookName,
+        requiredQuantity: i.requiredQuantity,
+        dispatchedQuantity: i.dispatchedQuantity,
+        pendingQuantity: 0,
+        status: 'COMPLETED',
+      })),
+    },
+    itemsDispatched: pendingItems.length,
   };
 }
 

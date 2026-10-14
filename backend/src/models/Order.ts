@@ -9,6 +9,7 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document {
+  productCode: string;       // Auto-generated unique per order e.g. PRD-2410-00001
   studentName: string;
   mobileNumber: string;
   email: string | null;
@@ -40,6 +41,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
 
 const OrderSchema = new Schema<IOrder>(
   {
+    productCode: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
     studentName: { type: String, required: true, trim: true, index: true },
     mobileNumber: { type: String, required: true, trim: true, index: true },
     email: { type: String, trim: true, lowercase: true, default: null },

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -23,6 +23,10 @@ import {
   Sparkles,
   ExternalLink,
   BookOpen,
+  ScanLine,
+  Package,
+  Zap,
+  X,
 } from 'lucide-react';
 
 export const OutgoingOrdersPage: React.FC = () => {
@@ -50,9 +54,62 @@ export const OutgoingOrdersPage: React.FC = () => {
   // Available Excel Import Batches
   const [importBatches, setImportBatches] = useState<ImportBatch[]>([]);
 
-  // Dispatch Box Modal State ("har order ke samne click karne par vha ek box open ho")
+  // Dispatch Box Modal State
   const [selectedOrderForDispatch, setSelectedOrderForDispatch] = useState<Order | null>(null);
   const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
+
+  // ─── Global Scanner State ────────────────────────────────────────────────────
+  const [scannerCode, setScannerCode] = useState('');
+  const [scanResult, setScanResult] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+    scanType?: string;
+    studentName?: string;
+  }>({ type: null, message: '' });
+  const [isScanning, setIsScanning] = useState(false);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGlobalScan = useCallback(async (code: string) => {
+    if (!code.trim()) return;
+    setIsScanning(true);
+    setScanResult({ type: null, message: '' });
+    try {
+      const res = await api.post('/dispatch/verify', { enteredCode: code.trim() });
+      if (res.data.success) {
+        const data = res.data.data;
+        const scanType = data.scanType === 'PRODUCT_CODE' ? '📦 Product' : '📖 Book';
+        setScanResult({
+          type: 'success',
+          message: data.message,
+          scanType,
+          studentName: data.order?.studentName,
+        });
+        // Live update orders list
+        setOrders(prev => prev.map(o => o.id === data.order?.id ? {
+          ...o,
+          totalDispatched: data.order.totalDispatched,
+          totalPending: data.order.totalPending,
+          status: data.order.status,
+          items: data.order.items || o.items,
+        } : o));
+        setQueueStats(prev => ({
+          ...prev,
+          totalDispatchedCopies: prev.totalDispatchedCopies + (data.itemsDispatched || 1),
+          totalPendingCopies: Math.max(0, prev.totalPendingCopies - (data.itemsDispatched || 1)),
+        }));
+      }
+    } catch (err: any) {
+      setScanResult({
+        type: 'error',
+        message: err.response?.data?.message || 'Scan failed. Please try again.',
+      });
+    } finally {
+      setIsScanning(false);
+      setScannerCode('');
+      // Auto-clear result after 4 seconds
+      setTimeout(() => setScanResult({ type: null, message: '' }), 4000);
+    }
+  }, []);
 
   // Load available Excel batches for filter dropdown
   useEffect(() => {
@@ -91,7 +148,6 @@ export const OutgoingOrdersPage: React.FC = () => {
         if (res.data.data.stats) {
           setQueueStats(res.data.data.stats);
         } else {
-          // Fallback compute stats from fetched page
           const reqCount = fetchedOrders.reduce((acc, o) => acc + o.totalRequired, 0);
           const dispCount = fetchedOrders.reduce((acc, o) => acc + o.totalDispatched, 0);
           setQueueStats({
@@ -126,16 +182,11 @@ export const OutgoingOrdersPage: React.FC = () => {
     setSelectedOrderForDispatch(null);
   };
 
-  // Live real-time update when a book is verified inside the Dispatch Box
   const handleOrderUpdated = (updatedOrder: Order) => {
     setOrders((prevOrders) =>
       prevOrders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
     );
-
-    // Keep active modal order synchronized
     setSelectedOrderForDispatch(updatedOrder);
-
-    // Decrement total pending copies across queue stats ("total count mese ek kam hoge")
     setQueueStats((prev) => ({
       ...prev,
       totalDispatchedCopies: prev.totalDispatchedCopies + 1,
@@ -143,7 +194,6 @@ export const OutgoingOrdersPage: React.FC = () => {
     }));
   };
 
-  // Find next pending order in queue to seamlessly switch to in the modal
   const pendingOrdersList = orders.filter((o) => o.totalPending > 0);
   const currentPendingIndex = selectedOrderForDispatch
     ? pendingOrdersList.findIndex((o) => o.id === selectedOrderForDispatch.id)
@@ -165,6 +215,67 @@ export const OutgoingOrdersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* ─── Global Scanner Box ───────────────────────────────────────────────── */}
+      <div className={`rounded-xl border-2 p-4 transition-all ${
+        scanResult.type === 'success' ? 'border-green-400 bg-green-50' :
+        scanResult.type === 'error' ? 'border-red-400 bg-red-50' :
+        'border-blue-300 bg-blue-50'
+      }`}>
+        <div className="flex items-center gap-2 mb-3">
+          <ScanLine size={20} className="text-blue-600" />
+          <span className="font-bold text-blue-800 text-sm">Global Scanner</span>
+          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+            Scan Product Code OR Book Code here
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              ref={scanInputRef}
+              type="text"
+              value={scannerCode}
+              onChange={e => setScannerCode(e.target.value.toUpperCase())}
+              onKeyDown={e => { if (e.key === 'Enter' && scannerCode.trim()) handleGlobalScan(scannerCode); }}
+              placeholder="🔍 Scan barcode here or type code and press Enter..."
+              className="w-full px-4 py-3 text-sm font-mono border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+              autoFocus
+              disabled={isScanning}
+            />
+            {scannerCode && (
+              <button onClick={() => setScannerCode('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <X size={14} className="text-gray-400" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => handleGlobalScan(scannerCode)}
+            disabled={!scannerCode.trim() || isScanning}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium flex items-center gap-2"
+          >
+            <Zap size={16} /> {isScanning ? 'Scanning...' : 'Dispatch'}
+          </button>
+        </div>
+
+        {/* Scan Result Feedback */}
+        {scanResult.type && (
+          <div className={`mt-3 p-3 rounded-lg text-sm font-medium flex items-start gap-2 ${
+            scanResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            {scanResult.type === 'success' ? '✅' : '❌'}
+            <div>
+              <p>{scanResult.message}</p>
+              {scanResult.studentName && <p className="text-xs mt-0.5 opacity-80">Student: {scanResult.studentName}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Hint */}
+        <div className="mt-2 flex gap-4 text-xs text-blue-600 opacity-70">
+          <span className="flex items-center gap-1"><Package size={12} /> PRD-YYMM-NNNNN = dispatch all books in order</span>
+          <span className="flex items-center gap-1"><BookOpen size={12} /> QB101 / MCQ201 = dispatch 1 copy of that book</span>
+        </div>
+      </div>
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

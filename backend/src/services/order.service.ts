@@ -256,3 +256,51 @@ export async function getDashboardSummary() {
     totalImportBatches: totalBatches,
   };
 }
+
+// ─── Barcode Sheet Data ───────────────────────────────────────────────────────
+// Returns all orders with productCode + bookCodes for barcode print/download page
+export async function getBarcodeSheetData(params: {
+  batchId?: string;
+  search?: string;
+}) {
+  const query: any = {};
+  if (params.batchId) {
+    const mongoose = require('mongoose');
+    query.importBatchId = new mongoose.Types.ObjectId(params.batchId);
+  }
+  if (params.search) {
+    const regex = new RegExp(params.search, 'i');
+    query.$or = [
+      { studentName: regex },
+      { trackingId: regex },
+      { productCode: regex },
+      { mobileNumber: regex },
+    ];
+  }
+
+  const orders = await Order.find(query)
+    .select('productCode studentName mobileNumber email trackingId items createdAt')
+    .sort({ productCode: 1 });
+
+  return orders.map((order: any) => ({
+    id: order._id.toString(),
+    productCode: order.productCode,
+    studentName: order.studentName,
+    mobileNumber: order.mobileNumber,
+    email: order.email,
+    trackingId: order.trackingId,
+    createdAt: order.createdAt,
+    totalRequired: order.items.reduce((s: number, i: any) => s + i.requiredQuantity, 0),
+    totalDispatched: order.items.reduce((s: number, i: any) => s + i.dispatchedQuantity, 0),
+    status: computeOrderStatus(order.items),
+    items: order.items.map((item: any) => ({
+      id: item._id.toString(),
+      bookCode: item.bookCode,
+      bookName: item.bookName,
+      requiredQuantity: item.requiredQuantity,
+      dispatchedQuantity: item.dispatchedQuantity,
+      pendingQuantity: Math.max(0, item.requiredQuantity - item.dispatchedQuantity),
+      status: computeItemStatus(item.requiredQuantity, item.dispatchedQuantity),
+    })),
+  }));
+}

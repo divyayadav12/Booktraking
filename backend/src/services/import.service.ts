@@ -336,9 +336,31 @@ export async function confirmImport(
 
   let createdOrdersCount = 0;
   let createdItemsCount = 0;
+  let productCodeCounter = 1;
+
+  // Get current month/year for product code prefix
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const prefix = `PRD-${yy}${mm}`;
+
+  // Get latest productCode counter to avoid collisions with existing orders
+  const lastOrder = await Order.findOne(
+    { productCode: { $regex: `^${prefix}-` } },
+    { productCode: 1 }
+  ).sort({ productCode: -1 });
+
+  if (lastOrder?.productCode) {
+    const lastNum = parseInt(lastOrder.productCode.split('-').pop() || '0', 10);
+    productCodeCounter = lastNum + 1;
+  }
 
   for (const orderData of orderGroups.values()) {
+    const productCode = `${prefix}-${String(productCodeCounter).padStart(5, '0')}`;
+    productCodeCounter++;
+
     await Order.create({
+      productCode,
       studentName: orderData.studentName,
       mobileNumber: orderData.mobileNumber,
       email: orderData.email,

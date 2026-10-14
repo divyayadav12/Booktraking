@@ -17,6 +17,7 @@ import {
   FileCheck2,
   Clock,
   UserCheck,
+  ScanLine,
 } from 'lucide-react';
 
 export const DashboardLayout: React.FC = () => {
@@ -36,6 +37,7 @@ export const DashboardLayout: React.FC = () => {
     { label: 'Import History', path: '/admin/import-history', icon: <History className="w-5 h-5" /> },
     { label: 'All Orders', path: '/admin/orders', icon: <Boxes className="w-5 h-5" /> },
     { label: 'Outgoing Sheet', path: '/admin/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: '📦 Barcode Sheet', path: '/admin/barcode-sheet', icon: <ScanLine className="w-5 h-5" /> },
     { label: 'Dispatch History', path: '/admin/dispatch-history', icon: <FileCheck2 className="w-5 h-5" /> },
     { label: 'Book Summary', path: '/admin/book-summary', icon: <BookOpen className="w-5 h-5" /> },
     { label: 'Employees', path: '/admin/employees', icon: <Users className="w-5 h-5" /> },
