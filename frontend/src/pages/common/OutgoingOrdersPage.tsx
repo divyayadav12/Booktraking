@@ -201,20 +201,32 @@ export const OutgoingOrdersPage: React.FC = () => {
 
   // Auto-trigger verification as soon as number/code is entered (no Enter click required)
   useEffect(() => {
-    const trimmed = scannerCode.trim();
+    const trimmed = scannerCode.trim().toUpperCase();
     if (!trimmed || isScanning) return;
 
-    // Instant trigger if full Order Code format (ORD-YYMM-NNNNN, 14 chars)
-    if (trimmed.startsWith('ORD-') && trimmed.length >= 14) {
+    // Instant trigger if complete Order Code format (ORD-YYMM-NNNNN or UNQ-YYMM-NNNNN, 14 chars)
+    if (/^(ORD|UNQ)-\d{4}-\d{5}$/i.test(trimmed)) {
       handleGlobalScan(trimmed);
       return;
     }
 
-    // Auto-trigger when scanner input completes or user pauses typing (300ms)
-    if (trimmed.length >= 4) {
+    // If user is currently typing an Order Code prefix (e.g. "ORD", "ORD-", "ORD-2610-"),
+    // do NOT fire prematurely on debounce! Wait until full 14 chars are typed or Enter is pressed.
+    if (trimmed.startsWith('ORD') || trimmed.startsWith('UNQ')) {
+      return;
+    }
+
+    // Avoid premature firing for incomplete prefixes
+    if (['PRD', 'PRD-', 'BK', 'BK-'].includes(trimmed)) {
+      return;
+    }
+
+    // Auto-trigger for complete product codes or book codes when scanner finishes or user pauses typing (500ms)
+    // Requires at least 5 characters (e.g. "BK-01", "PRD-1")
+    if (trimmed.length >= 5) {
       const timer = setTimeout(() => {
         handleGlobalScan(trimmed);
-      }, 300);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [scannerCode, isScanning, handleGlobalScan]);

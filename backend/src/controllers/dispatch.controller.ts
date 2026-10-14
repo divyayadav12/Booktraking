@@ -18,8 +18,12 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return errorResponse(res, 'No code entered. Please scan or type a code.', 'CODE_REQUIRED', 400);
     }
 
+    if (scannedCode.length < 4 || scannedCode === 'ORD-' || scannedCode === 'PRD-' || scannedCode === 'BK-' || scannedCode === 'UNQ-') {
+      return errorResponse(res, `Incomplete code "${scannedCode}". Please scan or enter the complete barcode.`, 'INCOMPLETE_CODE', 400);
+    }
+
     // Tier 1: Order Unique Code (starts with "ORD-" or "UNQ-" or matches an order's orderCode)
-    const isOrderCodeFormat = scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-');
+    const isOrderCodeFormat = (scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-')) && scannedCode.length >= 10;
     const matchedByOrderCode = isOrderCodeFormat ? await Order.findOne({ orderCode: scannedCode }) : null;
 
     if (matchedByOrderCode || isOrderCodeFormat) {
