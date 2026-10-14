@@ -87,11 +87,20 @@ export const MobileScannerPage: React.FC = () => {
     }
   };
 
-  // Start back-camera scanner
-  useEffect(() => {
-    if (!session) return;
-    const qrRegionId = 'mobile-reader';
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
+  const startScanner = async () => {
+    if (!session) return;
+    setCameraError(null);
+    setStatusMessage('Starting camera...');
+
+    try {
+      if (html5QrCodeRef.current?.isScanning) {
+        await html5QrCodeRef.current.stop();
+      }
+    } catch {}
+
+    const qrRegionId = 'mobile-reader';
     const formatsToSupport = [
       Html5QrcodeSupportedFormats.CODE_128,
       Html5QrcodeSupportedFormats.CODE_39,
@@ -102,24 +111,23 @@ export const MobileScannerPage: React.FC = () => {
       Html5QrcodeSupportedFormats.QR_CODE,
     ];
 
-    const html5QrCode = new Html5Qrcode(qrRegionId, {
-      formatsToSupport,
-      verbose: false,
-    });
-    html5QrCodeRef.current = html5QrCode;
+    try {
+      const html5QrCode = new Html5Qrcode(qrRegionId, {
+        formatsToSupport,
+        verbose: false,
+      });
+      html5QrCodeRef.current = html5QrCode;
 
-    const config = {
-      fps: 15,
-      qrbox: { width: 280, height: 160 },
-      aspectRatio: 1.0,
-    };
+      const config = {
+        fps: 15,
+        qrbox: { width: 280, height: 160 },
+        aspectRatio: 1.0,
+      };
 
-    html5QrCode
-      .start(
+      await html5QrCode.start(
         { facingMode: 'environment' },
         config,
         (decodedText) => {
-          // Cooldown of 1.2s to prevent multiple reads of the exact same barcode
           if (isCooldownRef.current) return;
           isCooldownRef.current = true;
           transmitCode(decodedText);
@@ -127,18 +135,23 @@ export const MobileScannerPage: React.FC = () => {
             isCooldownRef.current = false;
           }, 1200);
         },
-        () => {
-          // ignore frame decode misses
-        }
-      )
-      .then(() => {
-        setScannerActive(true);
-      })
-      .catch((err) => {
-        console.error('Camera start error:', err);
-        setStatusMessage('Camera access denied or unavailable. You can use manual entry below.');
-      });
+        () => {}
+      );
 
+      setScannerActive(true);
+      setCameraError(null);
+      setStatusMessage('Camera Active & Ready');
+    } catch (err: any) {
+      console.error('Camera start error:', err);
+      const errMsg = err?.message || String(err);
+      setCameraError(errMsg);
+      setScannerActive(false);
+      setStatusMessage('Camera permission blocked or unavailable.');
+    }
+  };
+
+  useEffect(() => {
+    startScanner();
     return () => {
       if (html5QrCodeRef.current?.isScanning) {
         html5QrCodeRef.current.stop().catch(() => {});
@@ -212,21 +225,48 @@ export const MobileScannerPage: React.FC = () => {
         </div>
 
         {/* Live Camera Feed */}
-        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-blue-500/50 bg-black shadow-2xl">
+        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-blue-500/50 bg-black shadow-2xl min-h-[260px] flex items-center justify-center">
           <div id="mobile-reader" className="w-full" />
           
-          {/* Target Reticle Overlay */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-64 h-36 border-2 border-blue-400/80 rounded-xl relative shadow-lg">
-              <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-blue-400" />
-              <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-blue-400" />
-              <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-blue-400" />
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-blue-400" />
+          {cameraError ? (
+            <div className="absolute inset-0 bg-slate-950/95 p-5 flex flex-col items-center justify-center text-center z-20">
+              <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+                <AlertCircle size={26} />
+              </div>
+              <h3 className="text-sm font-bold text-white mb-1">
+                Camera Permission Blocked
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                यदि स्क्रीन पर <em>"Close any bubbles or overlays"</em> आया है, तो स्क्रीन से कोई भी फ्लोटिंग बबल (Messenger, WhatsApp, Truecaller) हटा दें।
+              </p>
               
-              {/* Scan Beam */}
-              <div className="w-full h-0.5 bg-blue-400/90 shadow-[0_0_8px_rgba(96,165,250,1)] animate-bounce mt-18" />
+              <button
+                type="button"
+                onClick={startScanner}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+              >
+                <Camera size={16} />
+                <span>Tap to Allow & Retry Camera</span>
+              </button>
+
+              <div className="mt-3 text-[11px] text-slate-400">
+                या ऊपर 🔒 (Lock icon) पर क्लिक करके Camera ➔ Allow करें।
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Target Reticle Overlay */
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="w-64 h-36 border-2 border-blue-400/80 rounded-xl relative shadow-lg">
+                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-blue-400" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-blue-400" />
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-blue-400" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-blue-400" />
+                
+                {/* Scan Beam */}
+                <div className="w-full h-0.5 bg-blue-400/90 shadow-[0_0_8px_rgba(96,165,250,1)] animate-bounce mt-18" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Manual Input Fallback */}
