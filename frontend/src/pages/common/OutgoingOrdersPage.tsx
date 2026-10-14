@@ -96,6 +96,16 @@ export const OutgoingOrdersPage: React.FC = () => {
   }>({ type: null, message: '' });
   const [isScanning, setIsScanning] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const autoCloseTimerRef = useRef<any>(null);
+
+  // Clear auto-close timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+      }
+    };
+  }, []);
 
   // Auto-focus barcode scanner input perpetually for hands-free scanning
   useEffect(() => {
@@ -113,6 +123,13 @@ export const OutgoingOrdersPage: React.FC = () => {
   const handleGlobalScan = useCallback(async (code: string) => {
     if (!code.trim() || isScanning) return;
     const cleanCode = code.trim().toUpperCase();
+
+    // Cancel any pending auto-close timers when a new scan starts
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+
     setIsScanning(true);
     setScanResult({ type: null, message: '' });
 
@@ -182,6 +199,14 @@ export const OutgoingOrdersPage: React.FC = () => {
           trackingId: updatedOrder?.trackingId,
           itemsDispatched: countDispatched,
         });
+
+        // 🌟 Auto-close preview card and feedback after 2.5 seconds when the order is DONE / fully dispatched
+        if (isComplete) {
+          autoCloseTimerRef.current = setTimeout(() => {
+            setLastScannedOrder(null);
+            setScanResult({ type: null, message: '' });
+          }, 2500);
+        }
       }
     } catch (err: any) {
       if (soundEnabled) playErrorTone();
@@ -189,6 +214,10 @@ export const OutgoingOrdersPage: React.FC = () => {
         type: 'error',
         message: err.response?.data?.message || `Code "${cleanCode}" could not be verified or has no pending books.`,
       });
+      // Auto-dismiss error alert after 3.5 seconds so employee screen stays clean
+      autoCloseTimerRef.current = setTimeout(() => {
+        setScanResult({ type: null, message: '' });
+      }, 3500);
     } finally {
       setIsScanning(false);
       setScannerCode('');
@@ -388,27 +417,39 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         {/* Scan Result Feedback */}
         {scanResult.type && (
-          <div className={`mt-3 p-3.5 rounded-lg text-sm font-medium border flex items-start gap-3 ${
+          <div className={`mt-3 p-3.5 rounded-lg text-sm font-medium border flex items-start justify-between gap-3 ${
             scanResult.type === 'success' ? 'bg-emerald-100/90 border-emerald-300 text-emerald-950' : 'bg-rose-100/90 border-rose-300 text-rose-950'
           }`}>
-            <span className="text-xl shrink-0 mt-0.5">{scanResult.type === 'success' ? '✅' : '❌'}</span>
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                {scanResult.scanType && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-white border border-current shadow-2xs">
-                    {scanResult.scanType}
-                  </span>
-                )}
-                <span className="font-semibold">{scanResult.message}</span>
-              </div>
-              {scanResult.studentName && (
-                <div className="text-xs mt-1.5 flex flex-wrap gap-4 text-emerald-900 font-medium">
-                  <span>Student: <strong>{scanResult.studentName}</strong></span>
-                  {scanResult.trackingId && <span>Tracking ID: <strong className="font-mono">{scanResult.trackingId}</strong></span>}
-                  {scanResult.itemsDispatched !== undefined && <span>Copies Dispatched: <strong>{scanResult.itemsDispatched}</strong></span>}
+            <div className="flex items-start gap-3 flex-1">
+              <span className="text-xl shrink-0 mt-0.5">{scanResult.type === 'success' ? '✅' : '❌'}</span>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  {scanResult.scanType && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-white border border-current shadow-2xs">
+                      {scanResult.scanType}
+                    </span>
+                  )}
+                  <span className="font-semibold">{scanResult.message}</span>
                 </div>
-              )}
+                {scanResult.studentName && (
+                  <div className="text-xs mt-1.5 flex flex-wrap gap-4 text-emerald-900 font-medium">
+                    <span>Student: <strong>{scanResult.studentName}</strong></span>
+                    {scanResult.trackingId && <span>Tracking ID: <strong className="font-mono">{scanResult.trackingId}</strong></span>}
+                    {scanResult.itemsDispatched !== undefined && <span>Copies Dispatched: <strong>{scanResult.itemsDispatched}</strong></span>}
+                  </div>
+                )}
+              </div>
             </div>
+            <button
+              onClick={() => {
+                if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+                setScanResult({ type: null, message: '' });
+              }}
+              className="text-slate-500 hover:text-slate-800 p-1 rounded hover:bg-white/50 transition-colors shrink-0"
+              title="Dismiss notification"
+            >
+              <X size={16} />
+            </button>
           </div>
         )}
 
@@ -447,13 +488,17 @@ export const OutgoingOrdersPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                   lastScannedOrder.totalPending === 0
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse'
                     : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                 }`}>
-                  {lastScannedOrder.totalPending === 0 ? '✓ Order Completed' : 'In Progress'}
+                  {lastScannedOrder.totalPending === 0 ? '✓ Order Completed (Auto-closing...)' : 'In Progress'}
                 </span>
                 <button
-                  onClick={() => setLastScannedOrder(null)}
+                  onClick={() => {
+                    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+                    setLastScannedOrder(null);
+                    setScanResult({ type: null, message: '' });
+                  }}
                   className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
                   title="Close preview"
                 >
