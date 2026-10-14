@@ -345,16 +345,39 @@ export const OutgoingOrdersPage: React.FC = () => {
     const trimmed = scannerCode.trim().toUpperCase();
     if (!trimmed || isScanning) return;
 
-    // Instant trigger if complete Order Code format (ORD-YYMM-NNNNN or UNQ-YYMM-NNNNN, 14 chars)
+    // 1. Instant trigger if complete Order Code format (ORD-YYMM-NNNNN or UNQ-YYMM-NNNNN, 14 chars)
     if (/^(ORD|UNQ)-\d{4}-\d{5}$/i.test(trimmed)) {
       handleGlobalScan(trimmed);
       return;
     }
 
-    // If user is currently typing an Order Code prefix (e.g. "ORD", "ORD-", "ORD-2610-"),
-    // do NOT fire prematurely on debounce! Wait until full 14 chars are typed or Enter is pressed.
+    // If user is currently typing an Order Code prefix, DO NOT fire prematurely!
     if (trimmed.startsWith('ORD') || trimmed.startsWith('UNQ')) {
       return;
+    }
+
+    // 2. Active Order Context: Check against loaded order's Product Code & Book Codes
+    if (lastScannedOrder && lastScannedOrder.totalPending > 0) {
+      const activeProdCode = lastScannedOrder.productCode?.toUpperCase();
+      const activeBookCodes = (lastScannedOrder.items || []).map((i: any) => i.bookCode?.toUpperCase()).filter(Boolean);
+
+      // A. Instant 0ms trigger if exact match with Product Code or any Book Code
+      if (activeProdCode && trimmed === activeProdCode) {
+        handleGlobalScan(trimmed);
+        return;
+      }
+      if (activeBookCodes.includes(trimmed)) {
+        handleGlobalScan(trimmed);
+        return;
+      }
+
+      // B. Prefix protection: If user is actively typing a prefix of product code or any book code, DO NOT trigger!
+      if (activeProdCode && activeProdCode.startsWith(trimmed)) {
+        return;
+      }
+      if (activeBookCodes.some((bc: string) => bc.startsWith(trimmed))) {
+        return;
+      }
     }
 
     // Avoid premature firing for incomplete prefixes
@@ -362,14 +385,14 @@ export const OutgoingOrdersPage: React.FC = () => {
       return;
     }
 
-    // Auto-trigger for complete product codes or book codes when scanner finishes or user pauses typing (400ms)
-    if (trimmed.length >= 4) {
+    // 3. Fallback auto-trigger for non-matching codes or external scanner guns (after 800ms typing pause)
+    if (trimmed.length >= 5) {
       const timer = setTimeout(() => {
         handleGlobalScan(trimmed);
-      }, 400);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [scannerCode, isScanning, handleGlobalScan]);
+  }, [scannerCode, isScanning, handleGlobalScan, lastScannedOrder]);
 
   // Load available Excel batches for filter dropdown
   useEffect(() => {
