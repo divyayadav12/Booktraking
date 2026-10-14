@@ -199,6 +199,26 @@ export const OutgoingOrdersPage: React.FC = () => {
     }
   }, [isScanning, soundEnabled]);
 
+  // Auto-trigger verification as soon as number/code is entered (no Enter click required)
+  useEffect(() => {
+    const trimmed = scannerCode.trim();
+    if (!trimmed || isScanning) return;
+
+    // Instant trigger if full Order Code format (ORD-YYMM-NNNNN, 14 chars)
+    if (trimmed.startsWith('ORD-') && trimmed.length >= 14) {
+      handleGlobalScan(trimmed);
+      return;
+    }
+
+    // Auto-trigger when scanner input completes or user pauses typing (300ms)
+    if (trimmed.length >= 4) {
+      const timer = setTimeout(() => {
+        handleGlobalScan(trimmed);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [scannerCode, isScanning, handleGlobalScan]);
+
   // Load available Excel batches for filter dropdown
   useEffect(() => {
     const fetchBatches = async () => {
