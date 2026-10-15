@@ -222,7 +222,21 @@ export const MobileScannerPage: React.FC = () => {
               <span>Mobile Scanner Gun</span>
               <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
             </h1>
-            <p className="text-[11px] text-slate-400 font-mono">Station: {session}</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400 font-mono">Station: {session}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = prompt('कंप्यूटर का Station Code डालें (जैसे STN-NI7EGW):', session);
+                  if (input && input.trim()) {
+                    window.location.search = `?session=${input.trim().toUpperCase()}`;
+                  }
+                }}
+                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-slate-700 cursor-pointer"
+              >
+                बदलें
+              </button>
+            </div>
           </div>
         </div>
 
