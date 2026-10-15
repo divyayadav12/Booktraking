@@ -44,6 +44,14 @@ export async function pushScan(req: Request, res: Response) {
     const sessionData = getOrCreateSession(session);
     sessionData.queue.push(cleanCode);
 
+    // Broadcast scan to ANY desktop station actively polling within the last 45 seconds!
+    const now = Date.now();
+    for (const [sId, sData] of sessions.entries()) {
+      if (sId !== session && (now - sData.lastActivity < 45 * 1000)) {
+        sData.queue.push(cleanCode);
+      }
+    }
+
     return successResponse(res, `Code "${cleanCode}" transmitted to desktop station`, {
       code: cleanCode,
       queueLength: sessionData.queue.length,
