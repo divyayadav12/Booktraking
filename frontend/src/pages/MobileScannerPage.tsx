@@ -21,19 +21,88 @@ export const MobileScannerPage: React.FC = () => {
   const isCooldownRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const supportedFormats = [
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.QR_CODE,
+  ];
+
+  // Helper to downscale massive smartphone camera photos so 1D barcodes scan reliably
+  const resizeImageFile = (file: File, maxDim = 1200): Promise<File> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width <= maxDim && height <= maxDim) {
+            resolve(file);
+            return;
+          }
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.92);
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setStatusMessage('Scanning photo...');
+    setStatusMessage('Scanning barcode photo...');
     try {
-      const html5QrCode = html5QrCodeRef.current || new Html5Qrcode('mobile-reader');
-      const decodedText = await html5QrCode.scanFile(file, false);
+      const optimizedFile = await resizeImageFile(file);
+      const scanner = new Html5Qrcode('mobile-reader-hidden', {
+        formatsToSupport: supportedFormats,
+        verbose: false,
+      });
+      const decodedText = await scanner.scanFile(optimizedFile, false);
       if (decodedText) {
         transmitCode(decodedText);
       }
     } catch (err) {
       console.error('Scan file error:', err);
-      setStatusMessage('बारकोड पहचान नहीं पाया, कृपया थोड़ा पास से दोबारा फोटो लें।');
+      // Fallback try original file
+      try {
+        const scanner = new Html5Qrcode('mobile-reader-hidden', {
+          formatsToSupport: supportedFormats,
+          verbose: false,
+        });
+        const decodedText = await scanner.scanFile(file, false);
+        if (decodedText) {
+          transmitCode(decodedText);
+          return;
+        }
+      } catch {}
+      setStatusMessage('बारकोड पहचान नहीं पाया, कृपया थोड़ा पास और साफ फोटो लें।');
     } finally {
       if (e.target) e.target.value = '';
     }
@@ -326,7 +395,7 @@ export const MobileScannerPage: React.FC = () => {
           )}
         </div>
 
-        {/* Hidden Camera File Input */}
+        {/* Hidden Camera File Input & Reader Element */}
         <input
           ref={fileInputRef}
           type="file"
@@ -335,6 +404,7 @@ export const MobileScannerPage: React.FC = () => {
           onChange={handleFileUpload}
           className="hidden"
         />
+        <div id="mobile-reader-hidden" className="hidden" />
 
         {/* Quick Photo Scan Alternative Button */}
         <div className="w-full max-w-sm mt-3">

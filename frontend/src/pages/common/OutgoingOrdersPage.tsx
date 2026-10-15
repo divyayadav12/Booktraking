@@ -89,6 +89,7 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [scannerCode, setScannerCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastScannedOrder, setLastScannedOrder] = useState<any>(null);
+  const lastScannedOrderRef = useRef<any>(null);
   const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
   const [completedStudentName, setCompletedStudentName] = useState('');
   const [scanResult, setScanResult] = useState<{
@@ -140,9 +141,10 @@ export const OutgoingOrdersPage: React.FC = () => {
 
     try {
       // If code starts with ORD- or UNQ-, it's a new Order Code scan (do not pass active orderId)
+      const currentOrder = lastScannedOrderRef.current || lastScannedOrder;
       const isNewOrderCode = cleanCode.startsWith('ORD-') || cleanCode.startsWith('UNQ-');
-      const activeOrderId = !isNewOrderCode && lastScannedOrder?.id && lastScannedOrder.totalPending > 0
-        ? lastScannedOrder.id
+      const activeOrderId = !isNewOrderCode && currentOrder?.id && currentOrder.totalPending > 0
+        ? currentOrder.id
         : undefined;
 
       const res = await api.post('/dispatch/verify', {
@@ -176,6 +178,7 @@ export const OutgoingOrdersPage: React.FC = () => {
         }
 
         if (updatedOrder) {
+          lastScannedOrderRef.current = updatedOrder;
           setLastScannedOrder({
             id: updatedOrder.id,
             orderCode: updatedOrder.orderCode,
@@ -227,6 +230,7 @@ export const OutgoingOrdersPage: React.FC = () => {
           setCompletedStudentName(updatedOrder?.studentName || '');
           autoCloseTimerRef.current = setTimeout(() => {
             setShowPaytmSuccess(false);
+            lastScannedOrderRef.current = null;
             setLastScannedOrder(null);
             setScanResult({ type: null, message: '' });
           }, 2500);
