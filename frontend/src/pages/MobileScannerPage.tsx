@@ -19,6 +19,25 @@ export const MobileScannerPage: React.FC = () => {
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isCooldownRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStatusMessage('Scanning photo...');
+    try {
+      const html5QrCode = html5QrCodeRef.current || new Html5Qrcode('mobile-reader');
+      const decodedText = await html5QrCode.scanFile(file, false);
+      if (decodedText) {
+        transmitCode(decodedText);
+      }
+    } catch (err) {
+      console.error('Scan file error:', err);
+      setStatusMessage('बारकोड पहचान नहीं पाया, कृपया थोड़ा पास से दोबारा फोटो लें।');
+    } finally {
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Play beep on mobile scan
   const playBeep = () => {
@@ -246,12 +265,24 @@ export const MobileScannerPage: React.FC = () => {
                 className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <Camera size={16} />
-                <span>Tap to Allow & Retry Camera</span>
+                <span>Tap to Allow & Retry Live Camera</span>
               </button>
 
-              <div className="mt-3 text-[11px] text-slate-400">
-                या ऊपर 🔒 (Lock icon) पर क्लिक करके Camera ➔ Allow करें।
+              <div className="relative flex py-2 items-center w-full">
+                <div className="flex-grow border-t border-slate-700"></div>
+                <span className="flex-shrink mx-2 text-[10px] text-slate-400 uppercase">या सबसे आसान</span>
+                <div className="flex-grow border-t border-slate-700"></div>
               </div>
+
+              {/* Instant Native Camera Snapshot - 100% bypasses permission errors */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer animate-pulse"
+              >
+                <Camera size={18} />
+                <span>📸 Photo Scan (फोटो खींचकर तुरंत स्कैन करें)</span>
+              </button>
             </div>
           ) : (
             /* Target Reticle Overlay */
@@ -269,8 +300,30 @@ export const MobileScannerPage: React.FC = () => {
           )}
         </div>
 
+        {/* Hidden Camera File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+
+        {/* Quick Photo Scan Alternative Button */}
+        <div className="w-full max-w-sm mt-3">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full py-2.5 px-4 bg-emerald-700/80 hover:bg-emerald-600 border border-emerald-500/50 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+          >
+            <Camera size={16} />
+            <span>📸 Take Photo & Scan (फोटो खींचकर स्कैन करें)</span>
+          </button>
+        </div>
+
         {/* Manual Input Fallback */}
-        <div className="w-full max-w-sm mt-4">
+        <div className="w-full max-w-sm mt-3">
           <form onSubmit={handleManualSend} className="flex gap-2">
             <input
               type="text"
