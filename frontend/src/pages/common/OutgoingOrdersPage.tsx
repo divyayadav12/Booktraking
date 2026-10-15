@@ -92,6 +92,7 @@ export const OutgoingOrdersPage: React.FC = () => {
   const lastScannedOrderRef = useRef<any>(null);
   const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
   const [completedStudentName, setCompletedStudentName] = useState('');
+  const [successCountdown, setSuccessCountdown] = useState(25);
   const [scanResult, setScanResult] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -103,6 +104,26 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const autoCloseTimerRef = useRef<any>(null);
+
+  const handleDismissSuccessOverlay = () => {
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+    setShowPaytmSuccess(false);
+    lastScannedOrderRef.current = null;
+    setLastScannedOrder(null);
+    setScanResult({ type: null, message: '' });
+  };
+
+  // Decrement success overlay countdown every second
+  useEffect(() => {
+    if (!showPaytmSuccess) return;
+    const interval = setInterval(() => {
+      setSuccessCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showPaytmSuccess]);
 
   // Clear auto-close timer on unmount
   useEffect(() => {
@@ -135,6 +156,7 @@ export const OutgoingOrdersPage: React.FC = () => {
       clearTimeout(autoCloseTimerRef.current);
       autoCloseTimerRef.current = null;
     }
+    setShowPaytmSuccess(false);
 
     setIsScanning(true);
     setScanResult({ type: null, message: '' });
@@ -224,16 +246,17 @@ export const OutgoingOrdersPage: React.FC = () => {
           itemsDispatched: countDispatched > 0 ? countDispatched : undefined,
         });
 
-        // 🌟 Auto-close preview card, show Paytm circular checkmark, and feedback after 2.5s
+        // 🌟 Auto-close preview card, show Paytm circular checkmark for 20 seconds
         if (isComplete && !isLoadedOnly) {
           setShowPaytmSuccess(true);
           setCompletedStudentName(updatedOrder?.studentName || '');
+          setSuccessCountdown(20);
           autoCloseTimerRef.current = setTimeout(() => {
             setShowPaytmSuccess(false);
             lastScannedOrderRef.current = null;
             setLastScannedOrder(null);
             setScanResult({ type: null, message: '' });
-          }, 2500);
+          }, 20000);
         }
       }
     } catch (err: any) {
@@ -378,15 +401,17 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         setShowPaytmSuccess(true);
         setCompletedStudentName(updatedOrder?.studentName || '');
+        setSuccessCountdown(20);
         if (soundEnabled) {
           playOrderCompleteFanfare();
           speakVoiceAnnouncement('Done! Next order.');
         }
         autoCloseTimerRef.current = setTimeout(() => {
           setShowPaytmSuccess(false);
+          lastScannedOrderRef.current = null;
           setLastScannedOrder(null);
           setScanResult({ type: null, message: '' });
-        }, 2500);
+        }, 20000);
       }
     } catch (err: any) {
       if (soundEnabled) playErrorTone();
@@ -560,14 +585,23 @@ export const OutgoingOrdersPage: React.FC = () => {
     <div className="space-y-6">
       {/* ─── Paytm-style Circular Checkmark Success Overlay ─────────── */}
       {showPaytmSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl text-center transform scale-100 transition-all border border-emerald-100 relative overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-3xl p-7 max-w-sm w-full mx-auto shadow-2xl text-center transform scale-100 transition-all border border-emerald-100 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Close Button (X) */}
+            <button
+              onClick={handleDismissSuccessOverlay}
+              className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Close and scan next"
+            >
+              <X size={20} />
+            </button>
+
             {/* Soft background ambient glow */}
-            <div className="absolute -top-12 -left-12 w-36 h-36 bg-emerald-100 rounded-full blur-2xl opacity-70" />
-            <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-teal-100 rounded-full blur-2xl opacity-70" />
+            <div className="absolute -top-12 -left-12 w-36 h-36 bg-emerald-100 rounded-full blur-2xl opacity-70 pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-teal-100 rounded-full blur-2xl opacity-70 pointer-events-none" />
 
             {/* Paytm Circular Checkmark with Ripple Waves */}
-            <div className="relative flex items-center justify-center w-28 h-28 mx-auto mb-4">
+            <div className="relative flex items-center justify-center w-28 h-28 mx-auto mb-3">
               <div className="absolute inset-0 rounded-full bg-emerald-400/25 animate-ping" />
               <div className="absolute inset-2 rounded-full bg-emerald-500/20 animate-pulse" />
               
@@ -604,9 +638,19 @@ export const OutgoingOrdersPage: React.FC = () => {
               <span>All Books Verified & Done</span>
             </p>
             
-            <div className="mt-5 pt-3.5 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-center gap-2 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-              <span className="font-bold text-slate-700">Done! Ready for Next Order</span>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs font-medium">
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                <span>Next in: <strong className="font-mono text-emerald-700 font-bold">{successCountdown}s</strong></span>
+              </div>
+
+              <button
+                onClick={handleDismissSuccessOverlay}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>अगला आर्डर</span>
+                <ArrowRight size={13} />
+              </button>
             </div>
           </div>
         </div>
