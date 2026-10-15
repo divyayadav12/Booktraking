@@ -107,18 +107,28 @@ export function playOrderCompleteFanfare() {
 
 /**
  * Speaks a clear human voice announcement (Paytm Soundbox style)
- * e.g., "Done! Next order." or "Order Verified!"
+ * e.g., "Done! Next order."
  */
 export function speakVoiceAnnouncement(text: string) {
   try {
-    if ('speechSynthesis' in window) {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(
+          (v) => v.lang.includes('IN') || v.lang.includes('en-GB') || v.lang.includes('en-US')
+        );
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+      }, 60);
     }
   } catch (e) {
     console.error('Speech synthesis error:', e);

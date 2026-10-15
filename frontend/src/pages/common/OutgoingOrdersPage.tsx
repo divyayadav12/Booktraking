@@ -92,7 +92,7 @@ export const OutgoingOrdersPage: React.FC = () => {
   const lastScannedOrderRef = useRef<any>(null);
   const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
   const [completedStudentName, setCompletedStudentName] = useState('');
-  const [successCountdown, setSuccessCountdown] = useState(25);
+  const [successCountdown, setSuccessCountdown] = useState(5);
   const [scanResult, setScanResult] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -249,11 +249,12 @@ export const OutgoingOrdersPage: React.FC = () => {
           itemsDispatched: countDispatched > 0 ? countDispatched : undefined,
         });
 
-        // 🌟 Auto-close preview card, show Paytm circular checkmark for 20 seconds
+        // 🌟 Auto-close preview card, show Paytm circular checkmark for 5 seconds
         if (isComplete && !isLoadedOnly) {
           setShowPaytmSuccess(true);
           setCompletedStudentName(updatedOrder?.studentName || '');
-          setSuccessCountdown(20);
+          setSuccessCountdown(5);
+          speakVoiceAnnouncement('Done! Next order.');
           setOrders(prev => prev.filter(o => o.id !== updatedOrder.id));
           setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
           autoCloseTimerRef.current = setTimeout(() => {
@@ -262,7 +263,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             setLastScannedOrder(null);
             setScanResult({ type: null, message: '' });
             fetchOrdersRef.current?.(1);
-          }, 20000);
+          }, 5000);
         }
       }
     } catch (err: any) {
@@ -407,7 +408,7 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         setShowPaytmSuccess(true);
         setCompletedStudentName(updatedOrder?.studentName || '');
-        setSuccessCountdown(20);
+        setSuccessCountdown(5);
         if (soundEnabled) {
           playOrderCompleteFanfare();
           speakVoiceAnnouncement('Done! Next order.');
@@ -417,7 +418,8 @@ export const OutgoingOrdersPage: React.FC = () => {
           lastScannedOrderRef.current = null;
           setLastScannedOrder(null);
           setScanResult({ type: null, message: '' });
-        }, 20000);
+          fetchOrdersRef.current?.(1);
+        }, 5000);
       }
     } catch (err: any) {
       if (soundEnabled) playErrorTone();
