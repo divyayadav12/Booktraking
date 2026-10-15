@@ -105,6 +105,8 @@ export const OutgoingOrdersPage: React.FC = () => {
   const scanInputRef = useRef<HTMLInputElement>(null);
   const autoCloseTimerRef = useRef<any>(null);
 
+  const fetchOrdersRef = useRef<any>(null);
+
   const handleDismissSuccessOverlay = () => {
     if (autoCloseTimerRef.current) {
       clearTimeout(autoCloseTimerRef.current);
@@ -114,6 +116,7 @@ export const OutgoingOrdersPage: React.FC = () => {
     lastScannedOrderRef.current = null;
     setLastScannedOrder(null);
     setScanResult({ type: null, message: '' });
+    fetchOrdersRef.current?.(1);
   };
 
   // Decrement success overlay countdown every second
@@ -251,11 +254,14 @@ export const OutgoingOrdersPage: React.FC = () => {
           setShowPaytmSuccess(true);
           setCompletedStudentName(updatedOrder?.studentName || '');
           setSuccessCountdown(20);
+          setOrders(prev => prev.filter(o => o.id !== updatedOrder.id));
+          setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
           autoCloseTimerRef.current = setTimeout(() => {
             setShowPaytmSuccess(false);
             lastScannedOrderRef.current = null;
             setLastScannedOrder(null);
             setScanResult({ type: null, message: '' });
+            fetchOrdersRef.current?.(1);
           }, 20000);
         }
       }
@@ -532,6 +538,7 @@ export const OutgoingOrdersPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+  fetchOrdersRef.current = fetchOutgoingOrders;
 
   useEffect(() => {
     const timer = setTimeout(() => {

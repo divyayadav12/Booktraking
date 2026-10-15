@@ -136,11 +136,18 @@ export async function listOrders(params: ListOrdersParams) {
 
   const paginatedOrders = filtered.slice(skip, skip + limit);
 
+  // Compute accurate batch & queue totals across all matching orders
+  const allRequired = mappedOrders.reduce((acc, o) => acc + o.totalRequired, 0);
+  const allDispatched = mappedOrders.reduce((acc, o) => acc + o.totalDispatched, 0);
+  const allPending = Math.max(0, allRequired - allDispatched);
+
   const stats = {
     totalOrders: filtered.length,
-    totalRequiredCopies: filtered.reduce((acc, o) => acc + o.totalRequired, 0),
-    totalDispatchedCopies: filtered.reduce((acc, o) => acc + o.totalDispatched, 0),
-    totalPendingCopies: filtered.reduce((acc, o) => acc + o.totalPending, 0),
+    allOrdersCount: mappedOrders.length,
+    ordersInQueue: filtered.length,
+    totalRequiredCopies: allRequired,
+    totalDispatchedCopies: allDispatched,
+    totalPendingCopies: allPending,
   };
 
   return {
