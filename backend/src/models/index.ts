@@ -4,3 +4,5 @@ export * from './Order';
 export * from './DispatchLog';
 export * from './VerificationAttempt';
 export * from './AuditLog';
+export * from './BookStock';
+export * from './StockInward';

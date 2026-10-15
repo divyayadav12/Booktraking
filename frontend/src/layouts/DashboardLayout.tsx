@@ -18,6 +18,7 @@ import {
   Clock,
   UserCheck,
   ScanLine,
+  PackagePlus,
 } from 'lucide-react';
 
 export const DashboardLayout: React.FC = () => {
@@ -37,6 +38,8 @@ export const DashboardLayout: React.FC = () => {
     { label: 'Import History', path: '/admin/import-history', icon: <History className="w-5 h-5" /> },
     { label: 'All Orders', path: '/admin/orders', icon: <Boxes className="w-5 h-5" /> },
     { label: 'Outgoing Sheet', path: '/admin/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: 'Invert (Stock Inward)', path: '/admin/invert', icon: <PackagePlus className="w-5 h-5" /> },
+    { label: 'Available Stock', path: '/admin/available-stock', icon: <Boxes className="w-5 h-5" /> },
     { label: 'Barcode Sheet', path: '/admin/barcode-sheet', icon: <ScanLine className="w-5 h-5" /> },
     { label: 'Dispatch History', path: '/admin/dispatch-history', icon: <FileCheck2 className="w-5 h-5" /> },
     { label: 'Book Summary', path: '/admin/book-summary', icon: <BookOpen className="w-5 h-5" /> },
@@ -48,6 +51,8 @@ export const DashboardLayout: React.FC = () => {
   const employeeNavItems = [
     { label: 'Dashboard', path: '/employee/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     { label: 'Outgoing Sheet', path: '/employee/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
+    { label: 'Invert (Stock Inward)', path: '/employee/invert', icon: <PackagePlus className="w-5 h-5" /> },
+    { label: 'Available Stock', path: '/employee/available-stock', icon: <Boxes className="w-5 h-5" /> },
     { label: 'My Dispatch History', path: '/employee/my-history', icon: <Clock className="w-5 h-5" /> },
   ];
 

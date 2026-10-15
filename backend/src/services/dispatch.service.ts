@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Order, DispatchLog, VerificationAttempt, User } from '../models';
+import { Order, DispatchLog, VerificationAttempt, User, BookStock } from '../models';
 import { normalizeBookCode } from '../utils/normalize';
 import { logAudit } from '../utils/audit';
 import { computeItemStatus, computeOrderStatus } from './order.service';
@@ -186,6 +186,18 @@ export async function verifyAndDispatchBook(params: {
     };
   }
 
+  // Check available stock in warehouse BookStock master
+  const cleanBookCode = normalizeBookCode(currentItem.bookCode);
+  const bookStock = await BookStock.findOne({ bookCode: cleanBookCode });
+  if (!bookStock || bookStock.availableQuantity < 1) {
+    throw {
+      statusCode: 400,
+      message: `❌ Out of Stock: Book "${currentItem.bookName} (${currentItem.bookCode})" has 0 available stock in warehouse! Kripya pehle "Invert" page me stock add karein.`,
+      code: 'OUT_OF_STOCK',
+      bookCode: currentItem.bookCode,
+    };
+  }
+
   // Atomically increment dispatchedQuantity ensuring it doesn't exceed requiredQuantity
   const updatedOrder = await Order.findOneAndUpdate(
     {
@@ -212,6 +224,14 @@ export async function verifyAndDispatchBook(params: {
   }
 
   const updatedItem = updatedOrder.items.find((i: any) => i._id.toString() === resolvedItemId)!;
+
+  // Deduct 1 from available warehouse stock
+  await BookStock.findOneAndUpdate(
+    { bookCode: cleanBookCode },
+    {
+      $inc: { availableQuantity: -1, totalDispatched: 1 },
+    }
+  );
 
   // Create immutable dispatch log
   const dispatchLog = await DispatchLog.create({
@@ -359,12 +379,39 @@ export async function dispatchByOrderCode(params: {
     };
   }
 
-  // Atomically dispatch all pending items in this order
+  // Verify that all pending items have sufficient available stock in warehouse
   for (const item of pendingItems) {
     const remaining = item.requiredQuantity - item.dispatchedQuantity;
+    const cleanCode = normalizeBookCode(item.bookCode);
+    const stock = await BookStock.findOne({ bookCode: cleanCode });
+    if (!stock || stock.availableQuantity < remaining) {
+      throw {
+        statusCode: 400,
+        message: `❌ Out of Stock: Book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Invert" page me stock enter karein.`,
+        code: 'OUT_OF_STOCK',
+        bookCode: item.bookCode,
+      };
+    }
+  }
+
+  // Atomically dispatch all pending items in this order and deduct warehouse stock
+  for (const item of pendingItems) {
+    const remaining = item.requiredQuantity - item.dispatchedQuantity;
+    const cleanCode = normalizeBookCode(item.bookCode);
+
     await Order.updateOne(
       { _id: order._id, 'items._id': item._id },
       { $set: { 'items.$.dispatchedQuantity': item.requiredQuantity } }
+    );
+
+    await BookStock.findOneAndUpdate(
+      { bookCode: cleanCode },
+      {
+        $inc: {
+          availableQuantity: -remaining,
+          totalDispatched: remaining,
+        },
+      }
     );
 
     await DispatchLog.create({
@@ -483,12 +530,39 @@ export async function dispatchByProductCode(params: {
     };
   }
 
-  // Dispatch all matching items
+  // Verify that all matching combo items have sufficient available stock in warehouse
   for (const item of matchingItems) {
     const remaining = item.requiredQuantity - item.dispatchedQuantity;
+    const cleanCode = normalizeBookCode(item.bookCode);
+    const stock = await BookStock.findOne({ bookCode: cleanCode });
+    if (!stock || stock.availableQuantity < remaining) {
+      throw {
+        statusCode: 400,
+        message: `❌ Out of Stock: Combo book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Invert" page me stock enter karein.`,
+        code: 'OUT_OF_STOCK',
+        bookCode: item.bookCode,
+      };
+    }
+  }
+
+  // Dispatch all matching items and deduct warehouse stock
+  for (const item of matchingItems) {
+    const remaining = item.requiredQuantity - item.dispatchedQuantity;
+    const cleanCode = normalizeBookCode(item.bookCode);
+
     await Order.updateOne(
       { _id: order._id, 'items._id': item._id },
       { $set: { 'items.$.dispatchedQuantity': item.requiredQuantity } }
+    );
+
+    await BookStock.findOneAndUpdate(
+      { bookCode: cleanCode },
+      {
+        $inc: {
+          availableQuantity: -remaining,
+          totalDispatched: remaining,
+        },
+      }
     );
 
     await DispatchLog.create({
