@@ -28,5 +28,6 @@ router.delete('/inward/:id', requireRole('ADMIN', 'EMPLOYEE'), stockController.d
 router.get('/search-catalog', requireRole('ADMIN', 'EMPLOYEE'), stockController.searchBookCatalog);
 router.get('/export/available', requireRole('ADMIN', 'EMPLOYEE'), stockController.exportStockExcel);
 router.get('/export/inward', requireRole('ADMIN', 'EMPLOYEE'), stockController.exportInwardExcel);
+router.delete('/clear-all', requireRole('ADMIN'), stockController.clearAllStock);
 
 export default router;

@@ -121,3 +121,12 @@ export async function exportInwardExcel(req: AuthenticatedRequest, res: Response
     next(error);
   }
 }
+
+export async function clearAllStock(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.clearAllStock(req.user!.id);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}

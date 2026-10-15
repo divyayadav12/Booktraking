@@ -21,6 +21,7 @@ import {
   PackagePlus,
   Clock,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 
 export const AvailableStockPage: React.FC = () => {
@@ -141,6 +142,22 @@ export const AvailableStockPage: React.FC = () => {
     }
   };
 
+  // Clear All Stock
+  const handleClearAllStock = async () => {
+    if (!window.confirm('⚠️ KYA AAP SURE HAIN? Yeh sabhi Books ka Available Stock aur Invert history data delete kar dega!')) {
+      return;
+    }
+    try {
+      const res = await api.delete('/stock/clear-all');
+      if (res.data.success) {
+        success('Sabhi stock records successfully delete ho gaye hain!');
+        fetchStock(1);
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Stock delete karne me samasya aayi');
+    }
+  };
+
   const invertUrl = isAdmin ? '/admin/invert' : '/employee/invert';
 
   return (
@@ -160,6 +177,17 @@ export const AvailableStockPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={handleClearAllStock}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              title="Reset all stock data"
+            >
+              <Trash2 size={14} />
+              <span>Reset Stock Data</span>
+            </button>
+          )}
+
           <Button
             variant="secondary"
             onClick={handleExportStockExcel}

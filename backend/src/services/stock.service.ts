@@ -579,3 +579,28 @@ export async function exportInwardExcel(): Promise<Buffer> {
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }
+
+/**
+ * Clear all stock master and inward history (Admin reset)
+ */
+export async function clearAllStock(userId: string) {
+  const stockRes = await BookStock.deleteMany({});
+  const inwardRes = await StockInward.deleteMany({});
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'ALL_STOCK_CLEARED',
+    entityType: 'BookStock',
+    entityId: 'ALL',
+    metadata: {
+      stocksDeleted: stockRes.deletedCount,
+      inwardsDeleted: inwardRes.deletedCount,
+    },
+  });
+
+  return {
+    message: 'All stock and inward records have been cleared successfully.',
+    stocksDeleted: stockRes.deletedCount,
+    inwardsDeleted: inwardRes.deletedCount,
+  };
+}
