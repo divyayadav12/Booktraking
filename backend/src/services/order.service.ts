@@ -62,6 +62,7 @@ export async function listOrders(params: ListOrdersParams) {
     const q = params.search.trim();
     const regex = new RegExp(q, 'i');
     query.$or = [
+      { orderCode: regex },
       { studentName: regex },
       { mobileNumber: regex },
       { email: regex },
@@ -293,6 +294,7 @@ export async function getBarcodeSheetData(params: {
   if (params.search) {
     const regex = new RegExp(params.search, 'i');
     query.$or = [
+      { orderCode: regex },
       { studentName: regex },
       { trackingId: regex },
       { productCode: regex },

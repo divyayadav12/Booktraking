@@ -363,24 +363,32 @@ export async function confirmImport(
   let createdItemsCount = 0;
   let orderCodeCounter = 1;
 
-  // Get current month/year for order code prefix e.g. ORD-2410-00001
+  // Generate order code based on upload date: DDMMYYNNN e.g. 151026001, 151026002...
   const now = new Date();
-  const yy = String(now.getFullYear()).slice(2);
+  const dd = String(now.getDate()).padStart(2, '0');
   const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const orderPrefix = `ORD-${yy}${mm}`;
+  const yy = String(now.getFullYear()).slice(-2);
+  const orderPrefix = `${dd}${mm}${yy}`; // e.g. 151026 for 15-Oct-2026
 
-  const lastOrder = await Order.findOne(
-    { orderCode: { $regex: `^${orderPrefix}-` } },
+  // Find all orders starting with today's orderPrefix to find the highest sequence number
+  const todayOrders = await Order.find(
+    { orderCode: { $regex: `^${orderPrefix}` } },
     { orderCode: 1 }
-  ).sort({ orderCode: -1 });
+  ).lean();
 
-  if (lastOrder?.orderCode) {
-    const lastNum = parseInt(lastOrder.orderCode.split('-').pop() || '0', 10);
-    orderCodeCounter = lastNum + 1;
+  let maxCounter = 0;
+  for (const o of todayOrders) {
+    if (o.orderCode) {
+      const numPart = parseInt(o.orderCode.slice(orderPrefix.length), 10);
+      if (!isNaN(numPart) && numPart > maxCounter) {
+        maxCounter = numPart;
+      }
+    }
   }
+  orderCodeCounter = maxCounter + 1;
 
   for (const orderData of orderGroups.values()) {
-    const orderCode = `${orderPrefix}-${String(orderCodeCounter).padStart(5, '0')}`;
+    const orderCode = `${orderPrefix}${String(orderCodeCounter).padStart(3, '0')}`;
     orderCodeCounter++;
 
     // Primary product code from the first item

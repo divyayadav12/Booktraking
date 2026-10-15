@@ -165,9 +165,25 @@ export const OutgoingOrdersPage: React.FC = () => {
     setScanResult({ type: null, message: '' });
 
     try {
-      // If code starts with ORD- or UNQ-, it's a new Order Code scan (do not pass active orderId)
+      // Check if code matches a book or product in the active loaded order
       const currentOrder = lastScannedOrderRef.current || lastScannedOrder;
-      const isNewOrderCode = cleanCode.startsWith('ORD-') || cleanCode.startsWith('UNQ-');
+      const cleanUpper = cleanCode.replace(/[\s\-_]/g, '').toUpperCase();
+      const isCurrentOrderBook = currentOrder && currentOrder.items?.some(
+        (i: any) => (i.bookCode && i.bookCode.replace(/[\s\-_]/g, '').toUpperCase() === cleanUpper)
+      );
+      const isCurrentOrderProduct = currentOrder && (
+        (currentOrder.productCode && currentOrder.productCode.replace(/[\s\-_]/g, '').toUpperCase() === cleanUpper) ||
+        currentOrder.items?.some((i: any) => i.productCode && i.productCode.replace(/[\s\-_]/g, '').toUpperCase() === cleanUpper)
+      );
+
+      // If code starts with ORD-, UNQ-, or is a 9+ digit date code (DDMMYYNNN), or matches an order code, it's a new Order Code scan
+      const isNewOrderCode = !isCurrentOrderBook && !isCurrentOrderProduct && (
+        cleanCode.startsWith('ORD-') ||
+        cleanCode.startsWith('UNQ-') ||
+        /^\d{6}\d{3,}$/.test(cleanCode) ||
+        orders.some(o => o.orderCode?.toUpperCase() === cleanCode)
+      );
+
       const activeOrderId = !isNewOrderCode && currentOrder?.id && currentOrder.totalPending > 0
         ? currentOrder.id
         : undefined;
@@ -438,8 +454,8 @@ export const OutgoingOrdersPage: React.FC = () => {
     const trimmed = scannerCode.trim().toUpperCase();
     if (!trimmed || isScanning) return;
 
-    // 1. Instant trigger if complete Order Code format (ORD-YYMM-NNNNN or UNQ-YYMM-NNNNN, 14 chars)
-    if (/^(ORD|UNQ)-\d{4}-\d{5}$/i.test(trimmed)) {
+    // 1. Instant trigger if complete Order Code format (ORD-YYMM-NNNNN, UNQ-YYMM-NNNNN, or 9-digit DDMMYYNNN)
+    if (/^(ORD|UNQ)-\d{4}-\d{5}$/i.test(trimmed) || /^\d{9}$/.test(trimmed)) {
       handleGlobalScan(trimmed);
       return;
     }
@@ -714,7 +730,7 @@ export const OutgoingOrdersPage: React.FC = () => {
               placeholder={
                 lastScannedOrder && lastScannedOrder.totalPending > 0
                   ? `⚡ Step 2: Now scan Product Barcode (${lastScannedOrder.productCode || 'PRD-...'}) or individual Book Barcodes...`
-                  : "⚡ Step 1: Aim scanner at Student Order Barcode (ORD-...) to load details..."
+                  : "⚡ Step 1: Aim scanner at Student Order Barcode (151026001 / ORD-...) to load details..."
               }
               className="w-full px-4 py-3.5 text-sm font-mono border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 bg-white shadow-xs font-bold"
               autoFocus
@@ -775,7 +791,7 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         {/* Hint */}
         <div className="mt-2.5 flex flex-wrap gap-4 text-xs text-blue-700 font-medium">
-          <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>Step 1</strong>: Scan <strong>ORD-YYMM-NNNNN</strong> to load order</span>
+          <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>Step 1</strong>: Scan <strong>Order Barcode (151026001 / ORD-...)</strong> to load order</span>
           <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>Step 2 (Combo)</strong>: Scan <strong>Product Barcode</strong> to tick & dispatch all books</span>
           <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Step 2 (Single)</strong>: Scan individual <strong>Book Barcodes</strong> to tick one-by-one</span>
         </div>

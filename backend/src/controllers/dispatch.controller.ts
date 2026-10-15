@@ -84,13 +84,22 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       return errorResponse(res, `Incomplete code "${scannedCode}". Please scan or enter the complete barcode.`, 'INCOMPLETE_CODE', 400);
     }
 
-    // 1. Order Unique Code Scan (starts with "ORD-" or "UNQ-")
-    // When an Order Code is scanned, we check if it was already completed (double scan prevented).
-    // If pending, we LOAD the order details for the employee to verify with physical items.
-    const isOrderCodeFormat = (scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-')) && scannedCode.length >= 10;
-    const matchedByOrderCode = isOrderCodeFormat ? await Order.findOne({ orderCode: scannedCode }) : null;
+    // Check if there is an active order loaded on screen and whether scannedCode belongs to it as a book or product
+    const activeOrderForContext = orderId ? await Order.findById(orderId) : null;
+    const isBookOrProductOfActiveOrder = activeOrderForContext ? (
+      (activeOrderForContext.productCode && activeOrderForContext.productCode.toUpperCase() === scannedCode) ||
+      activeOrderForContext.items.some((i: any) => 
+        (i.productCode && i.productCode.toUpperCase() === scannedCode) ||
+        normalizeBookCode(i.bookCode) === normalizeBookCode(scannedCode)
+      )
+    ) : false;
 
-    if (isOrderCodeFormat) {
+    // 1. Order Unique Code Scan (e.g. 151026001, ORD-2410-00001, UNQ-...)
+    // If it's not a book/product of the currently active order, check if it matches an orderCode
+    const isExplicitOrderPrefix = (scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-')) && scannedCode.length >= 10;
+    const matchedByOrderCode = !isBookOrProductOfActiveOrder ? await Order.findOne({ orderCode: scannedCode }) : null;
+
+    if (matchedByOrderCode || isExplicitOrderPrefix) {
       if (!matchedByOrderCode) {
         return errorResponse(res, `No order found with Order Unique Code "${scannedCode}". Please verify barcode.`, 'ORDER_NOT_FOUND', 404);
       }
@@ -140,7 +149,7 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
 
     // 2. Active Order Context (Order is currently loaded on screen)
     if (orderId) {
-      const activeOrder = await Order.findById(orderId);
+      const activeOrder = activeOrderForContext || await Order.findById(orderId);
       if (activeOrder) {
         const orderRemaining = activeOrder.items.reduce(
           (acc: number, i: any) => acc + Math.max(0, i.requiredQuantity - i.dispatchedQuantity),
