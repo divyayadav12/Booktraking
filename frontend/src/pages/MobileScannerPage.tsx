@@ -77,6 +77,18 @@ export const MobileScannerPage: React.FC = () => {
   const transmitCode = async (code: string) => {
     if (!code.trim() || isSubmitting) return;
     const cleanCode = code.trim().toUpperCase();
+
+    // If user scans a computer pairing QR code, switch to that station session automatically!
+    if (cleanCode.includes('SESSION=')) {
+      const match = cleanCode.match(/SESSION=(STN-[A-Z0-9]+)/i);
+      if (match && match[1]) {
+        const newStation = match[1].toUpperCase();
+        setStatusMessage(`Switching to Station: ${newStation}...`);
+        window.location.search = `?session=${newStation}`;
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {

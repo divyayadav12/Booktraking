@@ -65,7 +65,11 @@ export async function pollScans(req: Request, res: Response) {
 
     const sessionData = sessions.get(session);
     if (!sessionData || sessionData.queue.length === 0) {
-      return successResponse(res, 'No new scans', { codes: [] });
+      return successResponse(res, 'No new scans', {
+        codes: [],
+        scans: [],
+        connectedPhones: sessionData?.connectedPhones || 0,
+      });
     }
 
     // Drain and return all queued codes
@@ -73,7 +77,11 @@ export async function pollScans(req: Request, res: Response) {
     sessionData.queue = [];
     sessionData.lastActivity = Date.now();
 
-    return successResponse(res, `Retrieved ${codes.length} scan(s)`, { codes });
+    return successResponse(res, `Retrieved ${codes.length} scan(s)`, {
+      codes,
+      scans: codes,
+      connectedPhones: sessionData.connectedPhones,
+    });
   } catch (error: any) {
     return errorResponse(res, error.message || 'Failed to poll scans', 'POLL_ERROR', 500);
   }

@@ -270,11 +270,13 @@ export const OutgoingOrdersPage: React.FC = () => {
       try {
         const res = await api.get(`/scanner-sync/poll?session=${stationSessionId}`);
         if (isMounted && res.data && res.data.success) {
-          if (typeof res.data.connectedPhones === 'number') {
-            setConnectedPhonesCount(res.data.connectedPhones);
+          const payload = res.data.data || res.data;
+          if (typeof payload.connectedPhones === 'number') {
+            setConnectedPhonesCount(payload.connectedPhones);
           }
-          const scans: string[] = res.data.scans || [];
+          const scans: string[] = payload.scans || payload.codes || [];
           for (const code of scans) {
+            setScannerCode(code);
             handleGlobalScan(code);
           }
         }
@@ -627,7 +629,7 @@ export const OutgoingOrdersPage: React.FC = () => {
               title="Connect Mobile Phone Camera as Barcode Scanner"
             >
               <Smartphone size={14} />
-              <span>📱 Connect Mobile Camera</span>
+              <span>📱 Connect Mobile Camera ({stationSessionId})</span>
               {connectedPhonesCount > 0 && (
                 <span className="ml-1 bg-emerald-400 text-slate-900 text-[10px] font-black px-1.5 py-0.5 rounded-full">
                   {connectedPhonesCount} Connected
