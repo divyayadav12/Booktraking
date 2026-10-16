@@ -42,7 +42,6 @@ const StockInwardSchema = new Schema<IStockInward>(
     quantity: {
       type: Number,
       required: true,
-      min: 1,
     },
     supplier: {
       type: String,
