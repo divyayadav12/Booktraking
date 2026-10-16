@@ -39,6 +39,8 @@ export const ExcelUploadPage: React.FC = () => {
   const [previewData, setPreviewData] = useState<{
     fileHash: string;
     originalFileName: string;
+    availableSheets?: string[];
+    selectedSheetName?: string;
     totalRows: number;
     validRowsCount: number;
     invalidRowsCount: number;
@@ -66,7 +68,7 @@ export const ExcelUploadPage: React.FC = () => {
     }
   };
 
-  const handleParseAndPreview = async () => {
+  const handleParseAndPreview = async (sheetName?: string) => {
     if (!file) {
       toastError('Please choose an Excel (.xlsx, .xls) or CSV file first.');
       return;
@@ -77,14 +79,15 @@ export const ExcelUploadPage: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const res = await api.post('/imports/preview', formData, {
+      const url = sheetName ? `/imports/preview?sheetName=${encodeURIComponent(sheetName)}` : '/imports/preview';
+      const res = await api.post(url, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (res.data.success) {
         setPreviewData(res.data.data);
         setCurrentStep(2);
-        toastSuccess('Excel file parsed and validated successfully.');
+        toastSuccess(`Excel sheet loaded: "${res.data.data.selectedSheetName || 'Active Sheet'}"`);
         if (res.data.data.isDuplicateFile) {
           toastWarning('Notice: A file with this exact content was previously uploaded.');
         }
@@ -95,6 +98,10 @@ export const ExcelUploadPage: React.FC = () => {
     } finally {
       setIsParsing(false);
     }
+  };
+
+  const handleSheetChange = (newSheet: string) => {
+    handleParseAndPreview(newSheet);
   };
 
   const handleDownloadInvalidRows = async () => {
@@ -371,7 +378,7 @@ export const ExcelUploadPage: React.FC = () => {
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 variant="primary"
-                onClick={handleParseAndPreview}
+                onClick={() => handleParseAndPreview()}
                 disabled={!file}
                 isLoading={isParsing}
                 icon={<ArrowRight className="w-4 h-4" />}
@@ -398,6 +405,39 @@ export const ExcelUploadPage: React.FC = () => {
                   <strong>{new Date(previewData.previousBatch.uploadedAt).toLocaleString()}</strong>.
                   Importing will create new orders. Existing dispatches will NEVER be overwritten.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Multi-Tab Selector Banner */}
+          {previewData.availableSheets && previewData.availableSheets.length > 1 && (
+            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <FileSpreadsheet className="w-5 h-5 text-blue-600 shrink-0" />
+                <div>
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-blue-800">
+                    Multiple Tabs Detected in Excel File
+                  </h4>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Aapki file me <strong>{previewData.availableSheets.length} sheets/tabs</strong> hain. System ne automatically sabse latest tab select ki hai.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-blue-900 whitespace-nowrap">Active Tab:</span>
+                <select
+                  value={previewData.selectedSheetName || ''}
+                  onChange={(e) => handleSheetChange(e.target.value)}
+                  disabled={isParsing}
+                  className="bg-white border border-blue-300 text-blue-900 font-bold text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-xs cursor-pointer"
+                >
+                  {previewData.availableSheets.map((sName, sIdx) => (
+                    <option key={sName} value={sName}>
+                      {sName} {sIdx === previewData.availableSheets!.length - 1 ? '🌟 (Latest / Aaj ki sheet)' : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           )}

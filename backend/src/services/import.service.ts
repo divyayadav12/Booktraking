@@ -22,6 +22,8 @@ export interface ParsedRowData {
 export interface ImportPreviewResult {
   fileHash: string;
   originalFileName: string;
+  availableSheets?: string[];
+  selectedSheetName?: string;
   totalRows: number;
   validRowsCount: number;
   invalidRowsCount: number;
@@ -95,7 +97,8 @@ export function deriveBookCodeFromTitle(title: string): string {
 
 export async function parseAndPreviewExcel(
   buffer: Buffer,
-  originalFileName: string
+  originalFileName: string,
+  targetSheetName?: string
 ): Promise<ImportPreviewResult> {
   const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
@@ -121,9 +124,19 @@ export async function parseAndPreviewExcel(
     await workbook.xlsx.load(buffer as any);
   }
 
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) {
+  if (!workbook.worksheets || workbook.worksheets.length === 0) {
     throw { statusCode: 400, message: 'Uploaded file contains no worksheets', code: 'EMPTY_FILE' };
+  }
+
+  const availableSheets = workbook.worksheets.map((w) => w.name);
+
+  // Pick target worksheet:
+  // 1. If targetSheetName is provided, use that
+  // 2. Otherwise default to the LAST worksheet (which in multi-tab dispatch workbooks is the latest day, e.g. "15-10")
+  let worksheet = workbook.worksheets[workbook.worksheets.length - 1];
+  if (targetSheetName) {
+    const found = workbook.getWorksheet(targetSheetName);
+    if (found) worksheet = found;
   }
 
   // 1. Scan rows 1 through 15 to find the true header row
@@ -442,6 +455,8 @@ export async function parseAndPreviewExcel(
   return {
     fileHash,
     originalFileName,
+    availableSheets,
+    selectedSheetName: worksheet.name,
     totalRows: validRows.length + invalidRows.length,
     validRowsCount: validRows.length,
     invalidRowsCount: invalidRows.length,

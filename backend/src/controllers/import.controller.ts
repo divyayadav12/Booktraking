@@ -11,8 +11,9 @@ export async function previewImport(req: AuthenticatedRequest, res: Response, ne
 
     const originalFileName = req.file.originalname;
     const buffer = req.file.buffer;
+    const targetSheetName = (req.query.sheetName as string) || (req.body.sheetName as string);
 
-    const result = await importService.parseAndPreviewExcel(buffer, originalFileName);
+    const result = await importService.parseAndPreviewExcel(buffer, originalFileName, targetSheetName);
     return successResponse(res, 'File parsed and validated successfully', result);
   } catch (error) {
     next(error);
