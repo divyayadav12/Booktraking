@@ -35,6 +35,7 @@ export const AvailableStockPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>('ALL');
   const [sortBy, setSortBy] = useState<string>('availableQuantity');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [limit, setLimit] = useState<number>(50);
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [summary, setSummary] = useState<any>({
@@ -58,7 +59,7 @@ export const AvailableStockPage: React.FC = () => {
     try {
       const params = new URLSearchParams();
       params.append('page', targetPage.toString());
-      params.append('limit', '25');
+      params.append('limit', limit.toString());
       if (search.trim()) params.append('search', search.trim());
       if (statusFilter !== 'ALL') params.append('status', statusFilter);
       params.append('sortBy', sortBy);
@@ -81,7 +82,7 @@ export const AvailableStockPage: React.FC = () => {
 
   useEffect(() => {
     fetchStock(1);
-  }, [statusFilter, sortBy, sortOrder]);
+  }, [statusFilter, sortBy, sortOrder, limit]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,6 +335,16 @@ export const AvailableStockPage: React.FC = () => {
               <option value="bookName-asc">Book Name (A to Z)</option>
               <option value="lastRestockedAt-desc">Recently Restocked</option>
             </select>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Items per page"
+            >
+              <option value="25">25 / page</option>
+              <option value="50">50 / page</option>
+              <option value="100">100 / page</option>
+            </select>
             <button
               onClick={() => fetchStock(page)}
               className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 cursor-pointer"
@@ -426,7 +437,7 @@ export const AvailableStockPage: React.FC = () => {
                       }`}
                     >
                       <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">
-                        {(page - 1) * 25 + idx + 1}
+                        {(page - 1) * limit + idx + 1}
                       </td>
                       <td className="py-3 px-3">
                         <span className="font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200 text-xs">
