@@ -20,6 +20,7 @@ import {
   Check,
   PackageOpen,
   ArrowRightCircle,
+  Trash2,
 } from 'lucide-react';
 import { Order } from '../../types';
 import { DispatchBoxModal } from '../../components/dispatch/DispatchBoxModal';
@@ -170,6 +171,21 @@ export const ExcelUploadPage: React.FC = () => {
     }
   };
 
+  const handleClearAllOrders = async () => {
+    if (!window.confirm('⚠️ KYA AAP SURE HAIN? Yeh sabhi uploaded Dispatch Orders ko delete kar dega taaki aap fresh Excel upload kar sakein!')) {
+      return;
+    }
+    try {
+      const res = await api.post('/orders/clear-all');
+      if (res.data.success) {
+        toastSuccess('Sabhi purane dispatch orders successfully delete ho gaye hain! Ab aap nayi sheet upload kar sakti hain.');
+        resetWizard();
+      }
+    } catch (err: any) {
+      toastError(err.response?.data?.message || 'Orders delete karne me error aaya');
+    }
+  };
+
   const resetWizard = () => {
     setFile(null);
     setPreviewData(null);
@@ -181,11 +197,23 @@ export const ExcelUploadPage: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Wizard Header Stepper */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Excel Import Wizard</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Step-by-step validation, preview, duplicate detection, and transactional database import
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Excel Import Wizard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Step-by-step validation, preview, duplicate detection, and transactional database import
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleClearAllOrders}
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer self-start sm:self-auto"
+          title="Delete previous orders to re-upload clean sheet"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>Clear Previous Orders (गलत शीट डिलीट करें)</span>
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-sm flex items-center justify-between text-xs sm:text-sm font-medium text-slate-500">

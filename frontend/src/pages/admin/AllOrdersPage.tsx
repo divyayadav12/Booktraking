@@ -9,9 +9,11 @@ import { Pagination } from '../../components/common/Pagination';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/common/Button';
 import { DateFilterSelect } from '../../components/common/DateFilterSelect';
-import { Search, Eye, Filter, Download } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { Search, Eye, Filter, Download, Trash2 } from 'lucide-react';
 
 export const AllOrdersPage: React.FC = () => {
+  const { success, error } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +49,21 @@ export const AllOrdersPage: React.FC = () => {
     }
   };
 
+  const handleClearAllOrders = async () => {
+    if (!window.confirm('⚠️ KYA AAP SURE HAIN? Yeh sabhi uploaded Dispatch Orders aur unki history delete kar dega taaki aap fresh Excel upload kar sakein!')) {
+      return;
+    }
+    try {
+      const res = await api.post('/orders/clear-all');
+      if (res.data.success) {
+        success('Sabhi dispatch orders successfully delete ho gaye hain!');
+        fetchOrders(1);
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Orders delete karne me error aaya');
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchOrders(1);
@@ -62,11 +79,22 @@ export const AllOrdersPage: React.FC = () => {
           <p className="text-sm text-slate-500 mt-0.5">Comprehensive view of all imported orders and book fulfillment statuses</p>
         </div>
 
-        <Link to="/admin/reports">
-          <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
-            Export Orders Report
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleClearAllOrders}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            title="Delete all uploaded orders and history"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear All Orders (डिलीट करें)</span>
+          </button>
+
+          <Link to="/admin/reports">
+            <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
+              Export Orders Report
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
