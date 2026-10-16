@@ -604,3 +604,100 @@ export async function clearAllStock(userId: string) {
     inwardsDeleted: inwardRes.deletedCount,
   };
 }
+
+export interface AdjustStockInput {
+  bookCode: string;
+  bookName?: string;
+  mode: 'SET' | 'ADD' | 'REDUCE';
+  quantity: number;
+  reason?: string;
+  lowStockThreshold?: number;
+}
+
+/**
+ * Update, increase, or reduce stock for a book
+ */
+export async function adjustStock(userId: string, input: AdjustStockInput) {
+  const cleanCode = normalizeCode(input.bookCode);
+  const stock = await BookStock.findOne({ bookCode: cleanCode });
+  if (!stock) {
+    throw { statusCode: 404, message: `Book with code "${cleanCode}" not found in stock master`, code: 'BOOK_NOT_FOUND' };
+  }
+
+  const oldAvailable = stock.availableQuantity;
+  let newAvailable = oldAvailable;
+  const qty = Math.max(0, Math.floor(input.quantity ?? 0));
+
+  if (input.mode === 'SET') {
+    newAvailable = qty;
+  } else if (input.mode === 'ADD') {
+    newAvailable = oldAvailable + qty;
+  } else if (input.mode === 'REDUCE') {
+    if (qty > oldAvailable) {
+      throw { statusCode: 400, message: `Cannot reduce ${qty} copies: only ${oldAvailable} available in warehouse!`, code: 'INSUFFICIENT_STOCK' };
+    }
+    newAvailable = oldAvailable - qty;
+  } else {
+    throw { statusCode: 400, message: 'Invalid mode. Mode must be SET, ADD, or REDUCE', code: 'INVALID_MODE' };
+  }
+
+  const diff = newAvailable - oldAvailable;
+
+  stock.availableQuantity = newAvailable;
+  stock.totalInward = Math.max(0, stock.totalDispatched + newAvailable);
+  if (input.bookName && input.bookName.trim()) {
+    stock.bookName = input.bookName.trim();
+  }
+  if (input.lowStockThreshold && input.lowStockThreshold >= 1) {
+    stock.lowStockThreshold = input.lowStockThreshold;
+  }
+  stock.lastRestockedAt = new Date();
+  await stock.save();
+
+  // Log in StockInward for record keeping
+  const now = new Date();
+  const entryDate = now.toISOString().slice(0, 10);
+  const entryTime = now.toLocaleTimeString('en-IN', { hour12: false });
+
+  await StockInward.create({
+    bookCode: cleanCode,
+    bookName: stock.bookName,
+    quantity: diff !== 0 ? diff : 0,
+    supplier: diff < 0 ? 'Stock Reduction (स्टॉक कटौती)' : 'Stock Adjustment (स्टॉक समायोजन)',
+    remarks: input.reason || (input.mode === 'REDUCE' ? `Reduced by ${qty} copies` : input.mode === 'SET' ? `Stock set directly to ${newAvailable}` : `Added ${qty} copies`),
+    entryDate: now,
+    entryTime,
+    enteredByUserId: new mongoose.Types.ObjectId(userId),
+    source: 'MANUAL',
+  });
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'STOCK_ADJUSTED',
+    entityType: 'BookStock',
+    entityId: stock._id.toString(),
+    metadata: {
+      bookCode: cleanCode,
+      mode: input.mode,
+      oldQuantity: oldAvailable,
+      newQuantity: newAvailable,
+      diff,
+      reason: input.reason,
+    },
+  });
+
+  return {
+    message: `Stock for "${stock.bookName}" (${cleanCode}) updated successfully from ${oldAvailable} to ${newAvailable} copies.`,
+    book: {
+      id: stock._id.toString(),
+      bookCode: stock.bookCode,
+      bookName: stock.bookName,
+      availableQuantity: stock.availableQuantity,
+      totalInward: stock.totalInward,
+      totalDispatched: stock.totalDispatched,
+      lowStockThreshold: stock.lowStockThreshold,
+      stockStatus: stock.availableQuantity === 0 ? 'OUT_OF_STOCK' : stock.availableQuantity <= stock.lowStockThreshold ? 'LOW_STOCK' : 'IN_STOCK',
+      lastRestockedAt: stock.lastRestockedAt,
+    },
+  };
+}

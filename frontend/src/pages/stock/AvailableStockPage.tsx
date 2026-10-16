@@ -12,6 +12,9 @@ import {
   Download,
   RefreshCw,
   PlusCircle,
+  MinusCircle,
+  Sliders,
+  Edit3,
   AlertTriangle,
   XCircle,
   CheckCircle2,
@@ -53,6 +56,13 @@ export const AvailableStockPage: React.FC = () => {
   const [quickQty, setQuickQty] = useState<string>('50');
   const [quickSupplier, setQuickSupplier] = useState<string>('');
   const [isQuickSubmitting, setIsQuickSubmitting] = useState<boolean>(false);
+
+  // Stock Adjustment Modal (Set / Add / Reduce)
+  const [adjustModalBook, setAdjustModalBook] = useState<any>(null);
+  const [adjustMode, setAdjustMode] = useState<'SET' | 'ADD' | 'REDUCE'>('SET');
+  const [adjustQty, setAdjustQty] = useState<string>('0');
+  const [adjustReason, setAdjustReason] = useState<string>('');
+  const [isAdjusting, setIsAdjusting] = useState<boolean>(false);
 
   const fetchStock = async (targetPage = 1) => {
     setIsLoading(true);
@@ -121,6 +131,62 @@ export const AvailableStockPage: React.FC = () => {
       error(err.response?.data?.message || 'Stock update failed');
     } finally {
       setIsQuickSubmitting(false);
+    }
+  };
+
+  // Open Stock Adjustment Modal
+  const openAdjustModal = (book: any, defaultMode: 'SET' | 'ADD' | 'REDUCE' = 'SET') => {
+    setAdjustModalBook(book);
+    setAdjustMode(defaultMode);
+    setAdjustQty(defaultMode === 'SET' ? String(book.availableQuantity || 0) : '10');
+    setAdjustReason('');
+  };
+
+  // Submit Stock Adjustment (SET / ADD / REDUCE)
+  const handleAdjustSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustModalBook) return;
+
+    const qty = parseInt(adjustQty, 10);
+    if (isNaN(qty) || qty < 0) {
+      error('Kripya valid quantity darj karein');
+      return;
+    }
+
+    if (adjustMode === 'REDUCE') {
+      if (qty <= 0) {
+        error('Kam karne ke liye quantity 1 ya usse jyada honi chahiye');
+        return;
+      }
+      if (qty > adjustModalBook.availableQuantity) {
+        error(`Stock me keval ${adjustModalBook.availableQuantity} copies uplabdh hain. Isse jyada kam nahi kar sakte.`);
+        return;
+      }
+    }
+
+    if (adjustMode === 'ADD' && qty <= 0) {
+      error('Jodne ke liye quantity 1 ya usse jyada honi chahiye');
+      return;
+    }
+
+    setIsAdjusting(true);
+    try {
+      const res = await api.post('/stock/adjust', {
+        bookCode: adjustModalBook.bookCode,
+        mode: adjustMode,
+        quantity: qty,
+        reason: adjustReason.trim() || undefined,
+      });
+
+      if (res.data.success) {
+        success(res.data.message || 'Stock successfully update ho gaya!');
+        setAdjustModalBook(null);
+        fetchStock(page);
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Stock adjust karne me samasya aayi');
+    } finally {
+      setIsAdjusting(false);
     }
   };
 
@@ -503,14 +569,24 @@ export const AvailableStockPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3 px-3 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => setQuickRestockBook(b)}
-                          className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded border border-emerald-200 transition-colors cursor-pointer"
-                          title="Quick Inward stock for this book"
-                        >
-                          <PlusCircle size={13} />
-                          <span>+ Add Stock</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openAdjustModal(b, 'SET')}
+                            className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded border border-indigo-200 transition-colors cursor-pointer"
+                            title="Stock update / kam-jyada karein (Set exact, Reduce or Add)"
+                          >
+                            <Sliders size={13} />
+                            <span>Update / कम-ज्यादा</span>
+                          </button>
+                          <button
+                            onClick={() => setQuickRestockBook(b)}
+                            className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded border border-emerald-200 transition-colors cursor-pointer"
+                            title="Quick Inward stock for this book"
+                          >
+                            <PlusCircle size={13} />
+                            <span>+ Add</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -634,6 +710,290 @@ export const AvailableStockPage: React.FC = () => {
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                 >
                   {isQuickSubmitting ? <LoadingSpinner /> : 'Confirm & Add Stock'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Comprehensive Stock Adjustment Modal (Set / Reduce / Add) ────────── */}
+      {adjustModalBook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Sliders size={18} className="text-indigo-600" />
+                  <span>Stock Adjustment (स्टॉक कम या ज्यादा करें)</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live warehouse count update, reduction (kam karna) ya direct set karein
+                </p>
+              </div>
+              <button
+                onClick={() => setAdjustModalBook(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current Book Info Card */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Book Code / Barcode:</span>
+                <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  {adjustModalBook.bookCode}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Book Name:</span>
+                <span className="font-bold text-slate-800 text-right max-w-[280px] truncate" title={adjustModalBook.bookName}>
+                  {adjustModalBook.bookName}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                <span className="text-slate-600 font-bold">Current Live Stock:</span>
+                <span className="text-base font-black text-slate-900">
+                  {adjustModalBook.availableQuantity || 0} <span className="text-xs font-normal text-slate-500">copies</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Mode Selector Tabs */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setAdjustMode('SET');
+                  setAdjustQty(String(adjustModalBook.availableQuantity || 0));
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                  adjustMode === 'SET'
+                    ? 'bg-white text-indigo-700 shadow-xs border border-indigo-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <Edit3 size={13} />
+                  <span>Set Exact Total</span>
+                </div>
+                <span className="text-[10px] font-normal text-slate-400">सीधा नया स्टॉक</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAdjustMode('REDUCE');
+                  setAdjustQty('5');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                  adjustMode === 'REDUCE'
+                    ? 'bg-white text-rose-700 shadow-xs border border-rose-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <MinusCircle size={13} />
+                  <span>Reduce (कम करें)</span>
+                </div>
+                <span className="text-[10px] font-normal text-slate-400">खराब / डैमेज / वापसी</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAdjustMode('ADD');
+                  setAdjustQty('20');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                  adjustMode === 'ADD'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <PlusCircle size={13} />
+                  <span>Add (बढ़ाएं)</span>
+                </div>
+                <span className="text-[10px] font-normal text-slate-400">नया स्टॉक आया</span>
+              </button>
+            </div>
+
+            {/* Adjustment Form */}
+            <form onSubmit={handleAdjustSubmit} className="space-y-4">
+              {/* Input Field */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {adjustMode === 'SET' && 'New Total Available Stock (नया कुल स्टॉक कितना है?) *'}
+                  {adjustMode === 'REDUCE' && 'Quantity to Reduce (कितनी किताबें घटानी/कम करनी हैं?) *'}
+                  {adjustMode === 'ADD' && 'Quantity to Add (कितनी किताबें जोड़नी हैं?) *'}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={adjustMode === 'REDUCE' ? adjustModalBook.availableQuantity : undefined}
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  className={`w-full px-3 py-2 border-2 rounded-lg text-base font-black focus:outline-none focus:ring-2 ${
+                    adjustMode === 'REDUCE'
+                      ? 'border-rose-300 text-rose-800 focus:ring-rose-500'
+                      : adjustMode === 'ADD'
+                      ? 'border-emerald-300 text-emerald-800 focus:ring-emerald-500'
+                      : 'border-indigo-300 text-indigo-800 focus:ring-indigo-500'
+                  }`}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {/* Quick Preset Pills */}
+              <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                <span className="text-[11px] text-slate-400 font-medium">Quick values:</span>
+                {adjustMode === 'SET' && (
+                  [0, 10, 25, 50, 100, 200].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setAdjustQty(n.toString())}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 rounded font-semibold text-[11px] cursor-pointer"
+                    >
+                      {n}
+                    </button>
+                  ))
+                )}
+                {adjustMode === 'REDUCE' && (
+                  [1, 2, 5, 10, 20, 50].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setAdjustQty(n.toString())}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-800 rounded font-semibold text-[11px] cursor-pointer"
+                    >
+                      -{n}
+                    </button>
+                  ))
+                )}
+                {adjustMode === 'ADD' && (
+                  [10, 20, 50, 100, 200, 500].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setAdjustQty(n.toString())}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 rounded font-semibold text-[11px] cursor-pointer"
+                    >
+                      +{n}
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Result Preview Box */}
+              {(() => {
+                const parsed = parseInt(adjustQty, 10);
+                const current = adjustModalBook.availableQuantity || 0;
+                let resulting = current;
+                let isInvalid = false;
+
+                if (!isNaN(parsed) && parsed >= 0) {
+                  if (adjustMode === 'SET') {
+                    resulting = parsed;
+                  } else if (adjustMode === 'REDUCE') {
+                    resulting = current - parsed;
+                    if (parsed > current) isInvalid = true;
+                  } else if (adjustMode === 'ADD') {
+                    resulting = current + parsed;
+                  }
+                }
+
+                return (
+                  <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                    isInvalid
+                      ? 'bg-rose-50 border-rose-300 text-rose-800'
+                      : 'bg-indigo-50/60 border-indigo-200 text-indigo-900'
+                  }`}>
+                    <div>
+                      <p className="font-semibold">
+                        {isInvalid ? '⚠️ Invalid Quantity!' : 'Resulting Live Stock Preview:'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {isInvalid
+                          ? `Aapke paas keval ${current} copies hain. ${parsed} kam nahi kar sakte.`
+                          : `Pehle: ${current} copies ➔ Update ke baad: ${resulting} copies`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xl font-black ${
+                        isInvalid
+                          ? 'text-rose-600'
+                          : resulting === 0
+                          ? 'text-rose-600'
+                          : resulting <= 10
+                          ? 'text-amber-600'
+                          : 'text-emerald-700'
+                      }`}>
+                        {isInvalid ? 'ERR' : resulting}
+                      </span>
+                      <span className="block text-[10px] text-slate-400">Final Stock</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Reason / Remarks */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Reason / Notes (कारण - ऐच्छिक)
+                </label>
+                <input
+                  type="text"
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder={
+                    adjustMode === 'REDUCE'
+                      ? 'e.g. Damaged copies, water damage, sample distributed'
+                      : adjustMode === 'SET'
+                      ? 'e.g. Monthly physical audit count adjustment'
+                      : 'e.g. Returned books added, extra stock found'
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setAdjustModalBook(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    isAdjusting ||
+                    (adjustMode === 'REDUCE' && parseInt(adjustQty, 10) > (adjustModalBook.availableQuantity || 0))
+                  }
+                  className={`text-white font-bold cursor-pointer ${
+                    adjustMode === 'REDUCE'
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : adjustMode === 'ADD'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                >
+                  {isAdjusting ? (
+                    <LoadingSpinner />
+                  ) : adjustMode === 'REDUCE' ? (
+                    `Confirm & Reduce (-${adjustQty || 0})`
+                  ) : adjustMode === 'ADD' ? (
+                    `Confirm & Add (+${adjustQty || 0})`
+                  ) : (
+                    'Confirm & Set New Stock'
+                  )}
                 </Button>
               </div>
             </form>

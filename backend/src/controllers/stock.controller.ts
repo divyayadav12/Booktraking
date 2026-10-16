@@ -130,3 +130,13 @@ export async function clearAllStock(req: AuthenticatedRequest, res: Response, ne
     next(error);
   }
 }
+
+export async function adjustStock(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.adjustStock(req.user!.id, req.body);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}
+

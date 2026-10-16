@@ -25,6 +25,8 @@ router.get('/inward', requireRole('ADMIN', 'EMPLOYEE'), stockController.getInwar
 router.post('/inward', requireRole('ADMIN', 'EMPLOYEE'), stockController.addInwardEntry);
 router.post('/inward/bulk', requireRole('ADMIN', 'EMPLOYEE'), upload.single('file'), stockController.bulkInwardExcel);
 router.delete('/inward/:id', requireRole('ADMIN', 'EMPLOYEE'), stockController.deleteInwardEntry);
+router.post('/adjust', requireRole('ADMIN', 'EMPLOYEE'), stockController.adjustStock);
+router.put('/adjust', requireRole('ADMIN', 'EMPLOYEE'), stockController.adjustStock);
 router.get('/search-catalog', requireRole('ADMIN', 'EMPLOYEE'), stockController.searchBookCatalog);
 router.get('/export/available', requireRole('ADMIN', 'EMPLOYEE'), stockController.exportStockExcel);
 router.get('/export/inward', requireRole('ADMIN', 'EMPLOYEE'), stockController.exportInwardExcel);
