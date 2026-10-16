@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import ExcelJS from 'exceljs';
 import mongoose from 'mongoose';
-import { ImportBatch, Order } from '../models';
+import { ImportBatch, Order, BookStock } from '../models';
 import { normalizeBookCode, normalizeTrackingId, normalizeMobileNumber, normalizeEmail } from '../utils/normalize';
 import { logAudit } from '../utils/audit';
 
@@ -35,6 +35,54 @@ export interface ImportPreviewResult {
   invalidRows: ParsedRowData[];
 }
 
+export const knownBookTitles: Record<string, string> = {
+  'AFON-002': 'AFM Outnotes Nov 26 Combined',
+  'AFOS1-002': 'AFM OutScanner Nov26 Part 1',
+  'AFOS2-002': 'AFM OutScanner Nov26 Part 2',
+  'AFON-001': 'AFM Outnotes Concept Book',
+  'AFOS1-001': 'AFM Outscanner Vol 1',
+  'AFOS2-001': 'AFM Outscanner Vol 2',
+  'FIDTHW-009': 'IDT Handwritten 9.0',
+  'FIDTQB-009': 'IDT Question Bank 9.0',
+  'FIDTQB-09': 'IDT Question Bank 9.0',
+  'IAEBR-001': 'Inter Audit Brahmastra',
+  'IAEQB-001': 'Inter Audit QB',
+  'IAEDC-001': 'Inter audit DC',
+  'ICHW-005': 'CA Inter Cost Handwritten V5',
+  'ICQB-005': 'CA Inter Cost Question Bank V5 combined',
+  'ICMCQ-005': 'CA Inter Cost Theory + MCQ',
+  'IFMHW-005': 'CA Inter FM Handwritten V5',
+  'IFMQB-005': 'CA Inter FM QB + MCQ V5',
+  'ISMHW-005': 'CA Inter SM Concept Notes',
+  'ISMQB-005': 'CA Inter SM QB',
+  'AQB-001': 'Audit QB Jan26',
+  'AMCQ-001': 'Audit MCQ',
+  'AQB-002': 'Audit QB Nov26',
+  'ACR-001': 'Audit crush Full Book',
+  'ADC-001': 'Audit Drone Charts Full (270 Pg)',
+  'IFMHW-002': 'CA Inter FM Handwritten Notes',
+  'IFMQB-002': 'CA Inter FM QB Book',
+  'ISMHW-002': 'CA Inter SM Handwritten Notes',
+  'ISMQB-002': 'CA Inter SM QB Book',
+  'DTSM-001': 'DT Study Material',
+  'DTQB-001': 'DT Question Bank / ITT',
+  'FRSV1-001': 'FR Solver Vol 1',
+  'FRSV2-001': 'FR Solver Vol 2',
+  'FRSS-001': 'FR Sure Shot Notes',
+  'FRBR1-001': 'FR Brahmastra Vol 1',
+  'FRBR2-001': 'FR Brahmastra Vol 2',
+  'FRST1-001': 'Striker Vol 1',
+  'FRST2-001': 'Striker Vol 2',
+  'FRA-001': 'FR Aimer',
+  'IGSHW-008': 'Inter IDT Handwritten Book 8.0',
+  'IGSQB-008': 'Inter IDT QB Book 8.0',
+  'IGSHW-001': 'Inter IDT Handwritten Book 8.0',
+  'IGSQB-001': 'Inter IDT QB Book 8.0',
+  'ICHW-002': 'CA Inter Cost Handwritten V2',
+  'ICQB-002': 'CA Inter Cost QB V2',
+  'ICMCQ-002': 'CA Inter Cost MCQ V2'
+};
+
 export function deriveBookCodeFromTitle(title: string): string {
   if (!title) return 'BK101';
   const clean = title.replace(/[^a-zA-Z0-9\s.-]/g, '').trim();
@@ -52,9 +100,16 @@ export async function parseAndPreviewExcel(
   const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
   // Check if this exact file hash was already uploaded
-  const existingBatch = await ImportBatch.findOne({ fileHash, status: 'COMPLETED' })
-    .select('_id uploadedAt importedRows')
-    .sort({ uploadedAt: -1 });
+  let existingBatch: any = null;
+  if (mongoose.connection.readyState === 1) {
+    try {
+      existingBatch = await ImportBatch.findOne({ fileHash, status: 'COMPLETED' })
+        .select('_id uploadedAt importedRows')
+        .sort({ uploadedAt: -1 });
+    } catch (e) {
+      // Graceful fallback
+    }
+  }
 
   const workbook = new ExcelJS.Workbook();
   if (originalFileName.toLowerCase().endsWith('.csv')) {
@@ -71,129 +126,229 @@ export async function parseAndPreviewExcel(
     throw { statusCode: 400, message: 'Uploaded file contains no worksheets', code: 'EMPTY_FILE' };
   }
 
-  // Header row mappings
-  const headerRow = worksheet.getRow(1);
+  // 1. Scan rows 1 through 15 to find the true header row
+  let headerRowIndex = 1;
+  let headerRow = worksheet.getRow(1);
   const columnMap: Record<string, number> = {};
 
+  for (let r = 1; r <= Math.min(15, worksheet.rowCount); r++) {
+    const row = worksheet.getRow(r);
+    let hasName = false;
+    let hasOther = false;
+    row.eachCell((cell) => {
+      const v = String(cell.value || '').trim().toLowerCase();
+      if (v === 'name' || v === 'student' || v === 'student name' || v === 'student_name') {
+        hasName = true;
+      }
+      if (
+        v.includes('course') ||
+        v.includes('p_code') ||
+        v.includes('pcode') ||
+        v.includes('p_books') ||
+        v.includes('pbooks') ||
+        v.includes('product') ||
+        v.includes('book') ||
+        v.includes('mobile') ||
+        v.includes('phone') ||
+        v.includes('tracking') ||
+        v.includes('awb')
+      ) {
+        hasOther = true;
+      }
+    });
+    if (hasName && hasOther) {
+      headerRowIndex = r;
+      headerRow = row;
+      break;
+    }
+  }
+
+  // Map header columns
   headerRow.eachCell((cell, colNumber) => {
     const val = String(cell.value || '').trim().toLowerCase();
-    
-    // Student Name: matches student name, customer name, or simple "name"
-    if ((val.includes('student') || val.includes('customer') || val.includes('client')) && val.includes('name')) {
+
+    // Student Name (avoid course name or product name)
+    if (
+      val === 'name' ||
+      val === 'student' ||
+      val === 'student_name' ||
+      val === 'student name' ||
+      val === 'customer_name' ||
+      val === 'customer name'
+    ) {
       columnMap['studentName'] = colNumber;
-    } else if (val === 'name' || val === 'student' || val === 'student_name' || val === 'customer_name') {
+    } else if (
+      (val.includes('student') || val.includes('customer') || val.includes('client')) &&
+      val.includes('name')
+    ) {
       columnMap['studentName'] = colNumber;
     }
-    // Mobile Number: matches mobile, phone, contact, tel
+    // Mobile Number
     else if (val.includes('mobile') || val.includes('phone') || val.includes('contact') || val === 'tel') {
       columnMap['mobileNumber'] = colNumber;
     }
-    // Email: matches email, mail
+    // Email
     else if (val.includes('email') || val.includes('mail')) {
       columnMap['email'] = colNumber;
     }
-    // Tracking ID: matches tracking, awb, docket, waybill, consignment
+    // Tracking ID / AWB / Barcode
     else if (
       val.includes('tracking') ||
       val.includes('awb') ||
       val.includes('docket') ||
       val.includes('waybill') ||
-      val.includes('consignment')
+      val.includes('consignment') ||
+      val.includes('barcode')
     ) {
       columnMap['trackingId'] = colNumber;
     }
-    // Product Code: matches product code, prd code, item code, combo code
-    else if ((val.includes('product') || val.includes('prd') || val.includes('combo') || val.includes('pkg')) && val.includes('code')) {
-      columnMap['productCode'] = colNumber;
-    } else if (val === 'product_code' || val === 'prd_code' || val === 'prod_code') {
+    // Product Code: p_code, pcode, product code, prd code, item code, combo code
+    else if (
+      val.includes('p_code') ||
+      val.includes('pcode') ||
+      val === 'p code' ||
+      ((val.includes('product') || val.includes('prd') || val.includes('combo') || val.includes('pkg')) && val.includes('code'))
+    ) {
       columnMap['productCode'] = colNumber;
     }
-    // Product Name: matches product name, package name, combo name
-    else if ((val.includes('product') || val.includes('package') || val.includes('combo')) && val.includes('name')) {
+    // Product Name / Course: course, course name, product name, package, combo
+    else if (
+      val.includes('course') ||
+      ((val.includes('product') || val.includes('package') || val.includes('combo')) && val.includes('name'))
+    ) {
       columnMap['productName'] = colNumber;
     }
-    // Book Code: matches book code, item code, sku, isbn, code
-    else if (val.includes('book') && val.includes('code')) {
+    // p_Books / Books / Book Code
+    else if (
+      val.includes('p_books') ||
+      val.includes('pbooks') ||
+      val === 'p books' ||
+      val === 'books' ||
+      val === 'p_book'
+    ) {
+      columnMap['pBooks'] = colNumber;
+      if (!columnMap['bookCode']) columnMap['bookCode'] = colNumber;
+    } else if (val.includes('book') && val.includes('code')) {
       columnMap['bookCode'] = colNumber;
     } else if (val === 'book_code' || val === 'item_code' || val === 'sku' || val === 'isbn' || val === 'code') {
       columnMap['bookCode'] = colNumber;
     }
-    // Book Name: matches book name, product name, item name, title
+    // Book Name
     else if (val.includes('book') && val.includes('name')) {
       columnMap['bookName'] = colNumber;
-    } else if (
-      val.includes('product') ||
-      val.includes('item') ||
-      val.includes('title') ||
-      val === 'book' ||
-      val === 'description'
-    ) {
+    } else if (val === 'title' || val === 'book' || val === 'description') {
       columnMap['bookName'] = colNumber;
     }
-    // Quantity: matches quantity, qty, pcs, count
+    // Quantity
     else if (val.includes('quantity') || val.includes('qty') || val === 'count' || val === 'pcs') {
       columnMap['quantity'] = colNumber;
     }
   });
 
-  const requiredCols = ['studentName', 'mobileNumber', 'trackingId', 'bookName'];
-  const missingCols = requiredCols.filter((col) => !columnMap[col]);
+  // Verify minimal required columns
+  const missingCols: string[] = [];
+  if (!columnMap['studentName']) missingCols.push('Student Name (or Name)');
+  if (!columnMap['mobileNumber']) missingCols.push('Mobile Number (or Phone)');
+  if (!columnMap['pBooks'] && !columnMap['bookCode'] && !columnMap['productCode'] && !columnMap['productName'] && !columnMap['bookName']) {
+    missingCols.push('Book/Product information (Course, P_Code, p_Books, or Book Name)');
+  }
 
   if (missingCols.length > 0) {
     throw {
       statusCode: 400,
-      message: `Missing required Excel columns: ${missingCols.join(', ')}. Required columns are: Student Name (or Name), Mobile Number (or Phone), Tracking ID (or Tracking Number), and Book Name (or Product Name).`,
+      message: `Missing required Excel columns: ${missingCols.join(', ')}. Please check your sheet headers.`,
       code: 'MISSING_COLUMNS',
     };
   }
 
+  // 2. Fetch warehouse stock to auto-resolve book names
+  const stockMap = new Map<string, string>();
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const stockItems = await BookStock.find({}).select('bookCode bookName').lean();
+      for (const s of stockItems) {
+        if (s.bookCode && s.bookName) {
+          stockMap.set(normalizeBookCode(s.bookCode), s.bookName.trim());
+        }
+      }
+    } catch (e) {
+      // If DB has delay, will rely on knownBookTitles
+    }
+  }
+
+  // 3. Prepare Date-based Barcode / Tracking ID prefix: DDMMYY (e.g. 161026)
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yy = String(now.getFullYear()).slice(-2);
+  const datePrefix = `${dd}${mm}${yy}`;
+
+  let maxCounter = 0;
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const todayOrders = await Order.find(
+        {
+          $or: [
+            { orderCode: { $regex: `^${datePrefix}` } },
+            { trackingId: { $regex: `^${datePrefix}` } },
+          ],
+        },
+        { orderCode: 1, trackingId: 1 }
+      ).lean();
+
+      for (const o of todayOrders) {
+        for (const field of [o.orderCode, o.trackingId]) {
+          if (field && field.startsWith(datePrefix)) {
+            const numPart = parseInt(field.slice(datePrefix.length), 10);
+            if (!isNaN(numPart) && numPart > maxCounter) {
+              maxCounter = numPart;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  let autoTrackingCounter = maxCounter + 1;
+
   const validRows: ParsedRowData[] = [];
   const invalidRows: ParsedRowData[] = [];
-  const seenRowKeys = new Set<string>();
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const mobileRegex = /^[0-9+ -]{7,15}$/;
 
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // Skip header
+    if (rowNumber <= headerRowIndex) return; // Skip header row and metadata before it
 
     let hasAnyData = false;
     row.eachCell(() => { hasAnyData = true; });
     if (!hasAnyData) return;
 
-    const rowErrors: string[] = [];
+    const rawStudent = columnMap['studentName'] ? row.getCell(columnMap['studentName']).value : null;
+    const rawMob = columnMap['mobileNumber'] ? row.getCell(columnMap['mobileNumber']).value : null;
 
-    const rawStudentName = row.getCell(columnMap['studentName']).value;
-    const rawMobile = row.getCell(columnMap['mobileNumber']).value;
-    const rawEmail = columnMap['email'] ? row.getCell(columnMap['email']).value : null;
-    const rawTrackingId = row.getCell(columnMap['trackingId']).value;
-    const rawBookName = row.getCell(columnMap['bookName']).value;
-    const bookName = rawBookName ? String(rawBookName).trim() : '';
+    const studentStr = rawStudent ? String(rawStudent).trim() : '';
+    const studentLower = studentStr.toLowerCase();
 
-    const rawBookCode = columnMap['bookCode'] ? row.getCell(columnMap['bookCode']).value : null;
-    const bookCode = rawBookCode ? normalizeBookCode(rawBookCode as any) : deriveBookCodeFromTitle(bookName);
-
-    const rawProductCode = columnMap['productCode'] ? row.getCell(columnMap['productCode']).value : null;
-    const rawProductName = columnMap['productName'] ? row.getCell(columnMap['productName']).value : null;
-    const productName = rawProductName ? String(rawProductName).trim() : 'Product';
-    const productCode = rawProductCode
-      ? normalizeBookCode(rawProductCode as any)
-      : 'PRD-' + (rawBookCode ? normalizeBookCode(rawBookCode as any).slice(0, 8) : '01');
-
-    const rawQuantity = columnMap['quantity'] ? row.getCell(columnMap['quantity']).value : 1;
-
-    const studentName = rawStudentName ? String(rawStudentName).trim() : '';
-    const mobileNumber = normalizeMobileNumber(rawMobile as any);
-    const email = rawEmail ? normalizeEmail(String(rawEmail)) : null;
-    const trackingId = normalizeTrackingId(rawTrackingId as any);
-
-    let quantity = 1;
-    if (typeof rawQuantity === 'number') {
-      quantity = Math.floor(rawQuantity);
-    } else if (rawQuantity) {
-      const parsed = parseInt(String(rawQuantity).trim(), 10);
-      quantity = isNaN(parsed) || parsed <= 0 ? 1 : parsed;
+    // Skip empty lines, courier company section labels (e.g. "DTDC", "Trackon", "ADD. REQ", "Total", "P_Type")
+    if (!studentStr && !rawMob) return;
+    if (
+      studentLower === 'trackon' ||
+      studentLower === 'dtdc' ||
+      studentLower.includes('add. req') ||
+      studentLower === 'total' ||
+      studentLower === 'p_type' ||
+      studentLower === 'name' ||
+      studentLower === 'course'
+    ) {
+      return;
     }
+
+    const rowErrors: string[] = [];
+    const studentName = studentStr;
+    const mobileNumber = normalizeMobileNumber(rawMob as any);
+    const rawEmail = columnMap['email'] ? row.getCell(columnMap['email']).value : null;
+    const email = rawEmail ? normalizeEmail(String(rawEmail)) : null;
 
     if (!studentName) rowErrors.push('Student name is required.');
     if (!mobileNumber) {
@@ -201,41 +356,86 @@ export async function parseAndPreviewExcel(
     } else if (!mobileRegex.test(mobileNumber)) {
       rowErrors.push('Invalid mobile number format.');
     }
-
     if (rawEmail && email && !emailRegex.test(email)) {
       rowErrors.push('Invalid email format.');
     }
 
-    if (!trackingId) rowErrors.push('Tracking ID is required.');
-    if (!bookCode) rowErrors.push('Book code is required.');
-    if (!bookName) rowErrors.push('Book name is required.');
-    if (quantity <= 0) rowErrors.push('Quantity must be a positive integer greater than 0.');
-
-    const duplicateKey = `${trackingId}:::${bookCode}`;
-    if (seenRowKeys.has(duplicateKey)) {
-      rowErrors.push(`Duplicate row in file: Tracking ID "${trackingId}" already has an entry for Book Code "${bookCode}".`);
-    } else if (trackingId && bookCode) {
-      seenRowKeys.add(duplicateKey);
+    // Tracking ID: if column present and non-empty, use it; else auto-generate DDMMYYNNN
+    let trackingId = '';
+    const rawTrack = columnMap['trackingId'] ? row.getCell(columnMap['trackingId']).value : null;
+    if (rawTrack && String(rawTrack).trim()) {
+      trackingId = normalizeTrackingId(rawTrack as any);
+    } else {
+      trackingId = `${datePrefix}${String(autoTrackingCounter).padStart(3, '0')}`;
+      autoTrackingCounter++;
     }
 
-    const rowItem: ParsedRowData = {
-      rowNumber,
-      studentName,
-      mobileNumber,
-      email,
-      trackingId,
-      productCode,
-      productName,
-      bookCode,
-      bookName,
-      quantity,
-      errors: rowErrors,
-    };
+    // Extract Course / Product info
+    const rawCourse = columnMap['productName'] ? String(row.getCell(columnMap['productName']).value || '').trim() : '';
+    const rawPCode = columnMap['productCode'] ? String(row.getCell(columnMap['productCode']).value || '').trim() : '';
+    const rawBooks = (columnMap['pBooks'] ? String(row.getCell(columnMap['pBooks']).value || '').trim() : '') ||
+                     (columnMap['bookCode'] ? String(row.getCell(columnMap['bookCode']).value || '').trim() : rawPCode);
+    const rawBookName = columnMap['bookName'] ? String(row.getCell(columnMap['bookName']).value || '').trim() : '';
 
-    if (rowErrors.length > 0) {
-      invalidRows.push(rowItem);
-    } else {
-      validRows.push(rowItem);
+    // Split multi-line cells (\n)
+    const courseLines = rawCourse.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const pCodeLines = rawPCode.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const booksLines = rawBooks.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const bookNameLines = rawBookName.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+
+    const totalProductLines = Math.max(courseLines.length, pCodeLines.length, booksLines.length, 1);
+
+    for (let pIdx = 0; pIdx < totalProductLines; pIdx++) {
+      const pName = courseLines[pIdx] || courseLines[0] || rawBookName || 'Product';
+      const pCode = pCodeLines[pIdx] || pCodeLines[0] || (rawPCode || 'PRD-01');
+      const bCodesStr = booksLines[pIdx] || booksLines[0] || pCode;
+      const explicitBookName = bookNameLines[pIdx] || bookNameLines[0] || '';
+
+      // Split comma-separated books: e.g. "AFON-002, AFOS1-002, AFOS2-002"
+      const bookCodes = bCodesStr
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      if (bookCodes.length === 0) {
+        bookCodes.push(pCode);
+      }
+
+      for (const rawCode of bookCodes) {
+        const cleanBookCode = normalizeBookCode(rawCode);
+        const cleanProductCode = normalizeBookCode(pCode);
+
+        // Resolve Book Name:
+        // 1. Stock database
+        // 2. Known dictionary
+        // 3. Explicit book name from Excel
+        // 4. Fallback to course name
+        let resolvedBookName =
+          stockMap.get(cleanBookCode) ||
+          knownBookTitles[cleanBookCode] ||
+          explicitBookName ||
+          `${pName} (${cleanBookCode})`;
+
+        const rowItem: ParsedRowData = {
+          rowNumber,
+          studentName,
+          mobileNumber,
+          email,
+          trackingId,
+          productCode: cleanProductCode,
+          productName: pName,
+          bookCode: cleanBookCode,
+          bookName: resolvedBookName,
+          quantity: 1,
+          errors: [...rowErrors],
+        };
+
+        if (rowErrors.length > 0) {
+          invalidRows.push(rowItem);
+        } else {
+          validRows.push(rowItem);
+        }
+      }
     }
   });
 
@@ -268,6 +468,8 @@ export async function exportInvalidRowsExcel(invalidRows: ParsedRowData[]): Prom
     { header: 'Mobile Number', key: 'mobileNumber', width: 18 },
     { header: 'Email', key: 'email', width: 25 },
     { header: 'Tracking ID', key: 'trackingId', width: 16 },
+    { header: 'Product Code', key: 'productCode', width: 16 },
+    { header: 'Product Name', key: 'productName', width: 30 },
     { header: 'Book Code', key: 'bookCode', width: 15 },
     { header: 'Book Name', key: 'bookName', width: 25 },
     { header: 'Quantity', key: 'quantity', width: 12 },
@@ -288,6 +490,8 @@ export async function exportInvalidRowsExcel(invalidRows: ParsedRowData[]): Prom
       mobileNumber: row.mobileNumber,
       email: row.email || '',
       trackingId: row.trackingId,
+      productCode: row.productCode,
+      productName: row.productName,
       bookCode: row.bookCode,
       bookName: row.bookName,
       quantity: row.quantity,
@@ -350,25 +554,31 @@ export async function confirmImport(
     }
 
     const group = orderGroups.get(orderKey)!;
-    group.items.push({
-      productCode: row.productCode || 'PRD-01',
-      productName: row.productName || 'Product',
-      bookCode: row.bookCode,
-      bookName: row.bookName,
-      requiredQuantity: row.quantity,
-    });
+    // If the same book appears multiple times in the same order, increment quantity
+    const existing = group.items.find((i) => i.bookCode === row.bookCode);
+    if (existing) {
+      existing.requiredQuantity += row.quantity;
+    } else {
+      group.items.push({
+        productCode: row.productCode || 'PRD-01',
+        productName: row.productName || 'Product',
+        bookCode: row.bookCode,
+        bookName: row.bookName,
+        requiredQuantity: row.quantity,
+      });
+    }
   }
 
   let createdOrdersCount = 0;
   let createdItemsCount = 0;
   let orderCodeCounter = 1;
 
-  // Generate order code based on upload date: DDMMYYNNN e.g. 151026001, 151026002...
+  // Generate order code based on upload date: DDMMYYNNN e.g. 161026001, 161026002...
   const now = new Date();
   const dd = String(now.getDate()).padStart(2, '0');
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const yy = String(now.getFullYear()).slice(-2);
-  const orderPrefix = `${dd}${mm}${yy}`; // e.g. 151026 for 15-Oct-2026
+  const orderPrefix = `${dd}${mm}${yy}`;
 
   // Find all orders starting with today's orderPrefix to find the highest sequence number
   const todayOrders = await Order.find(
@@ -388,7 +598,11 @@ export async function confirmImport(
   orderCodeCounter = maxCounter + 1;
 
   for (const orderData of orderGroups.values()) {
-    const orderCode = `${orderPrefix}${String(orderCodeCounter).padStart(3, '0')}`;
+    // If trackingId is already in DDMMYYNNN format, use it as orderCode directly!
+    const orderCode =
+      orderData.trackingId && orderData.trackingId.startsWith(orderPrefix)
+        ? orderData.trackingId
+        : `${orderPrefix}${String(orderCodeCounter).padStart(3, '0')}`;
     orderCodeCounter++;
 
     // Primary product code from the first item
@@ -432,12 +646,9 @@ export async function confirmImport(
 
   return {
     batchId: batch._id.toString(),
-    fileName: originalFileName,
-    importedOrders: createdOrdersCount,
-    importedItems: createdItemsCount,
-    totalRows: batch.totalRows,
-    validRows: batch.validRows,
-    invalidRows: batch.invalidRows,
+    createdOrdersCount,
+    createdItemsCount,
+    uploadedAt: batch.uploadedAt,
   };
 }
 
