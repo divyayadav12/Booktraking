@@ -356,68 +356,73 @@ export const BarcodeSheetPage: React.FC = () => {
             table {
               width: 100%;
               border-collapse: collapse;
-              font-size: 10.5px;
+              font-size: 11.5px;
             }
             th {
               background: #0f172a !important;
               color: white !important;
-              padding: 6px 6px;
+              padding: 8px 8px;
               text-align: left;
-              font-size: 9.5px;
+              font-size: 10.5px;
               text-transform: uppercase;
-              letter-spacing: 0.4px;
-              border: 1px solid #0f172a;
+              letter-spacing: 0.5px;
+              border: 1.5px solid #0f172a;
             }
             td {
-              padding: 4px 6px;
-              border: 1px solid #cbd5e1;
+              padding: 6px 8px;
+              border: 1px solid #94a3b8;
               vertical-align: middle;
             }
             tr:nth-child(even) {
               background-color: #f8fafc;
             }
 
-            /* Barcode sizing */
+            /* Barcode sizing - Extra Large, Bold & Clear */
             .barcode-cell {
               text-align: center;
-              width: 140px;
-              padding: 3px;
+              width: 240px !important;
+              min-width: 220px !important;
+              padding: 5px 6px !important;
             }
             .barcode-cell svg {
-              max-width: 135px;
-              height: 32px;
+              width: 225px !important;
+              max-width: 235px !important;
+              height: 56px !important;
               display: block;
               margin: 0 auto;
             }
 
             .tracking-cell {
               font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-              font-weight: bold;
-              font-size: 11px;
+              font-weight: 800;
+              font-size: 13px;
+              white-space: nowrap;
             }
             .name-cell {
-              font-weight: bold;
-              font-size: 11.5px;
+              font-weight: 800;
+              font-size: 13px;
               color: #0f172a;
+              white-space: nowrap;
             }
             .course-cell {
-              font-size: 10px;
+              font-size: 11.5px;
+              font-weight: 600;
               color: #1e293b;
-              max-width: 180px;
+              max-width: 230px;
             }
             .pcode-cell {
               font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-              font-weight: bold;
+              font-weight: 800;
+              font-size: 13px;
               color: #1d4ed8;
+              white-space: nowrap;
             }
             .books-cell {
               font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-              font-size: 9.5px;
-              font-weight: 600;
-              color: #1e293b;
+              font-size: 11px;
+              font-weight: 700;
+              color: #0f172a;
             }
-
-            .badge {
               display: inline-block;
               padding: 2px 6px;
               font-size: 8.5px;
@@ -832,15 +837,13 @@ export const BarcodeSheetPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-900 text-white uppercase text-[10.5px] tracking-wider font-bold">
-                    <th className="py-3 px-3 text-center w-36">Bar Code (बारकोड)</th>
+                  <tr className="bg-slate-900 text-white uppercase text-[11px] tracking-wider font-bold">
+                    <th className="py-3 px-3 text-center w-64">Bar Code (बारकोड)</th>
                     <th className="py-3 px-3 whitespace-nowrap">Tracking ID / Code</th>
                     <th className="py-3 px-3 whitespace-nowrap">Student Name</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Email & Mobile</th>
                     <th className="py-3 px-3">Course (कोर्स)</th>
                     <th className="py-3 px-3 whitespace-nowrap">P_Code</th>
                     <th className="py-3 px-3">Books to Dispatch (p_Books)</th>
-                    <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
                     <th className="py-3 px-3 text-right whitespace-nowrap action-header">Fast Action</th>
                   </tr>
                 </thead>
@@ -863,21 +866,21 @@ export const BarcodeSheetPage: React.FC = () => {
                           : 'hover:bg-blue-50/40'
                       }`}
                     >
-                      {/* 1. Barcode Column (Code128 Graphic) */}
-                      <td className="py-2 px-3 text-center barcode-cell bg-white/60">
-                        <div className="inline-block bg-white p-1 rounded border border-slate-200 shadow-2xs">
+                      {/* 1. Barcode Column (Code128 Graphic - Extra Large & Scannable) */}
+                      <td className="py-2.5 px-3 text-center barcode-cell bg-white/60">
+                        <div className="inline-block bg-white p-1.5 rounded border border-slate-200 shadow-2xs">
                           <BarcodeDisplay
                             value={order.trackingId || order.orderCode || 'ORDER'}
-                            height={34}
-                            width={1.3}
-                            fontSize={9}
+                            height={52}
+                            width={1.85}
+                            fontSize={11}
                           />
                         </div>
                       </td>
 
                       {/* 2. Tracking ID */}
                       <td className="py-2.5 px-3 tracking-cell whitespace-nowrap">
-                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-sm">
                           {order.trackingId}
                         </span>
                         {order.orderCode && order.orderCode !== order.trackingId && (
@@ -889,59 +892,27 @@ export const BarcodeSheetPage: React.FC = () => {
 
                       {/* 3. Student Name */}
                       <td className="py-2.5 px-3 name-cell whitespace-nowrap">
-                        <div className="font-bold text-slate-900 text-[13px]">{order.studentName}</div>
+                        <div className="font-bold text-slate-900 text-sm">{order.studentName}</div>
                       </td>
 
-                      {/* 4. Email & Phone */}
-                      <td className="py-2.5 px-3 whitespace-nowrap text-slate-600">
-                        <div className="text-[11px] font-medium text-slate-700 flex items-center gap-1">
-                          <Mail size={12} className="text-slate-400" />
-                          <span>{order.email || '-'}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Phone size={11} className="text-slate-400" />
-                          <span>{order.mobileNumber || '-'}</span>
-                        </div>
-                      </td>
-
-                      {/* 5. Course */}
-                      <td className="py-2.5 px-3 course-cell font-semibold text-slate-800 max-w-xs">
+                      {/* 4. Course */}
+                      <td className="py-2.5 px-3 course-cell font-semibold text-slate-800 max-w-sm">
                         {courseName}
                       </td>
 
-                      {/* 6. Product Code */}
-                      <td className="py-2.5 px-3 pcode-cell whitespace-nowrap font-mono font-bold text-blue-700 bg-blue-50/50">
+                      {/* 5. Product Code */}
+                      <td className="py-2.5 px-3 pcode-cell whitespace-nowrap font-mono font-bold text-blue-700 bg-blue-50/50 text-sm">
                         {productCode}
                       </td>
 
-                      {/* 7. Required Books (p_Books) */}
+                      {/* 6. Required Books (p_Books) */}
                       <td className="py-2.5 px-3 books-cell">
-                        <div className="font-mono text-[11px] font-bold text-slate-800 max-w-xs">
+                        <div className="font-mono text-xs font-bold text-slate-900 max-w-sm">
                           {booksString}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-sans mt-0.5">
+                        <div className="text-[10.5px] text-slate-500 font-sans mt-0.5">
                           Total {order.totalRequired} books ({order.totalDispatched} dispatched)
                         </div>
-                      </td>
-
-                      {/* 8. Status */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                        {isCompleted ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            <CheckCircle2 size={11} />
-                            <span>Completed</span>
-                          </span>
-                        ) : order.totalDispatched > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                            <Clock size={11} />
-                            <span>Partial ({order.totalDispatched}/{order.totalRequired})</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                            <AlertTriangle size={11} />
-                            <span>Pending (0/{order.totalRequired})</span>
-                          </span>
-                        )}
                       </td>
 
                       {/* 9. Actions */}
