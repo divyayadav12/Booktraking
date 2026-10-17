@@ -176,24 +176,22 @@ export const BarcodeCatalogPage: React.FC = () => {
     }
   };
 
-  // Print All Filtered Barcode Stickers
+  // Print All Filtered Barcode Stickers (4 Stickers per line / row)
   const handlePrintAllStickers = () => {
-    const win = window.open('', '_blank', 'width=1100,height=850');
+    const win = window.open('', '_blank', 'width=1150,height=850');
     if (!win) {
       error('Popup window block ho gayi hai. Browser settings me popups allow karein.');
       return;
     }
 
     // Prepare items to print based on active tab
-    const itemsToPrint: Array<{ code: string; name: string; subtitle: string; tag: string }> = [];
+    const itemsToPrint: Array<{ code: string; name: string }> = [];
 
     if (activeTab === 'ALL' || activeTab === 'PRODUCTS') {
       filteredProducts.forEach((p) => {
         itemsToPrint.push({
           code: p.productCode,
           name: p.productName,
-          subtitle: `Contains: ${p.books.join(', ')} (${p.totalBooksCount} Books)`,
-          tag: 'PRODUCT / COURSE',
         });
       });
     }
@@ -203,8 +201,6 @@ export const BarcodeCatalogPage: React.FC = () => {
         itemsToPrint.push({
           code: b.bookCode,
           name: b.bookName,
-          subtitle: `Stock: ${b.availableQuantity} copies | Product: ${b.productCode || '-'}`,
-          tag: 'BOOK CODE',
         });
       });
     }
@@ -214,19 +210,15 @@ export const BarcodeCatalogPage: React.FC = () => {
       return;
     }
 
+    // Circled Sticker Card: Barcode + Code + Name (Clean & Compact!)
     const cardsHtml = itemsToPrint
       .map(
         (item) => `
       <div class="sticker-card">
-        <div class="card-header">
-          <span class="tag-badge">${item.tag}</span>
-          <span class="code-title">${item.code}</span>
-        </div>
         <div class="barcode-wrapper">
           <svg id="bc-${item.code.replace(/[^a-zA-Z0-9]/g, '_')}"></svg>
         </div>
-        <div class="item-name">${item.name}</div>
-        <div class="item-subtitle">${item.subtitle}</div>
+        <div class="item-name" title="${item.name}">${item.name}</div>
       </div>
     `
       )
@@ -237,20 +229,20 @@ export const BarcodeCatalogPage: React.FC = () => {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Master Barcode Stickers - ${new Date().toLocaleDateString('en-IN')}</title>
+          <title>Master Barcode Stickers (4 Per Line) - ${new Date().toLocaleDateString('en-IN')}</title>
           <!-- JsBarcode for crisp printing in new window -->
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <style>
             @page {
               size: A4 portrait;
-              margin: 8mm 6mm;
+              margin: 6mm 4mm;
             }
             * { box-sizing: border-box; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
               background: #f8fafc;
               margin: 0;
-              padding: 12px;
+              padding: 8px;
               color: #0f172a;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -262,9 +254,9 @@ export const BarcodeCatalogPage: React.FC = () => {
               align-items: center;
               background: #0f172a;
               color: white;
-              padding: 12px 18px;
+              padding: 10px 16px;
               border-radius: 8px;
-              margin-bottom: 15px;
+              margin-bottom: 12px;
               box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15);
             }
             .btn-print {
@@ -288,78 +280,68 @@ export const BarcodeCatalogPage: React.FC = () => {
               margin-left: 8px;
             }
 
+            /* ─── 4 Barcode Stickers Per Line / Row (Paper Saver) ─────────────── */
             .sticker-grid {
               display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 12px;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 5px;
             }
 
             .sticker-card {
-              border: 1.5px dashed #475569;
-              border-radius: 8px;
-              padding: 10px;
+              border: 1px dashed #64748b;
+              border-radius: 4px;
+              padding: 4px 3px;
               background: white;
               text-align: center;
               page-break-inside: avoid;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 86px;
+              overflow: hidden;
             }
 
-            .card-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              border-bottom: 1px solid #e2e8f0;
-              padding-bottom: 4px;
-              margin-bottom: 6px;
-            }
-            .tag-badge {
-              font-size: 9px;
-              font-weight: 800;
-              background: #f1f5f9;
-              color: #334155;
-              padding: 2px 6px;
-              border-radius: 4px;
-              border: 1px solid #cbd5e1;
-            }
-            .code-title {
-              font-family: monospace;
-              font-weight: 800;
-              font-size: 12px;
-              color: #1d4ed8;
-            }
             .barcode-wrapper {
-              margin: 4px 0;
+              width: 100%;
+              display: flex;
+              justify-content: center;
+              align-items: center;
             }
             .barcode-wrapper svg {
               max-width: 100%;
               height: 48px;
+              display: block;
+              margin: 0 auto;
             }
+
             .item-name {
-              font-weight: bold;
-              font-size: 11.5px;
+              font-weight: 800;
+              font-size: 10px;
               color: #0f172a;
+              line-height: 1.2;
+              margin-top: 1px;
+              text-align: center;
+              max-width: 100%;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-            }
-            .item-subtitle {
-              font-size: 10px;
-              color: #64748b;
-              margin-top: 2px;
+              padding: 0 2px;
             }
 
             @media print {
               .no-print { display: none !important; }
               body { background: white !important; padding: 0 !important; }
-              .sticker-card { border: 1.5px solid #000; }
+              .sticker-card { border: 1px solid #334155 !important; }
             }
           </style>
         </head>
         <body>
           <div class="no-print">
             <div>
-              <strong style="color: #38bdf8; font-size: 14px;">🏷️ Master Barcode Sticker Sheet</strong>
+              <strong style="color: #38bdf8; font-size: 14px;">🏷️ Barcode Stickers (1 Line me 4 Barcode - Paper Saver)</strong>
               <span style="font-size: 12px; margin-left: 10px; color: #cbd5e1;">
-                💡 <strong>Kisi aur ko bhejne ke liye:</strong> Destination me <strong>"Save as PDF"</strong> chunein.
+                💡 1 लाइन में 4 बारकोड (Stationery Saver) | 'Destination' me <strong>"Save as PDF"</strong> chunein.
               </span>
             </div>
             <div>
@@ -373,17 +355,19 @@ export const BarcodeCatalogPage: React.FC = () => {
           </div>
 
           <script>
-            // Render all SVG barcodes with JsBarcode
+            // Render all SVG barcodes with JsBarcode (4 per line)
             const items = ${JSON.stringify(itemsToPrint)};
             items.forEach(it => {
               const elId = '#bc-' + it.code.replace(/[^a-zA-Z0-9]/g, '_');
               try {
                 JsBarcode(elId, it.code, {
                   format: "CODE128",
-                  width: 1.6,
-                  height: 44,
-                  fontSize: 11,
-                  margin: 2
+                  width: 1.35,
+                  height: 38,
+                  fontSize: 10.5,
+                  margin: 1,
+                  textMargin: 2,
+                  displayValue: true
                 });
               } catch(e) {}
             });
@@ -400,8 +384,8 @@ export const BarcodeCatalogPage: React.FC = () => {
   };
 
   // Print Single Barcode Sticker
-  const handlePrintSingleSticker = (code: string, name: string, tag: string) => {
-    const win = window.open('', '_blank', 'width=600,height=450');
+  const handlePrintSingleSticker = (code: string, name: string) => {
+    const win = window.open('', '_blank', 'width=550,height=380');
     if (!win) return;
     win.document.write(`
       <!DOCTYPE html>
@@ -411,12 +395,11 @@ export const BarcodeCatalogPage: React.FC = () => {
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <style>
             @page { margin: 6mm; }
-            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; margin: 0; }
+            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; margin: 0; background: #f8fafc; }
             .no-print { margin-bottom: 15px; display: flex; justify-content: space-between; }
-            .sticker { border: 2px dashed #0f172a; padding: 16px; border-radius: 8px; max-width: 380px; margin: auto; }
-            .tag { font-size: 10px; font-weight: bold; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; }
-            .name { font-weight: bold; font-size: 14px; margin-top: 8px; }
-            @media print { .no-print { display: none; } }
+            .sticker { border: 1.5px dashed #0f172a; padding: 12px 8px; border-radius: 6px; max-width: 250px; margin: auto; background: white; }
+            .name { font-weight: 800; font-size: 13px; margin-top: 4px; color: #0f172a; }
+            @media print { .no-print { display: none; } body { background: white; padding: 0; } }
           </style>
         </head>
         <body>
@@ -428,13 +411,12 @@ export const BarcodeCatalogPage: React.FC = () => {
             </div>
           </div>
           <div class="sticker">
-            <span class="tag">${tag}</span>
-            <div style="margin: 10px 0;"><svg id="bc"></svg></div>
+            <div style="margin: 4px 0;"><svg id="bc"></svg></div>
             <div class="name">${name}</div>
           </div>
           <script>
             try {
-              JsBarcode("#bc", "${code}", { format: "CODE128", width: 2, height: 55, fontSize: 13, margin: 4 });
+              JsBarcode("#bc", "${code}", { format: "CODE128", width: 1.8, height: 48, fontSize: 12, margin: 2, displayValue: true });
             } catch(e) {}
             setTimeout(() => { window.print(); }, 400);
           </script>
@@ -540,7 +522,7 @@ export const BarcodeCatalogPage: React.FC = () => {
             </div>
 
             <button
-              onClick={() => handlePrintSingleSticker(testerInput, testerInput, 'CUSTOM TEST')}
+              onClick={() => handlePrintSingleSticker(testerInput, testerInput)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
             >
               <Printer size={13} />
@@ -666,25 +648,25 @@ export const BarcodeCatalogPage: React.FC = () => {
               </div>
 
               {viewMode === 'GRID' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {filteredProducts.map((p) => (
                     <div
                       key={p.productCode}
-                      className="p-4 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-3"
+                      className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-2.5"
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="font-mono font-black text-sm px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
                             {p.productCode}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                            {p.totalBooksCount} Books in Combo
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                            {p.totalBooksCount} Books
                           </span>
                         </div>
 
                         {/* Barcode SVG */}
-                        <div className="bg-slate-50/60 p-2.5 rounded-lg border border-slate-200/80 flex items-center justify-center">
-                          <BarcodeDisplay value={p.productCode} height={42} width={1.5} fontSize={10} />
+                        <div className="bg-slate-50/60 p-2 rounded-lg border border-slate-200/80 flex items-center justify-center">
+                          <BarcodeDisplay value={p.productCode} height={40} width={1.4} fontSize={10} />
                         </div>
 
                         <div>
@@ -695,7 +677,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                             {p.books.map((b) => (
                               <span
                                 key={b}
-                                className="text-[10px] font-mono font-semibold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200"
+                                className="text-[9.5px] font-mono font-semibold px-1 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200"
                               >
                                 {b}
                               </span>
@@ -708,7 +690,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                         <button
                           onClick={() => handleCopy(p.productCode)}
-                          className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                          className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer text-[11px]"
                         >
                           {copiedCode === p.productCode ? (
                             <>
@@ -718,23 +700,17 @@ export const BarcodeCatalogPage: React.FC = () => {
                           ) : (
                             <>
                               <Copy size={12} />
-                              <span>Copy Code</span>
+                              <span>Copy</span>
                             </>
                           )}
                         </button>
 
                         <button
-                          onClick={() =>
-                            handlePrintSingleSticker(
-                              p.productCode,
-                              p.productName,
-                              'PRODUCT / COURSE BARCODE'
-                            )
-                          }
-                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors"
+                          onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
+                          className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
                         >
-                          <Printer size={12} />
-                          <span>Print Sticker</span>
+                          <Printer size={11} />
+                          <span>Print</span>
                         </button>
                       </div>
                     </div>
@@ -781,13 +757,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <button
-                              onClick={() =>
-                                handlePrintSingleSticker(
-                                  p.productCode,
-                                  p.productName,
-                                  'PRODUCT / COURSE BARCODE'
-                                )
-                              }
+                              onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
                               className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
                             >
                               <Printer size={12} />
@@ -819,34 +789,34 @@ export const BarcodeCatalogPage: React.FC = () => {
               </div>
 
               {viewMode === 'GRID' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {filteredBooks.map((b) => {
                     const isInStock = b.availableQuantity > 0;
 
                     return (
                       <div
                         key={b.bookCode}
-                        className="p-4 rounded-xl bg-white border border-slate-200 hover:border-blue-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-3"
+                        className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-blue-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-2.5"
                       >
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-mono font-black text-sm px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                            <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                               {b.bookCode}
                             </span>
                             <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
                                 isInStock
                                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                   : 'bg-rose-50 text-rose-800 border-rose-200'
                               }`}
                             >
-                              {isInStock ? `${b.availableQuantity} in stock` : '0 Out of stock'}
+                              {isInStock ? `${b.availableQuantity} in stock` : '0 stock'}
                             </span>
                           </div>
 
                           {/* Barcode SVG */}
-                          <div className="bg-slate-50/60 p-2.5 rounded-lg border border-slate-200/80 flex items-center justify-center">
-                            <BarcodeDisplay value={b.bookCode} height={42} width={1.5} fontSize={10} />
+                          <div className="bg-slate-50/60 p-2 rounded-lg border border-slate-200/80 flex items-center justify-center">
+                            <BarcodeDisplay value={b.bookCode} height={40} width={1.4} fontSize={10} />
                           </div>
 
                           <div>
@@ -854,8 +824,8 @@ export const BarcodeCatalogPage: React.FC = () => {
                               {b.bookName}
                             </h3>
                             {b.productCode && (
-                              <p className="text-[10.5px] text-slate-400 mt-0.5">
-                                Linked Product: <strong className="font-mono text-slate-600">{b.productCode}</strong>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Combo: <strong className="font-mono text-slate-600">{b.productCode}</strong>
                               </p>
                             )}
                           </div>
@@ -865,7 +835,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                           <button
                             onClick={() => handleCopy(b.bookCode)}
-                            className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                            className="text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer text-[11px]"
                           >
                             {copiedCode === b.bookCode ? (
                               <>
@@ -875,23 +845,17 @@ export const BarcodeCatalogPage: React.FC = () => {
                             ) : (
                               <>
                                 <Copy size={12} />
-                                <span>Copy Code</span>
+                                <span>Copy</span>
                               </>
                             )}
                           </button>
 
                           <button
-                            onClick={() =>
-                              handlePrintSingleSticker(
-                                b.bookCode,
-                                b.bookName,
-                                `BOOK BARCODE (${b.bookCode})`
-                              )
-                            }
-                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors"
+                            onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
+                            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
                           >
-                            <Printer size={12} />
-                            <span>Print Sticker</span>
+                            <Printer size={11} />
+                            <span>Print</span>
                           </button>
                         </div>
                       </div>
@@ -942,13 +906,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <button
-                              onClick={() =>
-                                handlePrintSingleSticker(
-                                  b.bookCode,
-                                  b.bookName,
-                                  `BOOK BARCODE (${b.bookCode})`
-                                )
-                              }
+                              onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
                               className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
                             >
                               <Printer size={12} />
