@@ -21,6 +21,7 @@ import {
   PackageOpen,
   ArrowRightCircle,
   Trash2,
+  ScanLine,
 } from 'lucide-react';
 import { Order } from '../../types';
 import { DispatchBoxModal } from '../../components/dispatch/DispatchBoxModal';
@@ -607,17 +608,24 @@ export const ExcelUploadPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <Button variant="outline" size="sm" onClick={resetWizard}>
                   Upload Another File
                 </Button>
+                <button
+                  onClick={() => navigate('/admin/barcode-sheet')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  <ScanLine size={15} />
+                  <span>👉 Open Student Barcode Sheet (बारकोड शीट खोलें व स्कैन करें)</span>
+                </button>
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="sm"
                   onClick={() => navigate('/admin/outgoing-orders')}
                   icon={<ArrowRightCircle className="w-4 h-4" />}
                 >
-                  Open Full Outgoing Sheet
+                  Outgoing Sheet
                 </Button>
               </div>
             </div>

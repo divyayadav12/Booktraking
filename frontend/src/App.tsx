@@ -126,6 +126,7 @@ export const App: React.FC = () => {
               <Route path="invert" element={<InvertStockPage />} />
               <Route path="available-stock" element={<AvailableStockPage />} />
               <Route path="pending-stock" element={<PendingStockPage />} />
+              <Route path="barcode-sheet" element={<BarcodeSheetPage />} />
               <Route path="orders/:id" element={<OrderDetailPage />} />
               <Route path="my-history" element={<EmployeeMyHistoryPage />} />
             </Route>
