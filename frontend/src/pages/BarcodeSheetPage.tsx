@@ -1,7 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Download,
   Printer,
+  FileSpreadsheet,
   Search,
   RefreshCw,
   Package,
@@ -59,7 +61,7 @@ interface BarcodeOrder {
 }
 
 export const BarcodeSheetPage: React.FC = () => {
-  const { success, error } = useToast();
+  const { success, error, warning } = useToast();
   const [orders, setOrders] = useState<BarcodeOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -144,82 +146,454 @@ export const BarcodeSheetPage: React.FC = () => {
     }
   };
 
-  // Print Complete Tabular Sheet (like user's photo!)
+  // Export Orders to Real Excel File (.xlsx)
+  const handleExportExcel = () => {
+    if (filteredOrders.length === 0) {
+      warning('Download karne ke liye koi orders nahi hain.');
+      return;
+    }
+
+    try {
+      const exportData = filteredOrders.map((order, idx) => {
+        const courseName = order.products?.map((p) => p.productName).join(' / ') || 'Course';
+        const productCode = order.products?.map((p) => p.productCode).join(', ') || order.productCode;
+        const booksList = order.items.map((i) => i.bookCode).join(', ');
+        const pendingCount = Math.max(0, order.totalRequired - order.totalDispatched);
+
+        return {
+          'S.No': idx + 1,
+          'Tracking ID / Barcode': order.trackingId || order.orderCode || '-',
+          'Student Name': order.studentName || '-',
+          'Mobile Number': order.mobileNumber || '-',
+          'Email': order.email || '-',
+          'Course Name': courseName,
+          'Product Code (P_Code)': productCode,
+          'Books to Dispatch (p_Books)': booksList,
+          'Total Books Required': order.totalRequired,
+          'Dispatched Books': order.totalDispatched,
+          'Pending Books': pendingCount,
+          'Status':
+            order.status === 'COMPLETED'
+              ? 'COMPLETED (Dispatched)'
+              : pendingCount === order.totalRequired
+              ? 'PENDING'
+              : 'PARTIALLY DISPATCHED',
+          'Order Date': order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : '-',
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+      // Auto-fit column widths
+      worksheet['!cols'] = [
+        { wch: 6 },  // S.No
+        { wch: 24 }, // Tracking ID / Barcode
+        { wch: 22 }, // Student Name
+        { wch: 15 }, // Mobile
+        { wch: 26 }, // Email
+        { wch: 28 }, // Course
+        { wch: 16 }, // Product Code
+        { wch: 32 }, // Books
+        { wch: 14 }, // Total Books
+        { wch: 14 }, // Dispatched
+        { wch: 14 }, // Pending
+        { wch: 18 }, // Status
+        { wch: 14 }, // Date
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Student Dispatch Barcodes');
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `Student_Dispatch_Barcode_Sheet_${dateStr}.xlsx`);
+      success(`${filteredOrders.length} छात्रों का Excel फाइल सफलतापूर्वक डाउनलोड हो गया है!`);
+    } catch (err: any) {
+      console.error('Excel Export Error:', err);
+      error('Excel download me samasya aayi: ' + (err?.message || 'Unknown error'));
+    }
+  };
+
+  // Print Complete Tabular Sheet / Save as PDF
   const handlePrintTable = () => {
     const printContent = printTableRef.current;
-    if (!printContent) return;
-    const win = window.open('', '_blank', 'width=1100,height=800');
-    if (!win) return;
+    if (!printContent) {
+      warning('Print karne ke liye sheet available nahi hai.');
+      return;
+    }
+
+    const clone = printContent.cloneNode(true) as HTMLElement;
+    // Remove action column from printable copy
+    const actions = clone.querySelectorAll('.action-header, .action-cell');
+    actions.forEach((el) => el.remove());
+
+    const win = window.open('', '_blank', 'width=1200,height=850');
+    if (!win) {
+      error('Popup window block ho gayi hai. Kripya browser me popups allow karein.');
+      return;
+    }
+
     win.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>Student Dispatch Barcode Sheet</title>
+          <meta charset="utf-8" />
+          <title>Student Dispatch Barcode Sheet - ${new Date().toLocaleDateString('en-IN')}</title>
           <style>
-            @page { size: landscape; margin: 8mm; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: white; margin: 0; color: #0f172a; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-            .title { font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-            .date { font-size: 11px; color: #475569; font-weight: 600; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            th { background: #0f172a; color: white; padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0f172a; }
-            td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
-            tr:nth-child(even) { background-color: #f8fafc; }
-            .barcode-cell { text-align: center; width: 140px; padding: 4px; }
-            .tracking-cell { font-family: monospace; font-weight: bold; font-size: 12px; }
-            .name-cell { font-weight: bold; font-size: 12px; color: #0f172a; }
-            .course-cell { font-size: 11px; color: #1e293b; max-width: 220px; }
-            .pcode-cell { font-family: monospace; font-weight: bold; color: #1d4ed8; }
-            .books-cell { font-family: monospace; font-size: 10.5px; font-weight: 600; color: #334155; }
-            .badge { display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; border-radius: 4px; }
-            .badge-pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-            .badge-complete { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+            @page {
+              size: A4 landscape;
+              margin: 6mm 6mm;
+            }
+            * { box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: #f8fafc;
+              margin: 0;
+              padding: 12px;
+              color: #0f172a;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            /* On-screen control bar (auto-hidden in print / PDF) */
+            .no-print {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              background: #0f172a;
+              color: white;
+              padding: 12px 18px;
+              border-radius: 8px;
+              margin-bottom: 14px;
+              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15);
+            }
+            .toolbar-left {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              flex-wrap: wrap;
+            }
+            .toolbar-title {
+              font-size: 15px;
+              font-weight: 800;
+              color: #38bdf8;
+            }
+            .toolbar-tip {
+              font-size: 12px;
+              color: #e2e8f0;
+              background: rgba(255,255,255,0.1);
+              padding: 4px 10px;
+              border-radius: 6px;
+            }
+            .toolbar-tip strong {
+              color: #fde047;
+            }
+            .toolbar-actions {
+              display: flex;
+              gap: 10px;
+            }
+            .btn-print {
+              background: #2563eb;
+              color: white;
+              border: none;
+              padding: 8px 18px;
+              border-radius: 6px;
+              font-weight: 700;
+              font-size: 13px;
+              cursor: pointer;
+              transition: background 0.15s;
+            }
+            .btn-print:hover { background: #1d4ed8; }
+            .btn-close {
+              background: #475569;
+              color: white;
+              border: none;
+              padding: 8px 14px;
+              border-radius: 6px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+            }
+            .btn-close:hover { background: #334155; }
+
+            /* Sheet Container */
+            .sheet-wrapper {
+              background: white;
+              padding: 12px;
+              border-radius: 6px;
+              border: 1px solid #cbd5e1;
+            }
+
+            /* Sheet Header */
+            .sheet-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 8px;
+              margin-bottom: 10px;
+            }
+            .title {
+              font-size: 16px;
+              font-weight: 800;
+              text-transform: uppercase;
+              color: #0f172a;
+              letter-spacing: 0.5px;
+            }
+            .meta {
+              font-size: 11px;
+              color: #475569;
+              font-weight: 600;
+              margin-top: 2px;
+            }
+            .brand {
+              text-align: right;
+              font-weight: 800;
+              font-size: 13px;
+              color: #1e3a8a;
+            }
+
+            /* Table layout */
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 10.5px;
+            }
+            th {
+              background: #0f172a !important;
+              color: white !important;
+              padding: 6px 6px;
+              text-align: left;
+              font-size: 9.5px;
+              text-transform: uppercase;
+              letter-spacing: 0.4px;
+              border: 1px solid #0f172a;
+            }
+            td {
+              padding: 4px 6px;
+              border: 1px solid #cbd5e1;
+              vertical-align: middle;
+            }
+            tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+
+            /* Barcode sizing */
+            .barcode-cell {
+              text-align: center;
+              width: 140px;
+              padding: 3px;
+            }
+            .barcode-cell svg {
+              max-width: 135px;
+              height: 32px;
+              display: block;
+              margin: 0 auto;
+            }
+
+            .tracking-cell {
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              font-weight: bold;
+              font-size: 11px;
+            }
+            .name-cell {
+              font-weight: bold;
+              font-size: 11.5px;
+              color: #0f172a;
+            }
+            .course-cell {
+              font-size: 10px;
+              color: #1e293b;
+              max-width: 180px;
+            }
+            .pcode-cell {
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              font-weight: bold;
+              color: #1d4ed8;
+            }
+            .books-cell {
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              font-size: 9.5px;
+              font-weight: 600;
+              color: #1e293b;
+            }
+
+            .badge {
+              display: inline-block;
+              padding: 2px 6px;
+              font-size: 8.5px;
+              font-weight: bold;
+              border-radius: 4px;
+            }
+            .badge-pending {
+              background: #fef3c7;
+              color: #92400e;
+              border: 1px solid #fde68a;
+            }
+            .badge-complete {
+              background: #dcfce7;
+              color: #166534;
+              border: 1px solid #bbf7d0;
+            }
+
+            @media print {
+              .no-print {
+                display: none !important;
+              }
+              body {
+                background: white !important;
+                padding: 0 !important;
+              }
+              .sheet-wrapper {
+                border: none !important;
+                padding: 0 !important;
+              }
+              tr {
+                page-break-inside: avoid;
+              }
+              thead {
+                display: table-header-group;
+              }
+            }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div>
-              <div class="title">📦 Student Dispatch Barcode Sheet (डिस्पैच बारकोड शीट)</div>
-              <div class="date">Total Orders: ${orders.length} | Printed on: ${new Date().toLocaleString('en-IN')}</div>
+          <div class="no-print">
+            <div class="toolbar-left">
+              <span class="toolbar-title">📄 Student Dispatch Sheet (Print & PDF)</span>
+              <span class="toolbar-tip">
+                💡 <strong>Kisi aur ko bhejne / Download karne ke liye:</strong> 'Destination' me <strong>"Save as PDF"</strong> chunein.
+              </span>
             </div>
-            <div style="font-weight: bold; font-size: 12px;">BookDispatch Logistics</div>
+            <div class="toolbar-actions">
+              <button onclick="window.print()" class="btn-print">🖨️ Print / Save as PDF</button>
+              <button onclick="window.close()" class="btn-close">✕ Close</button>
+            </div>
           </div>
-          ${printContent.innerHTML}
+
+          <div class="sheet-wrapper">
+            <div class="sheet-header">
+              <div>
+                <div class="title">📦 Student Dispatch Barcode Sheet (छात्र बारकोड शीट)</div>
+                <div class="meta">
+                  Total Orders: ${filteredOrders.length} | Status: ${statusFilter} | Printed on: ${new Date().toLocaleString('en-IN')}
+                </div>
+              </div>
+              <div class="brand">
+                <div>BookDispatch Logistics</div>
+                <div style="font-size: 9.5px; font-weight: normal; color: #64748b;">Fast Scan & Packing Desk</div>
+              </div>
+            </div>
+            ${clone.innerHTML}
+          </div>
+          <script>
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          </script>
         </body>
       </html>
     `);
     win.document.close();
     win.focus();
-    setTimeout(() => {
-      win.print();
-      win.close();
-    }, 400);
   };
 
-  // Print Single Student Dispatch Slip
+  // Print Single Student Dispatch Slip / Save as PDF
   const handlePrintSingleSlip = (order: BarcodeOrder) => {
     const courseName = order.products?.map((p) => p.productName).join(', ') || 'Course';
     const productCode = order.products?.map((p) => p.productCode).join(', ') || order.productCode;
     const booksList = order.items.map((i) => i.bookCode).join(', ');
 
-    const win = window.open('', '_blank', 'width=700,height=500');
+    const win = window.open('', '_blank', 'width=750,height=550');
     if (!win) return;
     win.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
           <title>Dispatch Slip - ${order.studentName}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 15px; margin: 0; }
-            .slip { border: 2px dashed #0f172a; padding: 15px; border-radius: 8px; max-width: 550px; margin: auto; }
-            .slip-header { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+            @page { margin: 10mm; }
+            * { box-sizing: border-box; }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 15px;
+              margin: 0;
+              background: #f8fafc;
+              color: #0f172a;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .no-print {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              background: #0f172a;
+              color: white;
+              padding: 10px 14px;
+              border-radius: 6px;
+              margin-bottom: 12px;
+              font-size: 12px;
+            }
+            .btn-print {
+              background: #2563eb;
+              color: white;
+              border: none;
+              padding: 6px 14px;
+              border-radius: 5px;
+              font-weight: bold;
+              cursor: pointer;
+            }
+            .btn-close {
+              background: #475569;
+              color: white;
+              border: none;
+              padding: 6px 10px;
+              border-radius: 5px;
+              cursor: pointer;
+              margin-left: 8px;
+            }
+            .slip {
+              border: 2px dashed #0f172a;
+              padding: 16px;
+              border-radius: 8px;
+              max-width: 550px;
+              margin: auto;
+              background: white;
+            }
+            .slip-header {
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 8px;
+              margin-bottom: 10px;
+              display: flex;
+              justify-content: space-between;
+            }
             .title { font-size: 16px; font-weight: bold; }
-            .barcode-box { text-align: center; margin: 12px 0; padding: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; }
             .row { display: flex; margin-bottom: 6px; font-size: 12px; }
             .label { width: 120px; font-weight: bold; color: #475569; }
             .val { flex: 1; font-weight: 600; color: #0f172a; }
-            .books-box { margin-top: 10px; padding: 8px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-family: monospace; font-size: 12px; font-weight: bold; }
+            .books-box {
+              margin-top: 10px;
+              padding: 8px;
+              background: #eff6ff;
+              border: 1px solid #bfdbfe;
+              border-radius: 6px;
+              font-family: monospace;
+              font-size: 12px;
+              font-weight: bold;
+            }
+            @media print {
+              .no-print { display: none !important; }
+              body { background: white !important; padding: 0 !important; }
+            }
           </style>
         </head>
         <body>
+          <div class="no-print">
+            <span>💡 <strong>Save as PDF:</strong> Print dialog me 'Destination' me <strong>"Save as PDF"</strong> chunein.</span>
+            <div>
+              <button onclick="window.print()" class="btn-print">🖨️ Print / Save PDF</button>
+              <button onclick="window.close()" class="btn-close">✕ Close</button>
+            </div>
+          </div>
           <div class="slip">
             <div class="slip-header">
               <span class="title">📦 Student Dispatch Slip</span>
@@ -235,15 +609,16 @@ export const BarcodeSheetPage: React.FC = () => {
               ${booksList} (${order.totalRequired} Copies)
             </div>
           </div>
+          <script>
+            setTimeout(() => {
+              window.print();
+            }, 400);
+          </script>
         </body>
       </html>
     `);
     win.document.close();
     win.focus();
-    setTimeout(() => {
-      win.print();
-      win.close();
-    }, 300);
   };
 
   // Filter orders by status
@@ -299,12 +674,24 @@ export const BarcodeSheetPage: React.FC = () => {
             </button>
           </div>
 
+          {/* Export Excel (.xlsx) Button */}
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            title="Download full sheet as real Excel (.xlsx) file to share or print"
+          >
+            <FileSpreadsheet size={14} />
+            <span>Export Excel (.xlsx)</span>
+          </button>
+
+          {/* Print / Download PDF Button */}
           <button
             onClick={handlePrintTable}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            title="Print or Save as PDF to send to someone else"
           >
             <Printer size={14} />
-            <span>Print Sheet (प्रिंट करें)</span>
+            <span>Print / PDF Sheet</span>
           </button>
         </div>
       </div>
@@ -431,26 +818,32 @@ export const BarcodeSheetPage: React.FC = () => {
             Dispatch karne ke liye pehle "Upload Excel" page se naye orders ki file upload karein.
           </p>
         </div>
-      ) : viewMode === 'TABLE' ? (
-        /* ═════════════════════════════════════════════════════════════════════
-           1. TABULAR STRIP VIEW (IDENTICAL TO USER'S UPLOADED PHOTO!)
-        ═══════════════════════════════════════════════════════════════════════ */
-        <div ref={printTableRef} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-900 text-white uppercase text-[10.5px] tracking-wider font-bold">
-                  <th className="py-3 px-3 text-center w-36">Bar Code (बारकोड)</th>
-                  <th className="py-3 px-3 whitespace-nowrap">Tracking ID / Code</th>
-                  <th className="py-3 px-3 whitespace-nowrap">Student Name</th>
-                  <th className="py-3 px-3 whitespace-nowrap">Email & Mobile</th>
-                  <th className="py-3 px-3">Course (कोर्स)</th>
-                  <th className="py-3 px-3 whitespace-nowrap">P_Code</th>
-                  <th className="py-3 px-3">Books to Dispatch (p_Books)</th>
-                  <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">Fast Action</th>
-                </tr>
-              </thead>
+      ) : (
+        <>
+          {/* ═════════════════════════════════════════════════════════════════════
+             1. TABULAR STRIP VIEW (IDENTICAL TO USER'S UPLOADED PHOTO!)
+          ═══════════════════════════════════════════════════════════════════════ */}
+          <div
+            ref={printTableRef}
+            className={`bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs ${
+              viewMode === 'TABLE' ? 'block' : 'hidden'
+            }`}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-900 text-white uppercase text-[10.5px] tracking-wider font-bold">
+                    <th className="py-3 px-3 text-center w-36">Bar Code (बारकोड)</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Tracking ID / Code</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Student Name</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Email & Mobile</th>
+                    <th className="py-3 px-3">Course (कोर्स)</th>
+                    <th className="py-3 px-3 whitespace-nowrap">P_Code</th>
+                    <th className="py-3 px-3">Books to Dispatch (p_Books)</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap action-header">Fast Action</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredOrders.map((order) => {
                   const courseName = order.products?.map((p) => p.productName).join(' / ') || 'Course';
@@ -552,7 +945,7 @@ export const BarcodeSheetPage: React.FC = () => {
                       </td>
 
                       {/* 9. Actions */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap action-cell">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openDispatchForOrder(order)}
@@ -578,11 +971,14 @@ export const BarcodeSheetPage: React.FC = () => {
             </table>
           </div>
         </div>
-      ) : (
-        /* ═════════════════════════════════════════════════════════════════════
+
+        {/* ═════════════════════════════════════════════════════════════════════
            2. DETAILED 3-TIER CARD VIEW
-        ═══════════════════════════════════════════════════════════════════════ */
-        <div ref={printCardsRef} className="space-y-4">
+        ═══════════════════════════════════════════════════════════════════════ */}
+        <div
+          ref={printCardsRef}
+          className={`space-y-4 ${viewMode === 'CARDS' ? 'block' : 'hidden'}`}
+        >
           {filteredOrders.map((order) => {
             const courseName = order.products?.map((p) => p.productName).join(' / ') || 'Course';
             const productCode = order.products?.map((p) => p.productCode).join(', ') || order.productCode;
@@ -641,7 +1037,8 @@ export const BarcodeSheetPage: React.FC = () => {
             );
           })}
         </div>
-      )}
+      </>
+    )}
 
       {/* ─── DISPATCH BOX SCANNER MODAL ─────────────────────────────────────── */}
       <DispatchBoxModal
