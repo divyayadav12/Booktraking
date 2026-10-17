@@ -605,6 +605,49 @@ export async function clearAllStock(userId: string) {
   };
 }
 
+/**
+ * Delete a single book from stock master
+ */
+export async function deleteBookStock(userId: string, identifier: string) {
+  const cleanId = identifier.trim();
+  let book = null;
+
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    book = await BookStock.findById(cleanId);
+  }
+  if (!book) {
+    const cleanCode = normalizeCode(cleanId);
+    book = await BookStock.findOne({ bookCode: cleanCode });
+  }
+
+  if (!book) {
+    throw { statusCode: 404, message: `Book "${identifier}" not found in stock master`, code: 'BOOK_NOT_FOUND' };
+  }
+
+  const bookName = book.bookName;
+  const bookCode = book.bookCode;
+  const stockId = book._id.toString();
+
+  await BookStock.findByIdAndDelete(book._id);
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'BOOK_STOCK_DELETED',
+    entityType: 'BookStock',
+    entityId: stockId,
+    metadata: {
+      bookCode,
+      bookName,
+    },
+  });
+
+  return {
+    message: `Book "${bookName}" (${bookCode}) has been successfully deleted from available stock.`,
+    bookCode,
+    bookName,
+  };
+}
+
 export interface AdjustStockInput {
   bookCode: string;
   bookName?: string;

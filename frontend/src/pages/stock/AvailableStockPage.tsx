@@ -190,6 +190,24 @@ export const AvailableStockPage: React.FC = () => {
     }
   };
 
+  // Delete individual book from stock master
+  const handleDeleteBook = async (book: any) => {
+    const confirmMsg = `Kya aap "${book.bookName} (${book.bookCode})" ko Available Stock master se delete karna chahte hain?\n\nYeh kitab stock list se hat jayegi.`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      const res = await api.delete(`/stock/book/${encodeURIComponent(book.bookCode)}`);
+      if (res.data.success) {
+        success(res.data.message || `Book "${book.bookName}" successfully delete ho gayi!`);
+        fetchStock(page);
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Book delete karne me samasya aayi');
+    }
+  };
+
   // Export to Excel
   const handleExportStockExcel = async () => {
     try {
@@ -585,6 +603,14 @@ export const AvailableStockPage: React.FC = () => {
                           >
                             <PlusCircle size={13} />
                             <span>+ Add</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBook(b)}
+                            className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white rounded border border-rose-200 transition-colors cursor-pointer"
+                            title="Delete this book from Available Stock"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </td>

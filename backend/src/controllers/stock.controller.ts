@@ -140,3 +140,12 @@ export async function adjustStock(req: AuthenticatedRequest, res: Response, next
   }
 }
 
+export async function deleteBookStock(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.deleteBookStock(req.user!.id, req.params.identifier);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
