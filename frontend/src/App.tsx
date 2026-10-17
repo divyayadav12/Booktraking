@@ -19,6 +19,7 @@ import { AuditLogsPage } from './pages/admin/AuditLogsPage';
 import { BarcodeSheetPage } from './pages/BarcodeSheetPage';
 import { InvertStockPage } from './pages/stock/InvertStockPage';
 import { AvailableStockPage } from './pages/stock/AvailableStockPage';
+import { PendingStockPage } from './pages/stock/PendingStockPage';
 
 // Common Pages
 import { OutgoingOrdersPage } from './pages/common/OutgoingOrdersPage';
@@ -101,6 +102,7 @@ export const App: React.FC = () => {
               <Route path="outgoing-orders" element={<OutgoingOrdersPage />} />
               <Route path="invert" element={<InvertStockPage />} />
               <Route path="available-stock" element={<AvailableStockPage />} />
+              <Route path="pending-stock" element={<PendingStockPage />} />
               <Route path="dispatch-history" element={<DispatchHistoryPage />} />
               <Route path="failed-attempts" element={<FailedAttemptsPage />} />
               <Route path="book-summary" element={<BookSummaryPage />} />
@@ -123,6 +125,7 @@ export const App: React.FC = () => {
               <Route path="outgoing-orders" element={<OutgoingOrdersPage />} />
               <Route path="invert" element={<InvertStockPage />} />
               <Route path="available-stock" element={<AvailableStockPage />} />
+              <Route path="pending-stock" element={<PendingStockPage />} />
               <Route path="orders/:id" element={<OrderDetailPage />} />
               <Route path="my-history" element={<EmployeeMyHistoryPage />} />
             </Route>

@@ -64,6 +64,10 @@ export const AvailableStockPage: React.FC = () => {
   const [adjustReason, setAdjustReason] = useState<string>('');
   const [isAdjusting, setIsAdjusting] = useState<boolean>(false);
 
+  // Delete Book Modal (0 Stock Only)
+  const [deleteModalBook, setDeleteModalBook] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   const fetchStock = async (targetPage = 1) => {
     setIsLoading(true);
     try {
@@ -190,21 +194,29 @@ export const AvailableStockPage: React.FC = () => {
     }
   };
 
-  // Delete individual book from stock master
-  const handleDeleteBook = async (book: any) => {
-    const confirmMsg = `Kya aap "${book.bookName} (${book.bookCode})" ko Available Stock master se delete karna chahte hain?\n\nYeh kitab stock list se hat jayegi.`;
-    if (!window.confirm(confirmMsg)) {
+  // Delete individual book (Only allowed if availableQuantity === 0)
+  const initiateDelete = (book: any) => {
+    if (book.availableQuantity > 0) {
+      error(`❌ Keval 0 stock wali book hi delete ki ja sakti hai! Is book me abhi ${book.availableQuantity} copies available hain.`);
       return;
     }
+    setDeleteModalBook(book);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteModalBook) return;
+    setIsDeleting(true);
     try {
-      const res = await api.delete(`/stock/book/${encodeURIComponent(book.bookCode)}`);
+      const res = await api.delete(`/stock/book/${encodeURIComponent(deleteModalBook.bookCode)}`);
       if (res.data.success) {
-        success(res.data.message || `Book "${book.bookName}" successfully delete ho gayi!`);
+        success(res.data.message || `Book "${deleteModalBook.bookName}" successfully delete ho gayi!`);
+        setDeleteModalBook(null);
         fetchStock(page);
       }
     } catch (err: any) {
       error(err.response?.data?.message || 'Book delete karne me samasya aayi');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -605,9 +617,18 @@ export const AvailableStockPage: React.FC = () => {
                             <span>+ Add</span>
                           </button>
                           <button
-                            onClick={() => handleDeleteBook(b)}
-                            className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white rounded border border-rose-200 transition-colors cursor-pointer"
-                            title="Delete this book from Available Stock"
+                            onClick={() => initiateDelete(b)}
+                            disabled={b.availableQuantity > 0}
+                            className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded border transition-colors ${
+                              b.availableQuantity === 0
+                                ? 'bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border-rose-200 cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                            }`}
+                            title={
+                              b.availableQuantity === 0
+                                ? 'Delete this 0-stock book record'
+                                : `Keval 0 stock wali book delete ho sakti hai (Current: ${b.availableQuantity})`
+                            }
                           >
                             <Trash2 size={13} />
                             <span>Delete</span>
@@ -1023,6 +1044,69 @@ export const AvailableStockPage: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Delete Confirmation Modal (0 Stock Only) ───────────────────────── */}
+      {deleteModalBook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Delete Book Record? (हटाएं)</h3>
+                <p className="text-xs text-rose-600 font-semibold">
+                  ⚠️ Yeh kitab master inventory se permanently delete ho jayegi
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Book Code / Barcode:</span>
+                <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {deleteModalBook.bookCode}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Book Name:</span>
+                <span className="font-bold text-slate-900 text-right max-w-[240px] truncate" title={deleteModalBook.bookName}>
+                  {deleteModalBook.bookName}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                <span className="text-slate-500 font-medium">Current Stock:</span>
+                <span className="font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  {deleteModalBook.availableQuantity || 0} copies (Out of Stock)
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Kya aap sach me <strong className="text-slate-900">"{deleteModalBook.bookName}"</strong> ko inventory se delete karna chahte hain?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalBook(null)}
+              >
+                Cancel (रद्द करें)
+              </Button>
+              <Button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                {isDeleting ? <LoadingSpinner /> : <><Trash2 size={14} /><span>Yes, Delete (डिलीट करें)</span></>}
+              </Button>
+            </div>
           </div>
         </div>
       )}

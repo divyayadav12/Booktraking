@@ -33,4 +33,11 @@ router.get('/export/inward', requireRole('ADMIN', 'EMPLOYEE'), stockController.e
 router.delete('/book/:identifier', requireRole('ADMIN', 'EMPLOYEE'), stockController.deleteBookStock);
 router.delete('/clear-all', requireRole('ADMIN'), stockController.clearAllStock);
 
+// Pending Book Stock Routes (पेंडिंग बुक स्टॉक)
+router.get('/pending', requireRole('ADMIN', 'EMPLOYEE'), stockController.getPendingBooks);
+router.post('/pending', requireRole('ADMIN', 'EMPLOYEE'), stockController.addPendingBook);
+router.put('/pending/:id', requireRole('ADMIN', 'EMPLOYEE'), stockController.updatePendingBook);
+router.delete('/pending/:id', requireRole('ADMIN', 'EMPLOYEE'), stockController.deletePendingBook);
+router.post('/pending/:id/receive', requireRole('ADMIN', 'EMPLOYEE'), stockController.receivePendingBook);
+
 export default router;

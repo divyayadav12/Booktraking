@@ -6,3 +6,4 @@ export * from './VerificationAttempt';
 export * from './AuditLog';
 export * from './BookStock';
 export * from './StockInward';
+export * from './PendingBook';

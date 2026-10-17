@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import ExcelJS from 'exceljs';
 import { BookStock, IBookStock } from '../models/BookStock';
 import { StockInward } from '../models/StockInward';
+import { PendingBook } from '../models/PendingBook';
 import { Order } from '../models/Order';
 import { logAudit } from '../utils/audit';
 
@@ -624,6 +625,15 @@ export async function deleteBookStock(userId: string, identifier: string) {
     throw { statusCode: 404, message: `Book "${identifier}" not found in stock master`, code: 'BOOK_NOT_FOUND' };
   }
 
+  // Only books with 0 available stock can be deleted
+  if (book.availableQuantity > 0) {
+    throw {
+      statusCode: 400,
+      message: `Keval 0 stock wali book hi delete ho sakti hai! Is book me abhi ${book.availableQuantity} copies available hain. Pehle stock ko 0 karein.`,
+      code: 'CANNOT_DELETE_ACTIVE_STOCK',
+    };
+  }
+
   const bookName = book.bookName;
   const bookCode = book.bookCode;
   const stockId = book._id.toString();
@@ -742,5 +752,257 @@ export async function adjustStock(userId: string, input: AdjustStockInput) {
       stockStatus: stock.availableQuantity === 0 ? 'OUT_OF_STOCK' : stock.availableQuantity <= stock.lowStockThreshold ? 'LOW_STOCK' : 'IN_STOCK',
       lastRestockedAt: stock.lastRestockedAt,
     },
+  };
+}
+
+/* =========================================================================
+   PENDING BOOKS MANAGEMENT (पेंडिंग बुक स्टॉक)
+========================================================================= */
+
+export interface GetPendingBooksParams {
+  search?: string;
+  status?: 'ALL' | 'PENDING' | 'RECEIVED' | 'CANCELLED';
+  priority?: 'ALL' | 'NORMAL' | 'HIGH' | 'URGENT';
+  page?: number;
+  limit?: number;
+}
+
+export interface AddPendingBookInput {
+  bookCode: string;
+  bookName: string;
+  pendingQuantity: number;
+  printerOrVendor?: string;
+  expectedDate?: string | Date;
+  priority?: 'NORMAL' | 'HIGH' | 'URGENT';
+  remarks?: string;
+}
+
+export async function getPendingBooks(params: GetPendingBooksParams) {
+  const page = Math.max(1, params.page || 1);
+  const limit = Math.max(1, Math.min(100, params.limit || 20));
+  const skip = (page - 1) * limit;
+
+  const query: any = {};
+  if (params.search && params.search.trim()) {
+    const q = params.search.trim();
+    const regex = new RegExp(q, 'i');
+    query.$or = [{ bookCode: regex }, { bookName: regex }, { printerOrVendor: regex }];
+  }
+
+  if (params.status && params.status !== 'ALL') {
+    query.status = params.status;
+  }
+  if (params.priority && params.priority !== 'ALL') {
+    query.priority = params.priority;
+  }
+
+  const [items, total, summaryAgg] = await Promise.all([
+    PendingBook.find(query)
+      .populate('addedByUserId', 'name email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    PendingBook.countDocuments(query),
+    PendingBook.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalEntries: { $sum: 1 },
+          totalPendingCopies: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'PENDING'] }, '$pendingQuantity', 0],
+            },
+          },
+          totalReceivedCopies: {
+            $sum: '$receivedQuantity',
+          },
+          urgentCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$status', 'PENDING'] },
+                    { $in: ['$priority', ['HIGH', 'URGENT']] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const summary = summaryAgg[0] || {
+    totalEntries: 0,
+    totalPendingCopies: 0,
+    totalReceivedCopies: 0,
+    urgentCount: 0,
+  };
+
+  return {
+    items: items.map((item: any) => ({
+      id: item._id.toString(),
+      bookCode: item.bookCode,
+      bookName: item.bookName,
+      pendingQuantity: item.pendingQuantity,
+      receivedQuantity: item.receivedQuantity || 0,
+      printerOrVendor: item.printerOrVendor || '-',
+      expectedDate: item.expectedDate,
+      priority: item.priority || 'NORMAL',
+      status: item.status || 'PENDING',
+      remarks: item.remarks || '',
+      addedBy: item.addedByUserId ? { name: item.addedByUserId.name, email: item.addedByUserId.email } : null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })),
+    summary,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+}
+
+export async function addPendingBook(userId: string, input: AddPendingBookInput) {
+  const cleanCode = normalizeCode(input.bookCode);
+  const cleanName = (input.bookName || '').trim();
+  const qty = parseInt(String(input.pendingQuantity), 10);
+
+  if (!cleanCode) {
+    throw { statusCode: 400, message: 'Book Code / Barcode is required', code: 'BOOK_CODE_REQUIRED' };
+  }
+  if (!cleanName) {
+    throw { statusCode: 400, message: 'Book Name is required', code: 'BOOK_NAME_REQUIRED' };
+  }
+  if (isNaN(qty) || qty <= 0) {
+    throw { statusCode: 400, message: 'Pending Quantity must be at least 1', code: 'INVALID_QUANTITY' };
+  }
+
+  const pendingBook = await PendingBook.create({
+    bookCode: cleanCode,
+    bookName: cleanName,
+    pendingQuantity: qty,
+    receivedQuantity: 0,
+    printerOrVendor: (input.printerOrVendor || '').trim(),
+    expectedDate: input.expectedDate ? new Date(input.expectedDate) : undefined,
+    priority: input.priority || 'NORMAL',
+    status: 'PENDING',
+    remarks: (input.remarks || '').trim(),
+    addedByUserId: new mongoose.Types.ObjectId(userId),
+  });
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'PENDING_BOOK_ADDED',
+    entityType: 'PendingBook',
+    entityId: pendingBook._id.toString(),
+    metadata: {
+      bookCode: cleanCode,
+      bookName: cleanName,
+      pendingQuantity: qty,
+      printerOrVendor: pendingBook.printerOrVendor,
+    },
+  });
+
+  return {
+    message: `Pending entry for "${cleanName}" (${cleanCode}) created successfully!`,
+    pendingBook,
+  };
+}
+
+export async function updatePendingBook(userId: string, id: string, input: Partial<AddPendingBookInput & { status: string }>) {
+  const pendingBook = await PendingBook.findById(id);
+  if (!pendingBook) {
+    throw { statusCode: 404, message: 'Pending book record not found', code: 'NOT_FOUND' };
+  }
+
+  if (input.bookCode) pendingBook.bookCode = normalizeCode(input.bookCode);
+  if (input.bookName) pendingBook.bookName = input.bookName.trim();
+  if (input.pendingQuantity !== undefined) {
+    const qty = parseInt(String(input.pendingQuantity), 10);
+    if (!isNaN(qty) && qty > 0) pendingBook.pendingQuantity = qty;
+  }
+  if (input.printerOrVendor !== undefined) pendingBook.printerOrVendor = input.printerOrVendor.trim();
+  if (input.expectedDate !== undefined) pendingBook.expectedDate = input.expectedDate ? new Date(input.expectedDate) : undefined;
+  if (input.priority) pendingBook.priority = input.priority as any;
+  if (input.status) pendingBook.status = input.status as any;
+  if (input.remarks !== undefined) pendingBook.remarks = input.remarks.trim();
+
+  await pendingBook.save();
+
+  return {
+    message: `Pending book record updated successfully!`,
+    pendingBook,
+  };
+}
+
+export async function deletePendingBook(userId: string, id: string) {
+  const pendingBook = await PendingBook.findById(id);
+  if (!pendingBook) {
+    throw { statusCode: 404, message: 'Pending book record not found', code: 'NOT_FOUND' };
+  }
+
+  await PendingBook.findByIdAndDelete(id);
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'PENDING_BOOK_DELETED',
+    entityType: 'PendingBook',
+    entityId: id,
+    metadata: {
+      bookCode: pendingBook.bookCode,
+      bookName: pendingBook.bookName,
+    },
+  });
+
+  return {
+    message: `Pending book record for "${pendingBook.bookName}" deleted successfully!`,
+  };
+}
+
+export async function receivePendingBook(userId: string, id: string, input: { receivedQuantity?: number; remarks?: string }) {
+  const pendingBook = await PendingBook.findById(id);
+  if (!pendingBook) {
+    throw { statusCode: 404, message: 'Pending book record not found', code: 'NOT_FOUND' };
+  }
+
+  const qty = input.receivedQuantity && input.receivedQuantity > 0 ? input.receivedQuantity : pendingBook.pendingQuantity;
+
+  // 1. Add to live warehouse Stock Inward
+  await addInwardEntry(userId, {
+    bookCode: pendingBook.bookCode,
+    bookName: pendingBook.bookName,
+    quantity: qty,
+    supplier: pendingBook.printerOrVendor || 'Pending Order Arrival',
+    remarks: input.remarks || `Received from Pending Book Order (${qty} copies arrived)`,
+    source: 'MANUAL',
+  });
+
+  // 2. Mark pending record as received
+  pendingBook.receivedQuantity = (pendingBook.receivedQuantity || 0) + qty;
+  pendingBook.status = 'RECEIVED';
+  await pendingBook.save();
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'PENDING_BOOK_RECEIVED_TO_STOCK',
+    entityType: 'PendingBook',
+    entityId: id,
+    metadata: {
+      bookCode: pendingBook.bookCode,
+      bookName: pendingBook.bookName,
+      receivedQuantity: qty,
+    },
+  });
+
+  return {
+    message: `${qty} copies of "${pendingBook.bookName}" received and added to Available Warehouse Stock!`,
+    pendingBook,
   };
 }

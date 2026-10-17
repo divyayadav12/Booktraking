@@ -40,6 +40,7 @@ export const DashboardLayout: React.FC = () => {
     { label: 'Outgoing Sheet', path: '/admin/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
     { label: 'Invert (Stock Inward)', path: '/admin/invert', icon: <PackagePlus className="w-5 h-5" /> },
     { label: 'Available Stock', path: '/admin/available-stock', icon: <Boxes className="w-5 h-5" /> },
+    { label: 'Pending Book Stock', path: '/admin/pending-stock', icon: <Clock className="w-5 h-5" /> },
     { label: 'Barcode Sheet', path: '/admin/barcode-sheet', icon: <ScanLine className="w-5 h-5" /> },
     { label: 'Dispatch History', path: '/admin/dispatch-history', icon: <FileCheck2 className="w-5 h-5" /> },
     { label: 'Book Summary', path: '/admin/book-summary', icon: <BookOpen className="w-5 h-5" /> },
@@ -53,6 +54,7 @@ export const DashboardLayout: React.FC = () => {
     { label: 'Outgoing Sheet', path: '/employee/outgoing-orders', icon: <Truck className="w-5 h-5" /> },
     { label: 'Invert (Stock Inward)', path: '/employee/invert', icon: <PackagePlus className="w-5 h-5" /> },
     { label: 'Available Stock', path: '/employee/available-stock', icon: <Boxes className="w-5 h-5" /> },
+    { label: 'Pending Book Stock', path: '/employee/pending-stock', icon: <Clock className="w-5 h-5" /> },
     { label: 'My Dispatch History', path: '/employee/my-history', icon: <Clock className="w-5 h-5" /> },
   ];
 

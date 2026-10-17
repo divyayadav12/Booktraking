@@ -149,3 +149,55 @@ export async function deleteBookStock(req: AuthenticatedRequest, res: Response, 
   }
 }
 
+export async function getPendingBooks(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { search, status, priority, page, limit } = req.query;
+    const result = await stockService.getPendingBooks({
+      search: search as string,
+      status: status as any,
+      priority: priority as any,
+      page: page ? parseInt(page as string, 10) : 1,
+      limit: limit ? parseInt(limit as string, 10) : 20,
+    });
+    return successResponse(res, 'Pending books retrieved successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function addPendingBook(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.addPendingBook(req.user!.id, req.body);
+    return successResponse(res, result.message, result.pendingBook, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updatePendingBook(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.updatePendingBook(req.user!.id, req.params.id, req.body);
+    return successResponse(res, result.message, result.pendingBook);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deletePendingBook(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.deletePendingBook(req.user!.id, req.params.id);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function receivePendingBook(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.receivePendingBook(req.user!.id, req.params.id, req.body);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
