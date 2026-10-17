@@ -253,8 +253,6 @@ export const BarcodeSheetPage: React.FC = () => {
     return true;
   });
 
-  const totalCopies = orders.reduce((s, o) => s + o.totalRequired, 0);
-  const totalDispatchedCopies = orders.reduce((s, o) => s + o.totalDispatched, 0);
   const pendingOrdersCount = orders.filter((o) => o.status !== 'COMPLETED').length;
 
   return (
@@ -352,40 +350,7 @@ export const BarcodeSheetPage: React.FC = () => {
         </form>
       </div>
 
-      {/* ─── Metric Stats Strip ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
-          <p className="text-xs font-semibold text-slate-500">Total Uploaded Orders</p>
-          <p className="text-2xl font-black text-slate-900 mt-0.5">{orders.length}</p>
-          <p className="text-[11px] text-slate-400">Dispatch excel list</p>
-        </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-amber-200 bg-amber-50/30 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-amber-800">Pending Orders</p>
-            <Clock size={15} className="text-amber-500" />
-          </div>
-          <p className="text-2xl font-black text-amber-700 mt-0.5">{pendingOrdersCount}</p>
-          <p className="text-[11px] text-amber-700/80">Waiting for dispatch</p>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-emerald-200 bg-emerald-50/30 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-emerald-800">Completed Orders</p>
-            <CheckCircle2 size={15} className="text-emerald-500" />
-          </div>
-          <p className="text-2xl font-black text-emerald-700 mt-0.5">{orders.length - pendingOrdersCount}</p>
-          <p className="text-[11px] text-emerald-700/80">Fully dispatched</p>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
-          <p className="text-xs font-semibold text-slate-500">Total Books to Pack</p>
-          <p className="text-2xl font-black text-blue-700 mt-0.5">
-            {totalDispatchedCopies} / {totalCopies}
-          </p>
-          <p className="text-[11px] text-slate-400">Total physical copies</p>
-        </div>
-      </div>
 
       {/* ─── Search & Status Filters ─────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
