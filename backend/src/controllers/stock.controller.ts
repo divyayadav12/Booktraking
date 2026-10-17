@@ -201,3 +201,13 @@ export async function receivePendingBook(req: AuthenticatedRequest, res: Respons
   }
 }
 
+export async function getBarcodeCatalog(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.getBarcodeCatalog();
+    return successResponse(res, 'Barcode catalog retrieved successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+

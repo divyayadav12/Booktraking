@@ -17,6 +17,7 @@ import { EmployeesPage } from './pages/admin/EmployeesPage';
 import { ReportsPage } from './pages/admin/ReportsPage';
 import { AuditLogsPage } from './pages/admin/AuditLogsPage';
 import { BarcodeSheetPage } from './pages/BarcodeSheetPage';
+import { BarcodeCatalogPage } from './pages/BarcodeCatalogPage';
 import { InvertStockPage } from './pages/stock/InvertStockPage';
 import { AvailableStockPage } from './pages/stock/AvailableStockPage';
 import { PendingStockPage } from './pages/stock/PendingStockPage';
@@ -107,6 +108,7 @@ export const App: React.FC = () => {
               <Route path="failed-attempts" element={<FailedAttemptsPage />} />
               <Route path="book-summary" element={<BookSummaryPage />} />
               <Route path="barcode-sheet" element={<BarcodeSheetPage />} />
+              <Route path="barcode-catalog" element={<BarcodeCatalogPage />} />
               <Route path="employees" element={<EmployeesPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="audit-logs" element={<AuditLogsPage />} />
@@ -127,6 +129,7 @@ export const App: React.FC = () => {
               <Route path="available-stock" element={<AvailableStockPage />} />
               <Route path="pending-stock" element={<PendingStockPage />} />
               <Route path="barcode-sheet" element={<BarcodeSheetPage />} />
+              <Route path="barcode-catalog" element={<BarcodeCatalogPage />} />
               <Route path="orders/:id" element={<OrderDetailPage />} />
               <Route path="my-history" element={<EmployeeMyHistoryPage />} />
             </Route>

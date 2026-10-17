@@ -1001,8 +1001,90 @@ export async function receivePendingBook(userId: string, id: string, input: { re
     },
   });
 
-  return {
-    message: `${qty} copies of "${pendingBook.bookName}" received and added to Available Warehouse Stock!`,
-    pendingBook,
-  };
-}
+    return {
+      message: `${qty} copies of "${pendingBook.bookName}" received and added to Available Warehouse Stock!`,
+      pendingBook,
+    };
+  }
+
+  /**
+   * Get comprehensive Barcode Directory for all Books and Products
+   */
+  export async function getBarcodeCatalog() {
+    // 1. All Books in BookStock
+    const booksStock = await BookStock.find({}).sort({ bookCode: 1 }).lean();
+
+    // Pending books count map
+    const pendingRecords = await PendingBook.find({ status: { $ne: 'RECEIVED' } }).lean();
+    const pendingMap = new Map<string, number>();
+    pendingRecords.forEach((pb) => {
+      const code = (pb.bookCode || '').toUpperCase().trim();
+      const remaining = Math.max(0, (pb.pendingQuantity || 0) - (pb.receivedQuantity || 0));
+      pendingMap.set(code, (pendingMap.get(code) || 0) + remaining);
+    });
+
+    const booksList = booksStock.map((b) => ({
+      id: b._id.toString(),
+      bookCode: b.bookCode,
+      bookName: b.bookName,
+      productCode: b.productCode || '',
+      availableQuantity: b.availableQuantity,
+      totalInward: b.totalInward,
+      totalDispatched: b.totalDispatched,
+      pendingQuantity: pendingMap.get(b.bookCode.toUpperCase()) || 0,
+      type: 'BOOK' as const,
+    }));
+
+    // 2. All Products from Orders
+    const productAgg = await Order.aggregate([
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productCode',
+          productName: { $first: '$items.productName' },
+          books: { $addToSet: '$items.bookCode' },
+          totalOrdersCount: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const existingProductCodes = new Set(productAgg.map((p) => (p._id || '').toUpperCase().trim()));
+
+    // Add any product codes present in BookStock
+    const additionalProducts: any[] = [];
+    booksStock.forEach((b) => {
+      const pCode = (b.productCode || '').toUpperCase().trim();
+      if (pCode && !existingProductCodes.has(pCode)) {
+        existingProductCodes.add(pCode);
+        additionalProducts.push({
+          _id: pCode,
+          productName: `${pCode} Course Bundle`,
+          books: [b.bookCode],
+          totalOrdersCount: 0,
+        });
+      }
+    });
+
+    const productsList = [...productAgg, ...additionalProducts]
+      .filter((p) => p._id && p._id.trim())
+      .map((p) => ({
+        productCode: p._id.toUpperCase().trim(),
+        productName: p.productName || p._id,
+        books: (p.books || []).sort(),
+        totalBooksCount: (p.books || []).length,
+        totalOrdersCount: p.totalOrdersCount || 0,
+        type: 'PRODUCT' as const,
+      }));
+
+    return {
+      books: booksList,
+      products: productsList,
+      summary: {
+        totalBooks: booksList.length,
+        totalProducts: productsList.length,
+        totalInStockBooks: booksList.filter((b) => b.availableQuantity > 0).length,
+        totalOutOfStockBooks: booksList.filter((b) => b.availableQuantity === 0).length,
+      },
+    };
+  }

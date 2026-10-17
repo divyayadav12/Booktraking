@@ -32,6 +32,7 @@ router.get('/export/available', requireRole('ADMIN', 'EMPLOYEE'), stockControlle
 router.get('/export/inward', requireRole('ADMIN', 'EMPLOYEE'), stockController.exportInwardExcel);
 router.delete('/book/:identifier', requireRole('ADMIN', 'EMPLOYEE'), stockController.deleteBookStock);
 router.delete('/clear-all', requireRole('ADMIN'), stockController.clearAllStock);
+router.get('/barcode-catalog', requireRole('ADMIN', 'EMPLOYEE'), stockController.getBarcodeCatalog);
 
 // Pending Book Stock Routes (पेंडिंग बुक स्टॉक)
 router.get('/pending', requireRole('ADMIN', 'EMPLOYEE'), stockController.getPendingBooks);
