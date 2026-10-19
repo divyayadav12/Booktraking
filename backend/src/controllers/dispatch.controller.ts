@@ -94,10 +94,17 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       )
     ) : false;
 
-    // 1. Order Unique Code Scan (e.g. 151026001, ORD-2410-00001, UNQ-...)
-    // If it's not a book/product of the currently active order, check if it matches an orderCode
+    // 1. Order Barcode Scan (Order Code or Tracking ID, e.g. 151026001, ORD-2410-00001, UNQ-..., DTDC...)
+    // If it's not a book/product of the currently active order, check if it matches an orderCode or trackingId
     const isExplicitOrderPrefix = (scannedCode.startsWith('ORD-') || scannedCode.startsWith('UNQ-')) && scannedCode.length >= 10;
-    const matchedByOrderCode = !isBookOrProductOfActiveOrder ? await Order.findOne({ orderCode: scannedCode }) : null;
+    const matchedByOrderCode = !isBookOrProductOfActiveOrder ? await Order.findOne({
+      $or: [
+        { orderCode: scannedCode },
+        { trackingId: scannedCode },
+        { orderCode: new RegExp(`^${scannedCode}$`, 'i') },
+        { trackingId: new RegExp(`^${scannedCode}$`, 'i') }
+      ]
+    }) : null;
 
     if (matchedByOrderCode || isExplicitOrderPrefix) {
       if (!matchedByOrderCode) {

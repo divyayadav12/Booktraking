@@ -225,10 +225,10 @@ export const ExcelUploadPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-sm flex items-center justify-between text-xs sm:text-sm font-medium text-slate-500">
-        <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-blue-600 font-semibold' : ''}`}>
+        <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-red-600 font-semibold' : ''}`}>
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-              currentStep > 1 ? 'bg-blue-600 text-white' : currentStep === 1 ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-600' : 'bg-slate-100'
+              currentStep > 1 ? 'bg-red-600 text-white' : currentStep === 1 ? 'bg-red-100 text-red-700 ring-2 ring-red-600' : 'bg-slate-100'
             }`}
           >
             {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
@@ -238,10 +238,10 @@ export const ExcelUploadPage: React.FC = () => {
 
         <div className="h-px bg-slate-200 flex-1 mx-4" />
 
-        <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-blue-600 font-semibold' : ''}`}>
+        <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-red-600 font-semibold' : ''}`}>
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-              currentStep > 2 ? 'bg-blue-600 text-white' : currentStep === 2 ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-600' : 'bg-slate-100'
+              currentStep > 2 ? 'bg-red-600 text-white' : currentStep === 2 ? 'bg-red-100 text-red-700 ring-2 ring-red-600' : 'bg-slate-100'
             }`}
           >
             {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
@@ -267,7 +267,7 @@ export const ExcelUploadPage: React.FC = () => {
       {currentStep === 1 && (
         <Card title="Step 1: Upload Student Orders Excel or CSV" subtitle="Supported formats: .xlsx, .xls, .csv">
           <div className="space-y-6">
-            <div className="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center hover:border-blue-500 transition-colors bg-slate-50/50">
+            <div className="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center hover:border-red-500 transition-colors bg-slate-50/50">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -277,7 +277,7 @@ export const ExcelUploadPage: React.FC = () => {
                 id="excel-file-upload"
               />
               <label htmlFor="excel-file-upload" className="cursor-pointer flex flex-col items-center">
-                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-xs">
+                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-4 shadow-xs">
                   <FileSpreadsheet className="w-8 h-8" />
                 </div>
                 <h3 className="text-base font-semibold text-slate-800">
@@ -287,7 +287,7 @@ export const ExcelUploadPage: React.FC = () => {
                   Required columns: Student Name, Mobile Number, Email, Tracking ID, Book Code, Book Name, Quantity
                 </p>
                 {file && (
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-blue-100/70 text-blue-800 rounded-lg text-xs font-mono">
+                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-red-100/70 text-red-800 rounded-lg text-xs font-mono">
                     <span>Selected: {file.name}</span>
                     <span className="text-slate-500">({(file.size / 1024).toFixed(1)} KB)</span>
                   </div>
@@ -299,7 +299,7 @@ export const ExcelUploadPage: React.FC = () => {
             <div className="p-4 rounded-xl bg-slate-100/80 border border-slate-200 text-xs text-slate-600 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h4 className="font-semibold text-slate-800 flex items-center gap-1.5">
-                  <Info className="w-4 h-4 text-blue-600" /> Supported Excel Sheet Formats
+                  <Info className="w-4 h-4 text-red-600" /> Supported Excel Sheet Formats
                 </h4>
                 <div className="flex items-center gap-2">
                   <button
@@ -315,7 +315,7 @@ export const ExcelUploadPage: React.FC = () => {
                       link.click();
                       document.body.removeChild(link);
                     }}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200 transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" /> Standard Template (.csv)
                   </button>
@@ -412,26 +412,26 @@ export const ExcelUploadPage: React.FC = () => {
 
           {/* Multi-Tab Selector Banner */}
           {previewData.availableSheets && previewData.availableSheets.length > 1 && (
-            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="p-4 rounded-xl border border-red-200 bg-red-50/70 text-red-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-2.5">
-                <FileSpreadsheet className="w-5 h-5 text-blue-600 shrink-0" />
+                <FileSpreadsheet className="w-5 h-5 text-red-600 shrink-0" />
                 <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-blue-800">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-red-800">
                     Multiple Tabs Detected in Excel File
                   </h4>
-                  <p className="text-xs text-blue-700 mt-0.5">
+                  <p className="text-xs text-red-700 mt-0.5">
                     Aapki file me <strong>{previewData.availableSheets.length} sheets/tabs</strong> hain. System ne automatically sabse latest tab select ki hai.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-blue-900 whitespace-nowrap">Active Tab:</span>
+                <span className="text-xs font-semibold text-red-900 whitespace-nowrap">Active Tab:</span>
                 <select
                   value={previewData.selectedSheetName || ''}
                   onChange={(e) => handleSheetChange(e.target.value)}
                   disabled={isParsing}
-                  className="bg-white border border-blue-300 text-blue-900 font-bold text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-xs cursor-pointer"
+                  className="bg-white border border-red-300 text-red-900 font-bold text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-xs cursor-pointer"
                 >
                   {previewData.availableSheets.map((sName, sIdx) => (
                     <option key={sName} value={sName}>
@@ -554,7 +554,7 @@ export const ExcelUploadPage: React.FC = () => {
                       <td className="py-2 px-3 font-mono text-slate-400">{row.rowNumber}</td>
                       <td className="py-2 px-3 font-medium text-slate-800">{row.studentName}</td>
                       <td className="py-2 px-3 font-mono text-slate-600">{row.mobileNumber}</td>
-                      <td className="py-2 px-3 font-mono font-medium text-blue-600">{row.trackingId}</td>
+                      <td className="py-2 px-3 font-mono font-medium text-red-600">{row.trackingId}</td>
                       <td className="py-2 px-3 font-mono font-semibold text-slate-800">{row.bookCode}</td>
                       <td className="py-2 px-3 text-slate-600">{row.bookName}</td>
                       <td className="py-2 px-3 font-mono font-bold text-slate-800 text-right">{row.quantity}</td>
@@ -604,7 +604,7 @@ export const ExcelUploadPage: React.FC = () => {
                 <div className="h-8 w-px bg-slate-200" />
                 <div>
                   <div className="text-[10px] text-slate-400 font-bold uppercase">Valid Rows</div>
-                  <div className="text-xl font-bold font-mono text-blue-600">{importSummary.validRows}</div>
+                  <div className="text-xl font-bold font-mono text-red-600">{importSummary.validRows}</div>
                 </div>
               </div>
 
@@ -614,7 +614,7 @@ export const ExcelUploadPage: React.FC = () => {
                 </Button>
                 <button
                   onClick={() => navigate('/admin/barcode-sheet')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-red-600 to-indigo-600 hover:from-red-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   <ScanLine size={15} />
                   <span>👉 Open Student Barcode Sheet (बारकोड शीट खोलें व स्कैन करें)</span>
@@ -663,7 +663,7 @@ export const ExcelUploadPage: React.FC = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-1 items-start">
-                            <span className="font-mono font-bold text-blue-600">
+                            <span className="font-mono font-bold text-red-600">
                               {ord.trackingId}
                             </span>
                             {ord.productCode && (

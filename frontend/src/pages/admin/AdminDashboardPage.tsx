@@ -72,8 +72,8 @@ export const AdminDashboardPage: React.FC = () => {
     {
       title: 'Total Required Books',
       value: summary.totalRequiredCopies,
-      icon: <BookOpen className="w-5 h-5 text-blue-600" />,
-      bg: 'bg-blue-50 border-blue-100',
+      icon: <BookOpen className="w-5 h-5 text-red-600" />,
+      bg: 'bg-red-50 border-red-100',
       description: `${summary.totalBookTypes} distinct book types`,
     },
     {
@@ -195,7 +195,7 @@ export const AdminDashboardPage: React.FC = () => {
           title="Top Book Demands"
           subtitle="Required vs pending by book code"
           action={
-            <Link to="/admin/book-summary" className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1">
+            <Link to="/admin/book-summary" className="text-xs text-red-600 font-semibold hover:underline flex items-center gap-1">
               View All <ArrowRight className="w-3 h-3" />
             </Link>
           }
@@ -216,7 +216,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-1.5 rounded-full ${
-                        progressPct === 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-blue-600' : 'bg-slate-300'
+                        progressPct === 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-red-600' : 'bg-slate-300'
                       }`}
                       style={{ width: `${progressPct}%` }}
                     />

@@ -62,11 +62,16 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl mx-auto flex items-center justify-center shadow-md mb-3">
-            <BookOpenCheck className="w-8 h-8" />
+          <div className="w-16 h-16 bg-white border-2 border-red-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg p-1.5 mb-3">
+            <img src="/fast_logo.png" alt="FAST" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">BookDispatch System</h2>
-          <p className="text-sm text-slate-500 mt-1">Student Book Tracking & Dispatch Verification</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-1.5">
+            <span>FAST</span>
+            <span className="text-red-600 font-extrabold text-sm uppercase px-2 py-0.5 bg-red-50 border border-red-200 rounded-md">
+              Education
+            </span>
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">Student Book Tracking & Dispatch Verification</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -81,7 +86,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white"
               />
               <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
             </div>
@@ -98,13 +103,13 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white"
               />
               <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
             </div>
           </div>
 
-          <Button type="submit" variant="primary" className="w-full py-2.5 mt-2 bg-blue-600 hover:bg-blue-700 focus:ring-blue-600" isLoading={isLoading}>
+          <Button type="submit" variant="primary" className="w-full py-2.5 mt-2 bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white font-bold" isLoading={isLoading}>
             Sign In to Account
           </Button>
         </form>
@@ -120,7 +125,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => handleQuickLogin('ADMIN')}
               className="flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors"
             >
-              <Shield className="w-3.5 h-3.5 text-indigo-600" />
+              <Shield className="w-3.5 h-3.5 text-red-600" />
               <span>Admin Demo</span>
             </button>
             <button

@@ -68,11 +68,14 @@ export const DashboardLayout: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-            BT
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white p-0.5 flex items-center justify-center shadow-xs overflow-hidden shrink-0 border border-slate-200">
+            <img src="/fast_logo.png" alt="FAST" className="w-full h-full object-contain" />
           </div>
-          <span className="font-bold text-slate-800 text-base">BookDispatch</span>
+          <div className="flex items-baseline gap-1">
+            <span className="font-extrabold text-slate-900 text-base tracking-wide">FAST</span>
+            <span className="text-[10px] text-red-600 font-extrabold uppercase">Education</span>
+          </div>
         </div>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -90,14 +93,14 @@ export const DashboardLayout: React.FC = () => {
       >
         <div>
           {/* Logo / Header */}
-          <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
-                BT
+              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0 border border-slate-700">
+                <img src="/fast_logo.png" alt="FAST" className="w-full h-full object-contain" />
               </div>
               <div>
-                <h1 className="font-bold text-white text-base tracking-tight leading-tight">BookDispatch</h1>
-                <p className="text-xs text-slate-400">Tracking & Logistics</p>
+                <h1 className="font-black text-white text-lg tracking-wider leading-tight">FAST</h1>
+                <p className="text-[10px] text-red-400 font-bold tracking-widest uppercase">EDUCATION</p>
               </div>
             </div>
             <button
@@ -110,7 +113,7 @@ export const DashboardLayout: React.FC = () => {
 
           {/* User Profile Pill in Sidebar */}
           <div className="px-4 py-3 mx-3 my-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-semibold text-sm">
+            <div className="w-9 h-9 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center font-semibold text-sm">
               <UserCheck className="w-5 h-5" />
             </div>
             <div className="overflow-hidden">
@@ -118,7 +121,7 @@ export const DashboardLayout: React.FC = () => {
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span
                   className={`text-[10px] font-medium px-1.5 py-0.2 rounded ${
-                    isAdmin ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'
+                    isAdmin ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'
                   }`}
                 >
                   {user?.role}
@@ -139,7 +142,7 @@ export const DashboardLayout: React.FC = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-sm'
+                      ? 'bg-red-600 text-white shadow-sm font-semibold'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >

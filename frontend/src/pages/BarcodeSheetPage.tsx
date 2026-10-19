@@ -539,7 +539,7 @@ export const BarcodeSheetPage: React.FC = () => {
               font-size: 12px;
             }
             .btn-print {
-              background: #2563eb;
+              background: #dc2626;
               color: white;
               border: none;
               padding: 6px 14px;
@@ -578,8 +578,8 @@ export const BarcodeSheetPage: React.FC = () => {
             .books-box {
               margin-top: 10px;
               padding: 8px;
-              background: #eff6ff;
-              border: 1px solid #bfdbfe;
+              background: #fef2f2;
+              border: 1px solid #fecaca;
               border-radius: 6px;
               font-family: monospace;
               font-size: 12px;
@@ -608,9 +608,9 @@ export const BarcodeSheetPage: React.FC = () => {
             <div class="row"><span class="label">Mobile / Phone:</span><span class="val">${order.mobileNumber || '-'}</span></div>
             <div class="row"><span class="label">Email:</span><span class="val">${order.email || '-'}</span></div>
             <div class="row"><span class="label">Course:</span><span class="val">${courseName}</span></div>
-            <div class="row"><span class="label">Product Code:</span><span class="val" style="font-family: monospace; color: #1d4ed8;">${productCode}</span></div>
+            <div class="row"><span class="label">Product Code:</span><span class="val" style="font-family: monospace; color: #b91c1c;">${productCode}</span></div>
             <div class="books-box">
-              <span style="display: block; font-size: 10px; color: #1e40af; margin-bottom: 2px;">BOOKS TO PACK (P_Books):</span>
+              <span style="display: block; font-size: 10px; color: #991b1b; margin-bottom: 2px;">BOOKS TO PACK (P_Books):</span>
               ${booksList} (${order.totalRequired} Copies)
             </div>
           </div>
@@ -642,10 +642,10 @@ export const BarcodeSheetPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <ScanLine size={24} className="text-blue-600" />
+              <ScanLine size={24} className="text-red-600" />
               <span>Student Dispatch Barcode Sheet (छात्र बारकोड व फास्ट स्कैन)</span>
             </h1>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
               Live Dispatch Desk
             </span>
           </div>
@@ -692,7 +692,7 @@ export const BarcodeSheetPage: React.FC = () => {
           {/* Print / Download PDF Button */}
           <button
             onClick={handlePrintTable}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
             title="Print or Save as PDF to send to someone else"
           >
             <Printer size={14} />
@@ -702,19 +702,19 @@ export const BarcodeSheetPage: React.FC = () => {
       </div>
 
       {/* ─── ULTRA-FAST LIVE BARCODE SCANNER BOX ───────────────────────────────── */}
-      <div className="p-4 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white shadow-md space-y-2">
+      <div className="p-4 rounded-xl bg-gradient-to-r from-red-700 via-rose-800 to-slate-900 text-white shadow-md space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="flex h-3 w-3 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-200 flex items-center gap-1">
               <Zap size={14} className="text-amber-400" />
               <span>Live Fast Barcode Scanner (बारकोड स्कैनर गन तैयार है)</span>
             </span>
           </div>
-          <span className="text-[11px] text-blue-200/80">
+          <span className="text-[11px] text-red-200/80">
             Student Barcode (08102026-1) या Book Code स्कैन करें
           </span>
         </div>
@@ -728,7 +728,7 @@ export const BarcodeSheetPage: React.FC = () => {
               value={fastScanInput}
               onChange={(e) => setFastScanInput(e.target.value)}
               placeholder="⚡ Barcode Gun se yahan scan karein (e.g. 08102026-1 / AFMEO-002 / AFON-002)..."
-              className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-white text-slate-900 placeholder:text-slate-400 text-sm font-bold font-mono focus:outline-none focus:ring-4 focus:ring-blue-400 shadow-inner"
+              className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-white text-slate-900 placeholder:text-slate-400 text-sm font-bold font-mono focus:outline-none focus:ring-4 focus:ring-red-400 shadow-inner"
               autoFocus
             />
           </div>
@@ -785,7 +785,7 @@ export const BarcodeSheetPage: React.FC = () => {
               placeholder="Search by student, email, tracking, course..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 w-64 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <button
@@ -812,7 +812,7 @@ export const BarcodeSheetPage: React.FC = () => {
       {/* ─── MAIN CONTENT: TABLE OR CARDS ───────────────────────────────────── */}
       {loading ? (
         <div className="py-20 text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-xs text-slate-500">Student Barcode Sheet load ho rahi hai...</p>
         </div>
       ) : filteredOrders.length === 0 ? (
@@ -863,7 +863,7 @@ export const BarcodeSheetPage: React.FC = () => {
                           ? 'bg-amber-100/90 ring-2 ring-amber-400'
                           : isCompleted
                           ? 'bg-emerald-50/40 hover:bg-emerald-50/70'
-                          : 'hover:bg-blue-50/40'
+                          : 'hover:bg-red-50/40'
                       }`}
                     >
                       {/* 1. Barcode Column (Code128 Graphic - Extra Large & Scannable) */}
@@ -901,7 +901,7 @@ export const BarcodeSheetPage: React.FC = () => {
                       </td>
 
                       {/* 5. Product Code */}
-                      <td className="py-2.5 px-3 pcode-cell whitespace-nowrap font-mono font-bold text-blue-700 bg-blue-50/50 text-sm">
+                      <td className="py-2.5 px-3 pcode-cell whitespace-nowrap font-mono font-bold text-red-700 bg-red-50/50 text-sm">
                         {productCode}
                       </td>
 
@@ -960,7 +960,7 @@ export const BarcodeSheetPage: React.FC = () => {
                   <div>
                     <h3 className="font-bold text-slate-900 text-base">{order.studentName}</h3>
                     <p className="text-xs text-slate-500">
-                      Tracking: <strong className="font-mono text-blue-700">{order.trackingId}</strong> | Course: {courseName} ({productCode})
+                      Tracking: <strong className="font-mono text-red-700">{order.trackingId}</strong> | Course: {courseName} ({productCode})
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -988,15 +988,15 @@ export const BarcodeSheetPage: React.FC = () => {
                     <BarcodeDisplay value={order.trackingId} height={50} width={1.8} fontSize={12} />
                   </div>
 
-                  <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200">
-                    <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block mb-1">
+                  <div className="p-3 bg-red-50/50 rounded-lg border border-red-200">
+                    <span className="text-[11px] font-bold text-red-800 uppercase tracking-wider block mb-1">
                       Required Books ({order.items.length})
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {order.items.map((i) => (
                         <span
                           key={i.id}
-                          className="font-mono text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 text-blue-900"
+                          className="font-mono text-xs font-bold bg-white px-2 py-0.5 rounded border border-red-200 text-red-900"
                         >
                           {i.bookCode} ({i.dispatchedQuantity}/{i.requiredQuantity})
                         </span>

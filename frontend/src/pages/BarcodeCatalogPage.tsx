@@ -436,10 +436,10 @@ export const BarcodeCatalogPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <Barcode size={26} className="text-blue-600" />
+              <Barcode size={26} className="text-red-600" />
               <span>Barcode Directory & Labels (प्रोडक्ट व बुक बारकोड कैटलॉग)</span>
             </h1>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
               Master Barcodes
             </span>
           </div>
@@ -462,7 +462,7 @@ export const BarcodeCatalogPage: React.FC = () => {
           {/* Print All Barcodes Button */}
           <button
             onClick={handlePrintAllStickers}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
             title="Print Barcode Labels Grid / Save as PDF"
           >
             <Printer size={14} />
@@ -472,12 +472,12 @@ export const BarcodeCatalogPage: React.FC = () => {
       </div>
 
       {/* ─── Live Barcode Tester & Scanner Box ─────────────────────────────────── */}
-      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-md border border-slate-800">
+      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 via-rose-950 to-red-950 text-white shadow-md border border-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Zap size={16} className="text-amber-400" />
-              <span className="text-sm font-bold tracking-wide text-blue-200">
+              <span className="text-sm font-bold tracking-wide text-red-200">
                 Live Barcode Preview & Gun Tester (बारकोड परीक्षक)
               </span>
             </div>
@@ -492,7 +492,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               value={testerInput}
               onChange={(e) => setTesterInput(e.target.value.toUpperCase())}
               placeholder="e.g. AFMEO-002, AF-01, AFON-002..."
-              className="flex-1 px-3.5 py-2 rounded-lg bg-white text-slate-900 font-mono font-bold text-xs uppercase focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-inner"
+              className="flex-1 px-3.5 py-2 rounded-lg bg-white text-slate-900 font-mono font-bold text-xs uppercase focus:outline-none focus:ring-2 focus:ring-red-400 shadow-inner"
             />
             {testerInput && (
               <button
@@ -513,7 +513,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                 <BarcodeDisplay value={testerInput} height={42} width={1.6} fontSize={11} />
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-red-100 text-red-800 border border-red-200">
                   Live Preview
                 </span>
                 <p className="font-mono font-black text-lg text-slate-900 mt-1">{testerInput}</p>
@@ -523,7 +523,7 @@ export const BarcodeCatalogPage: React.FC = () => {
 
             <button
               onClick={() => handlePrintSingleSticker(testerInput, testerInput)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
             >
               <Printer size={13} />
               <span>Print This Barcode Sticker</span>
@@ -548,7 +548,7 @@ export const BarcodeCatalogPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('BOOKS')}
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'BOOKS' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+              activeTab === 'BOOKS' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'
             }`}
           >
             <BookOpen size={13} />
@@ -575,7 +575,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               placeholder="Search code, book, product..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+              className="pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 w-56"
             />
           </div>
 
@@ -627,7 +627,7 @@ export const BarcodeCatalogPage: React.FC = () => {
       {/* ─── MAIN CONTENT ────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="py-20 text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-xs text-slate-500">Barcode Directory load ho rahi hai...</p>
         </div>
       ) : (
@@ -778,7 +778,7 @@ export const BarcodeCatalogPage: React.FC = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BookOpen size={18} className="text-blue-600" />
+                  <BookOpen size={18} className="text-red-600" />
                   <h2 className="text-base font-bold text-slate-900">
                     Individual Book Barcodes ({filteredBooks.length})
                   </h2>
@@ -796,11 +796,11 @@ export const BarcodeCatalogPage: React.FC = () => {
                     return (
                       <div
                         key={b.bookCode}
-                        className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-blue-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-2.5"
+                        className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-red-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-2.5"
                       >
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                            <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
                               {b.bookCode}
                             </span>
                             <span
@@ -852,7 +852,7 @@ export const BarcodeCatalogPage: React.FC = () => {
 
                           <button
                             onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
-                            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
+                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
                           >
                             <Printer size={11} />
                             <span>Print</span>
@@ -878,13 +878,13 @@ export const BarcodeCatalogPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredBooks.map((b) => (
-                        <tr key={b.bookCode} className="hover:bg-blue-50/30">
+                        <tr key={b.bookCode} className="hover:bg-red-50/30">
                           <td className="py-2 px-3 text-center">
                             <div className="inline-block p-1 bg-white rounded border border-slate-200">
                               <BarcodeDisplay value={b.bookCode} height={32} width={1.3} fontSize={9} />
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 font-mono font-bold text-blue-700">
+                          <td className="py-2.5 px-3 font-mono font-bold text-red-700">
                             {b.bookCode}
                           </td>
                           <td className="py-2.5 px-3 font-semibold text-slate-800">
@@ -907,7 +907,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                           <td className="py-2.5 px-3 text-right">
                             <button
                               onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
-                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
                             >
                               <Printer size={12} />
                               <span>Print</span>

@@ -276,7 +276,7 @@ export const PendingStockPage: React.FC = () => {
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500">Pending Titles</p>
-            <BookOpen size={16} className="text-blue-500" />
+            <BookOpen size={16} className="text-red-500" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-1">{summary.totalEntries || 0}</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Unique books waiting</p>
@@ -404,7 +404,7 @@ export const PendingStockPage: React.FC = () => {
                         {(page - 1) * 25 + index + 1}
                       </td>
                       <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        <span className="font-mono font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
                           {item.bookCode}
                         </span>
                       </td>
@@ -483,7 +483,7 @@ export const PendingStockPage: React.FC = () => {
                           )}
                           <button
                             onClick={() => openEditModal(item)}
-                            className="p-1 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
+                            className="p-1 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded transition-colors"
                             title="Edit"
                           >
                             <Edit3 size={14} />

@@ -20,7 +20,7 @@ import {
   History,
   RotateCcw,
 } from 'lucide-react';
-import { playSuccessChime, playErrorTone, playOrderCompleteFanfare } from '../../utils/sound';
+import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement } from '../../utils/sound';
 
 interface DispatchBoxModalProps {
   isOpen: boolean;
@@ -145,7 +145,10 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
         const orderIsNowComplete = updatedOrderData.totalPending === 0;
 
         if (orderIsNowComplete || isBulkScan) {
-          if (soundEnabled) playOrderCompleteFanfare();
+          if (soundEnabled) {
+            playOrderCompleteFanfare();
+            speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
+          }
           setFeedback({
             type: 'completed',
             message: res.data.data.message || `All books for ${activeOrder.studentName} have been verified & dispatched! Order Complete.`,
@@ -216,13 +219,61 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
       subtitle="Scan or enter book codes one by one to verify and decrement remaining quantities"
       maxWidth="2xl"
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
+        {/* ─── HIGHLIGHTED: KIS CHEEJ KA ORDER HAI (BIG FONT & HIGHLIGHT) ─── */}
+        <div className="p-4.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-xl border-2 border-red-300 ring-2 ring-red-500/30">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/20 pb-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+              <span className="text-xs font-black uppercase tracking-widest text-red-100">
+                ORDER ITEM / COURSE (किस चीज़ का आर्डर है)
+              </span>
+            </div>
+            <span className="text-xs font-bold bg-white text-red-700 px-3 py-1 rounded-full shadow-xs">
+              {activeOrder.items?.length || 0} {(activeOrder.items?.length || 0) === 1 ? 'Book' : 'Books'} in Package
+            </span>
+          </div>
+
+          {/* Big Font Highlighted Item Name */}
+          <div className="space-y-2">
+            {(() => {
+              const productNames = Array.from(new Set(activeOrder.items?.map((i: any) => i.productName).filter(Boolean) || []));
+              if (productNames.length > 0) {
+                return (
+                  <div className="text-2xl sm:text-3xl font-black text-white tracking-wide leading-tight drop-shadow-md">
+                    📦 {productNames.join(' + ')}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Book Titles in Big Highlighted Badges */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {activeOrder.items?.map((item: any, idx: number) => (
+                <div
+                  key={item.id || idx}
+                  className="bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/25 flex items-center gap-2 shadow-sm"
+                >
+                  <span className="text-sm sm:text-base font-black text-white">{item.bookName}</span>
+                  <span className="font-mono text-xs font-bold bg-yellow-400 text-slate-950 px-2 py-0.5 rounded">
+                    {item.bookCode}
+                  </span>
+                  <span className="text-xs text-red-100 font-semibold">
+                    ({item.dispatchedQuantity}/{item.requiredQuantity})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Top Order Information Header */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-4.5 shadow-md border border-slate-700/60">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/80">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-400/30">
+                <span className="font-mono text-xs font-bold bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-400/30">
                   {activeOrder.trackingId}
                 </span>
                 <h2 className="text-lg font-bold text-white tracking-tight">
@@ -250,7 +301,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
                   soundEnabled
-                    ? 'bg-slate-700 text-blue-300 hover:bg-slate-600'
+                    ? 'bg-slate-700 text-red-300 hover:bg-slate-600'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
                 title={soundEnabled ? 'Scanner Sound Enabled' : 'Scanner Sound Muted'}
@@ -308,7 +359,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
             <div className="w-full h-2 bg-slate-700/80 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 ease-out ${
-                  isOrderFullyCompleted ? 'bg-emerald-400' : 'bg-blue-500'
+                  isOrderFullyCompleted ? 'bg-emerald-400' : 'bg-red-500'
                 }`}
                 style={{ width: `${completionPercentage}%` }}
               />
@@ -324,7 +375,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
                 htmlFor="book-code-input"
                 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
               >
-                <Barcode className="w-4 h-4 text-blue-600" />
+                <Barcode className="w-4 h-4 text-red-600" />
                 Scan or Type Physical Book Code
               </label>
               {totalPending > 0 && (
@@ -351,7 +402,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
                 className={`w-full pl-4 pr-32 py-3.5 rounded-xl font-mono font-bold text-base uppercase tracking-wide transition-all ${
                   isOrderFullyCompleted
                     ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                    : 'bg-white border-2 border-blue-500/70 text-slate-900 shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600'
+                    : 'bg-white border-2 border-red-500/70 text-slate-900 shadow-sm focus:outline-none focus:ring-4 focus:ring-red-100 focus:border-red-600'
                 }`}
               />
 
@@ -385,7 +436,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => handleQuickCodeFill(item.bookCode)}
-                    className="font-mono text-[11px] font-bold bg-white text-blue-700 border border-blue-200 hover:bg-blue-50 hover:border-blue-400 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                    className="font-mono text-[11px] font-bold bg-white text-red-700 border border-red-200 hover:bg-red-50 hover:border-red-400 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
                     title={`Click to fill ${item.bookCode}`}
                   >
                     <span>{item.bookCode}</span>
@@ -443,7 +494,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
                       ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-300 shadow-sm'
                       : isDone
                       ? 'bg-slate-50/70 border-slate-200 opacity-80'
-                      : 'bg-white border-slate-200 hover:border-blue-300'
+                      : 'bg-white border-slate-200 hover:border-red-300'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -451,7 +502,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
                       className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                         isDone
                           ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-blue-100 text-blue-700'
+                          : 'bg-red-100 text-red-700'
                       }`}
                     >
                       {isDone ? '✓' : item.dispatchedQuantity + 1}

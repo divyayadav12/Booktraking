@@ -96,7 +96,7 @@ export const DispatchHistoryPage: React.FC = () => {
               value={bookCode}
               onChange={(e) => setBookCode(e.target.value.toUpperCase())}
               placeholder="Filter by Book Code..."
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600"
             />
           </div>
 
@@ -143,7 +143,7 @@ export const DispatchHistoryPage: React.FC = () => {
                       <td className="py-3 px-4 text-slate-600 font-mono">
                         {new Date(log.dispatchedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600">
+                      <td className="py-3 px-4 font-mono font-bold text-red-600">
                         {log.orderItem?.order?.trackingId}
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-800">

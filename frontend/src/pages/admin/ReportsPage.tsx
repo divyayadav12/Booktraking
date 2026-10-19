@@ -93,9 +93,9 @@ export const ReportsPage: React.FC = () => {
       id: 'orders',
       title: 'Student Orders & Fulfillment Report',
       description: 'Master record of all student orders, contact information, required, dispatched, and pending quantities.',
-      icon: <Boxes className="w-6 h-6 text-blue-600" />,
+      icon: <Boxes className="w-6 h-6 text-red-600" />,
       fileName: 'Orders_Fulfillment_Report',
-      color: 'border-blue-200 bg-blue-50/30',
+      color: 'border-red-200 bg-red-50/30',
     },
     {
       id: 'book-summary',

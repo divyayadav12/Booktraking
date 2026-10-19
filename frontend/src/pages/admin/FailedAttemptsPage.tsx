@@ -130,7 +130,7 @@ export const FailedAttemptsPage: React.FC = () => {
                       <td className="py-3 px-4 text-slate-600 font-mono">
                         {new Date(att.attemptedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600">
+                      <td className="py-3 px-4 font-mono font-bold text-red-600">
                         {att.orderItem?.order?.trackingId || '-'}
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-800">

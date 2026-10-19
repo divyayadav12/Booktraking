@@ -254,7 +254,7 @@ export const InvertStockPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">📥 Invert (Daily Stock Inward)</h1>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
               Daily Book Receiving
             </span>
           </div>
@@ -288,7 +288,7 @@ export const InvertStockPage: React.FC = () => {
           onClick={() => setActiveTab('single')}
           className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-colors cursor-pointer ${
             activeTab === 'single'
-              ? 'border-blue-600 text-blue-600'
+              ? 'border-red-600 text-red-600'
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -299,7 +299,7 @@ export const InvertStockPage: React.FC = () => {
           onClick={() => setActiveTab('excel')}
           className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-colors cursor-pointer ${
             activeTab === 'excel'
-              ? 'border-blue-600 text-blue-600'
+              ? 'border-red-600 text-red-600'
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -316,14 +316,14 @@ export const InvertStockPage: React.FC = () => {
               {/* Entry Date */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                  <Calendar size={14} className="text-blue-600" />
+                  <Calendar size={14} className="text-red-600" />
                   <span>Entry Date (तारीख)</span>
                 </label>
                 <input
                   type="date"
                   value={entryDate}
                   onChange={(e) => setEntryDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   required
                 />
               </div>
@@ -331,7 +331,7 @@ export const InvertStockPage: React.FC = () => {
               {/* Entry Time */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                  <Clock size={14} className="text-blue-600" />
+                  <Clock size={14} className="text-red-600" />
                   <span>Entry Timing (समय)</span>
                 </label>
                 <input
@@ -339,7 +339,7 @@ export const InvertStockPage: React.FC = () => {
                   value={entryTime}
                   onChange={(e) => setEntryTime(e.target.value)}
                   placeholder="HH:MM:SS"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono font-semibold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   required
                 />
               </div>
@@ -351,7 +351,7 @@ export const InvertStockPage: React.FC = () => {
                     <ScanLine size={14} className="text-emerald-600" />
                     <span>Book Code / Barcode *</span>
                   </span>
-                  <span className="text-[11px] text-blue-600 font-normal">Scan / Type</span>
+                  <span className="text-[11px] text-red-600 font-normal">Scan / Type</span>
                 </label>
                 <input
                   ref={codeInputRef}
@@ -363,7 +363,7 @@ export const InvertStockPage: React.FC = () => {
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   placeholder="e.g. IAEBR-001 or Scan"
-                  className="w-full px-3 py-2 border-2 border-blue-400 rounded-lg text-sm font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none bg-blue-50/30"
+                  className="w-full px-3 py-2 border-2 border-red-400 rounded-lg text-sm font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none bg-red-50/30"
                   required
                   autoFocus
                 />
@@ -382,10 +382,10 @@ export const InvertStockPage: React.FC = () => {
                           setBookName(item.bookName);
                           setShowSuggestions(false);
                         }}
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-xs border-b border-slate-100 flex items-center justify-between"
+                        className="px-3 py-2 hover:bg-red-50 cursor-pointer text-xs border-b border-slate-100 flex items-center justify-between"
                       >
                         <div>
-                          <strong className="font-mono text-blue-700">{item.bookCode}</strong>
+                          <strong className="font-mono text-red-700">{item.bookCode}</strong>
                           <p className="text-slate-600 truncate max-w-xs">{item.bookName}</p>
                         </div>
                         {item.availableQuantity !== undefined && (
@@ -411,7 +411,7 @@ export const InvertStockPage: React.FC = () => {
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="Kitni book aayi?"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-emerald-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-emerald-700 focus:ring-2 focus:ring-red-500 focus:outline-none"
                   required
                 />
               </div>
@@ -425,7 +425,7 @@ export const InvertStockPage: React.FC = () => {
                   key={num}
                   type="button"
                   onClick={() => setQuantity(num.toString())}
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-800 rounded font-semibold transition-colors cursor-pointer"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-800 rounded font-semibold transition-colors cursor-pointer"
                 >
                   +{num}
                 </button>
@@ -443,7 +443,7 @@ export const InvertStockPage: React.FC = () => {
                   value={bookName}
                   onChange={(e) => setBookName(e.target.value)}
                   placeholder="e.g. CA Inter Auditing & Ethics Regular Batch"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                   required
                 />
               </div>
@@ -459,7 +459,7 @@ export const InvertStockPage: React.FC = () => {
                   value={supplier}
                   onChange={(e) => setSupplier(e.target.value)}
                   placeholder="e.g. Royal Press / Printer"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -475,7 +475,7 @@ export const InvertStockPage: React.FC = () => {
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="e.g. Challan #5012 / Received in Box #4"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
               />
             </div>
 
@@ -499,7 +499,7 @@ export const InvertStockPage: React.FC = () => {
                 type="submit"
                 variant="primary"
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm"
+                className="flex items-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-sm"
               >
                 {isSubmitting ? (
                   <LoadingSpinner />
@@ -529,13 +529,13 @@ export const InvertStockPage: React.FC = () => {
               onClick={handleDownloadSampleExcel}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
             >
-              <FileDown size={14} className="text-blue-600" />
+              <FileDown size={14} className="text-red-600" />
               <span>Download Sample Template</span>
             </button>
           </div>
 
-          <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-8 text-center transition-all bg-slate-50/60">
-            <UploadCloud size={44} className="mx-auto text-blue-500 mb-3 animate-bounce" />
+          <div className="border-2 border-dashed border-slate-300 hover:border-red-500 rounded-2xl p-8 text-center transition-all bg-slate-50/60">
+            <UploadCloud size={44} className="mx-auto text-red-500 mb-3 animate-bounce" />
             <p className="text-sm font-bold text-slate-800">
               {excelFile ? `Selected: ${excelFile.name}` : 'Click here or drag & drop Inward Excel (.xlsx, .csv)'}
             </p>
@@ -546,7 +546,7 @@ export const InvertStockPage: React.FC = () => {
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => e.target.files?.[0] && setExcelFile(e.target.files[0])}
-              className="mt-4 inline-block text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+              className="mt-4 inline-block text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
             />
           </div>
 
@@ -605,7 +605,7 @@ export const InvertStockPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by book code, book name, supplier..."
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
             />
           </div>
 
@@ -690,7 +690,7 @@ export const InvertStockPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-xs">
+                      <span className="font-mono font-bold px-2 py-0.5 rounded bg-red-50 text-red-800 border border-red-200 text-xs">
                         {log.bookCode}
                       </span>
                     </td>

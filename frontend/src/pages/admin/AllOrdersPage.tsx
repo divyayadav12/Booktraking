@@ -107,7 +107,7 @@ export const AllOrdersPage: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by student, mobile, tracking ID, book code..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           </div>
@@ -117,7 +117,7 @@ export const AllOrdersPage: React.FC = () => {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-red-600"
             >
               <option value="ALL">All Statuses</option>
               <option value="PENDING">Pending</option>
@@ -184,7 +184,7 @@ export const AllOrdersPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs inline-block">
+                        <span className="font-mono font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200 text-xs inline-block">
                           {order.trackingId}
                         </span>
                       </td>

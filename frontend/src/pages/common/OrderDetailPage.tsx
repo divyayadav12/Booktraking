@@ -165,7 +165,7 @@ export const OrderDetailPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold font-mono text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
+              <span className="text-xs font-bold font-mono text-red-600 bg-red-50 px-2.5 py-0.5 rounded-md border border-red-200">
                 {order.trackingId}
               </span>
               <h1 className="text-xl font-bold text-slate-800">{order.studentName}</h1>
@@ -315,7 +315,7 @@ export const OrderDetailPage: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-semibold text-slate-800">
-                        1 copy of <span className="font-mono text-blue-600">{log.verifiedBookCode}</span> ({log.bookName})
+                        1 copy of <span className="font-mono text-red-600">{log.verifiedBookCode}</span> ({log.bookName})
                       </div>
                       <div className="text-[11px] text-slate-400">
                         Dispatched by <strong>{log.employee?.name || 'Employee'}</strong> •{' '}
@@ -350,7 +350,7 @@ export const OrderDetailPage: React.FC = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Expected Book Code:</span>
-                <span className="font-mono font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded text-sm">
+                <span className="font-mono font-bold text-red-700 bg-red-100/70 px-2 py-0.5 rounded text-sm">
                   {selectedItem.bookCode}
                 </span>
               </div>
@@ -374,7 +374,7 @@ export const OrderDetailPage: React.FC = () => {
                 onChange={(e) => setEnteredCode(e.target.value)}
                 placeholder={`Type "${selectedItem.bookCode}" to verify`}
                 disabled={isVerifying || selectedItem.pendingQuantity <= 0}
-                className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-base font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 uppercase"
+                className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-base font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-red-600 uppercase"
               />
               <p className="text-[11px] text-slate-400 mt-1">
                 Enter the book code on the back of the physical book and press Enter.

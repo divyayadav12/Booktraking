@@ -78,7 +78,7 @@ export const EmployeeDashboardPage: React.FC = () => {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-slate-500 uppercase">Today's Total Dispatches</span>
-            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <TrendingUp className="w-5 h-5 text-red-600" />
           </div>
           <div className="text-3xl font-bold text-slate-800">{summary.todayDispatches}</div>
           <p className="text-xs text-slate-400 mt-1">Dispatches registered today</p>
@@ -110,7 +110,7 @@ export const EmployeeDashboardPage: React.FC = () => {
         action={
           <Link
             to="/employee/my-history"
-            className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1"
+            className="text-xs text-red-600 font-semibold hover:underline flex items-center gap-1"
           >
             View All <ArrowRight className="w-3.5 h-3.5" />
           </Link>
@@ -130,7 +130,7 @@ export const EmployeeDashboardPage: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-semibold text-slate-800">
-                      Dispatched <span className="font-mono text-blue-600">{log.verifiedBookCode}</span> ({log.orderItem?.bookName})
+                      Dispatched <span className="font-mono text-red-600">{log.verifiedBookCode}</span> ({log.orderItem?.bookName})
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Student: <strong>{log.orderItem?.order?.studentName}</strong> (Tracking ID: {log.orderItem?.order?.trackingId})

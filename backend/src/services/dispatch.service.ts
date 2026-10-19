@@ -331,11 +331,18 @@ export async function dispatchByOrderCode(params: {
   const { orderCode, employeeId, requestId } = params;
   const normalizedOrderCode = orderCode.trim().toUpperCase();
 
-  const order = await Order.findOne({ orderCode: normalizedOrderCode });
+  const order = await Order.findOne({
+    $or: [
+      { orderCode: normalizedOrderCode },
+      { trackingId: normalizedOrderCode },
+      { orderCode: new RegExp(`^${normalizedOrderCode}$`, 'i') },
+      { trackingId: new RegExp(`^${normalizedOrderCode}$`, 'i') }
+    ]
+  });
   if (!order) {
     throw {
       statusCode: 404,
-      message: `No order found with Order Unique Code "${normalizedOrderCode}". Please verify the barcode.`,
+      message: `No order found with Order Barcode / Tracking ID "${normalizedOrderCode}". Please verify the barcode.`,
       code: 'ORDER_CODE_NOT_FOUND',
     };
   }

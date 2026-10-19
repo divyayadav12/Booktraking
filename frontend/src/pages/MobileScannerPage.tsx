@@ -283,7 +283,7 @@ export const MobileScannerPage: React.FC = () => {
       {/* Top Header */}
       <header className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white shadow-xs">
             <Smartphone size={18} />
           </div>
           <div>
@@ -301,7 +301,7 @@ export const MobileScannerPage: React.FC = () => {
                     window.location.search = `?session=${input.trim().toUpperCase()}`;
                   }
                 }}
-                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-slate-700 cursor-pointer"
+                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-red-400 font-bold px-1.5 py-0.5 rounded border border-slate-700 cursor-pointer"
               >
                 बदलें
               </button>
@@ -339,7 +339,7 @@ export const MobileScannerPage: React.FC = () => {
         </div>
 
         {/* Live Camera Feed */}
-        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-blue-500/50 bg-black shadow-2xl min-h-[260px] flex items-center justify-center">
+        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-red-500/50 bg-black shadow-2xl min-h-[260px] flex items-center justify-center">
           <div id="mobile-reader" className="w-full" />
           
           {cameraError ? (
@@ -357,7 +357,7 @@ export const MobileScannerPage: React.FC = () => {
               <button
                 type="button"
                 onClick={startScanner}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <Camera size={16} />
                 <span>Tap to Allow & Retry Live Camera</span>
@@ -382,14 +382,14 @@ export const MobileScannerPage: React.FC = () => {
           ) : (
             /* Target Reticle Overlay */
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-64 h-36 border-2 border-blue-400/80 rounded-xl relative shadow-lg">
-                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-blue-400" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-blue-400" />
-                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-blue-400" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-blue-400" />
+              <div className="w-64 h-36 border-2 border-red-400/80 rounded-xl relative shadow-lg">
+                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-red-400" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-red-400" />
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-red-400" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-red-400" />
                 
                 {/* Scan Beam */}
-                <div className="w-full h-0.5 bg-blue-400/90 shadow-[0_0_8px_rgba(96,165,250,1)] animate-bounce mt-18" />
+                <div className="w-full h-0.5 bg-red-500/90 shadow-[0_0_8px_rgba(239,68,68,1)] animate-bounce mt-18" />
               </div>
             </div>
           )}
@@ -426,12 +426,12 @@ export const MobileScannerPage: React.FC = () => {
               value={manualCode}
               onChange={e => setManualCode(e.target.value.toUpperCase())}
               placeholder="Or type code manually..."
-              className="flex-1 px-3.5 py-2.5 text-xs font-mono bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="flex-1 px-3.5 py-2.5 text-xs font-mono bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
             />
             <button
               type="submit"
               disabled={!manualCode.trim() || isSubmitting}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold disabled:opacity-50 flex items-center gap-1 shrink-0"
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold disabled:opacity-50 flex items-center gap-1 shrink-0"
             >
               <Send size={13} /> Send
             </button>

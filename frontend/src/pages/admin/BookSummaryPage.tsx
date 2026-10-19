@@ -101,7 +101,7 @@ export const BookSummaryPage: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search book code or title..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           </div>
@@ -137,7 +137,7 @@ export const BookSummaryPage: React.FC = () => {
                       : 0;
                   return (
                     <tr key={book.bookCode} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-blue-600">{book.bookCode}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-red-600">{book.bookCode}</td>
                       <td className="py-3 px-4 font-semibold text-slate-800">{book.bookName}</td>
                       <td className="py-3 px-4 text-center font-mono text-slate-600">{book.ordersCount}</td>
                       <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">
@@ -154,7 +154,7 @@ export const BookSummaryPage: React.FC = () => {
                           <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
                             <div
                               className={`h-2 rounded-full ${
-                                pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-blue-600' : 'bg-slate-300'
+                                pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-red-600' : 'bg-slate-300'
                               }`}
                               style={{ width: `${pct}%` }}
                             />

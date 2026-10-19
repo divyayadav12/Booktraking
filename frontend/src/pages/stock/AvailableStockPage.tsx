@@ -296,7 +296,7 @@ export const AvailableStockPage: React.FC = () => {
 
           <button
             onClick={() => navigate(invertUrl)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
           >
             <PackagePlus size={15} />
             <span>📥 Go to Invert (Add Stock)</span>
@@ -317,7 +317,7 @@ export const AvailableStockPage: React.FC = () => {
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-500">Total Book Titles</p>
-            <BookOpen size={16} className="text-blue-500" />
+            <BookOpen size={16} className="text-red-500" />
           </div>
           <p className="text-2xl font-black text-slate-900 mt-1">{summary.totalTitles || 0}</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Unique book SKUs</p>
@@ -424,7 +424,7 @@ export const AvailableStockPage: React.FC = () => {
                 setSortBy(field);
                 setSortOrder(order as any);
               }}
-              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="availableQuantity-asc">Available Stock: Low to High</option>
               <option value="availableQuantity-desc">Available Stock: High to Low</option>
@@ -434,7 +434,7 @@ export const AvailableStockPage: React.FC = () => {
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
-              className="px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-red-500"
               title="Items per page"
             >
               <option value="25">25 / page</option>
@@ -460,7 +460,7 @@ export const AvailableStockPage: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by book code (e.g. IAEBR-001) or book name..."
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <Button type="submit" variant="primary" className="text-xs py-2">
@@ -498,7 +498,7 @@ export const AvailableStockPage: React.FC = () => {
             </p>
             <button
               onClick={() => navigate(invertUrl)}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 cursor-pointer"
             >
               <PackagePlus size={14} />
               <span>📥 Go to Invert Entry</span>
@@ -536,7 +536,7 @@ export const AvailableStockPage: React.FC = () => {
                         {(page - 1) * limit + idx + 1}
                       </td>
                       <td className="py-3 px-3">
-                        <span className="font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200 text-xs">
+                        <span className="font-mono font-bold px-2 py-0.5 rounded bg-red-50 text-red-900 border border-red-200 text-xs">
                           {b.bookCode}
                         </span>
                       </td>
@@ -692,7 +692,7 @@ export const AvailableStockPage: React.FC = () => {
 
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1">
               <p>
-                Book Code: <strong className="font-mono text-blue-700">{quickRestockBook.bookCode}</strong>
+                Book Code: <strong className="font-mono text-red-700">{quickRestockBook.bookCode}</strong>
               </p>
               <p className="font-semibold text-slate-800">{quickRestockBook.bookName}</p>
               <p className="text-emerald-700 font-bold">

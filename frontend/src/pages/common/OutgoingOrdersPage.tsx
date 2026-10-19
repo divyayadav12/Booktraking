@@ -90,6 +90,36 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastScannedOrder, setLastScannedOrder] = useState<any>(null);
   const lastScannedOrderRef = useRef<any>(null);
+
+  // ─── New Order Received Modal State ──────────────────────────────────────────
+  const [newOrderModalData, setNewOrderModalData] = useState<any>(null);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+
+  const handleConfirmNewOrder = () => {
+    if (newOrderModalData) {
+      lastScannedOrderRef.current = newOrderModalData;
+      setLastScannedOrder(newOrderModalData);
+      setNewOrderModalData(null);
+    }
+    setIsNewOrderModalOpen(false);
+    setTimeout(() => {
+      scanInputRef.current?.focus();
+    }, 50);
+  };
+
+  // Keyboard shortcut: Press Enter or Space to confirm New Order popup
+  useEffect(() => {
+    if (!isNewOrderModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleConfirmNewOrder();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isNewOrderModalOpen, newOrderModalData]);
+
   const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
   const [completedStudentName, setCompletedStudentName] = useState('');
   const [successCountdown, setSuccessCountdown] = useState(5);
@@ -140,7 +170,7 @@ export const OutgoingOrdersPage: React.FC = () => {
   // Auto-focus barcode scanner input perpetually for hands-free scanning
   useEffect(() => {
     const focusTimer = setInterval(() => {
-      if (!isDispatchBoxOpen) {
+      if (!isDispatchBoxOpen && !isNewOrderModalOpen) {
         const activeTag = document.activeElement?.tagName?.toLowerCase();
         if (activeTag !== 'input' && activeTag !== 'textarea' && activeTag !== 'select') {
           scanInputRef.current?.focus();
@@ -148,7 +178,7 @@ export const OutgoingOrdersPage: React.FC = () => {
       }
     }, 1200);
     return () => clearInterval(focusTimer);
-  }, [isDispatchBoxOpen]);
+  }, [isDispatchBoxOpen, isNewOrderModalOpen]);
 
   const handleGlobalScan = useCallback(async (code: string) => {
     if (!code.trim() || isScanning) return;
@@ -212,15 +242,14 @@ export const OutgoingOrdersPage: React.FC = () => {
         if (soundEnabled) {
           if (isComplete && !isLoadedOnly) {
             playOrderCompleteFanfare();
-            speakVoiceAnnouncement('Done! Next order.');
-          } else {
+            speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
+          } else if (!isLoadedOnly) {
             playSuccessChime();
           }
         }
 
         if (updatedOrder) {
-          lastScannedOrderRef.current = updatedOrder;
-          setLastScannedOrder({
+          const formattedOrder = {
             id: updatedOrder.id,
             orderCode: updatedOrder.orderCode,
             productCode: updatedOrder.productCode,
@@ -235,7 +264,20 @@ export const OutgoingOrdersPage: React.FC = () => {
             totalDispatched: updatedOrder.totalDispatched,
             totalPending: updatedOrder.totalPending,
             items: updatedOrder.items || [],
-          });
+          };
+
+          if (isLoadedOnly) {
+            // New order loaded via barcode: Show Popup first with student name and voice announcement
+            setNewOrderModalData(formattedOrder);
+            setIsNewOrderModalOpen(true);
+            if (soundEnabled) {
+              playSuccessChime();
+              speakVoiceAnnouncement(`New order received. Order for ${updatedOrder.studentName}`);
+            }
+          } else {
+            lastScannedOrderRef.current = formattedOrder;
+            setLastScannedOrder(formattedOrder);
+          }
 
           // Live update orders list in table
           setOrders(prev => prev.map(o => o.id === updatedOrder.id ? {
@@ -270,7 +312,7 @@ export const OutgoingOrdersPage: React.FC = () => {
           setShowPaytmSuccess(true);
           setCompletedStudentName(updatedOrder?.studentName || '');
           setSuccessCountdown(5);
-          speakVoiceAnnouncement('Done! Next order.');
+          speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
           setOrders(prev => prev.filter(o => o.id !== updatedOrder.id));
           setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
           autoCloseTimerRef.current = setTimeout(() => {
@@ -427,7 +469,7 @@ export const OutgoingOrdersPage: React.FC = () => {
         setSuccessCountdown(5);
         if (soundEnabled) {
           playOrderCompleteFanfare();
-          speakVoiceAnnouncement('Done! Next order.');
+          speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
         }
         autoCloseTimerRef.current = setTimeout(() => {
           setShowPaytmSuccess(false);
@@ -681,24 +723,108 @@ export const OutgoingOrdersPage: React.FC = () => {
         </div>
       )}
 
+      {/* ─── NEW ORDER RECEIVED POPUP MODAL ─── */}
+      {isNewOrderModalOpen && newOrderModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-4 border-red-500 overflow-hidden text-center transform scale-100 transition-all">
+            {/* Header / Brand Banner */}
+            <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-6 py-6">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner border border-white/30 animate-bounce">
+                <span className="text-3xl">🔔</span>
+              </div>
+              <div className="inline-block bg-white text-red-700 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full mb-2 shadow-xs">
+                ⚡ NEW ORDER RECEIVED (नया आर्डर प्राप्त हुआ)
+              </div>
+              <h2 className="text-xl font-extrabold text-white">
+                FAST Education Dispatch Station
+              </h2>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 sm:p-8 space-y-5">
+              {/* Customer / Student Name in BIG prominent font */}
+              <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+                <div className="text-xs font-bold uppercase tracking-wider text-red-600 mb-1">
+                  Customer / Student Name (छात्र का नाम)
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {newOrderModalData.studentName}
+                </div>
+                <div className="text-xs font-mono font-semibold text-slate-500 mt-1 flex items-center justify-center gap-3">
+                  <span>📞 {newOrderModalData.mobileNumber}</span>
+                  <span>•</span>
+                  <span>Tracking: <strong>{newOrderModalData.trackingId}</strong></span>
+                </div>
+              </div>
+
+              {/* What is this order for (Kis cheez ka order hai) in big highlight */}
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-left">
+                <div className="text-xs font-black uppercase tracking-wider text-amber-800 flex items-center gap-1.5 mb-2">
+                  <Sparkles size={16} className="text-amber-600" />
+                  Order Items / Course (किस चीज़ का आर्डर है):
+                </div>
+                {/* Product Name if present */}
+                {(() => {
+                  const productNames = Array.from(new Set(newOrderModalData.items.map((i: any) => i.productName).filter(Boolean)));
+                  if (productNames.length > 0) {
+                    return (
+                      <div className="text-lg font-black text-slate-900 mb-2">
+                        📦 {productNames.join(' + ')}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+                {/* Book titles */}
+                <div className="space-y-1">
+                  {newOrderModalData.items.map((item: any, idx: number) => (
+                    <div key={item.id || idx} className="text-sm font-bold text-slate-800 flex items-center justify-between border-b border-amber-200/60 pb-1 last:border-0">
+                      <span>📖 {item.bookName}</span>
+                      <span className="font-mono text-xs bg-white text-slate-900 px-2 py-0.5 rounded border border-amber-200 font-bold">
+                        {item.bookCode} (Qty: {item.requiredQuantity})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Big Action Button */}
+              <div>
+                <button
+                  onClick={handleConfirmNewOrder}
+                  autoFocus
+                  className="w-full py-4 px-6 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-lg rounded-2xl shadow-xl hover:shadow-2xl transition-all transform active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={24} />
+                  <span>OK — View Details & Start Verification</span>
+                </button>
+                <p className="text-[11px] text-slate-400 mt-2">
+                  Press <strong>Enter</strong> or click OK to open full order details & scan barcodes
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Global Scanner Box ───────────────────────────────────────────────── */}
       <div className={`rounded-xl border-2 p-4 transition-all shadow-xs ${
         scanResult.type === 'success' ? 'border-emerald-400 bg-emerald-50/70' :
         scanResult.type === 'error' ? 'border-rose-400 bg-rose-50/70' :
-        'border-blue-300 bg-blue-50/60'
+        'border-red-300 bg-red-50/60'
       }`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <ScanLine size={20} className="text-blue-600 animate-pulse" />
-            <span className="font-bold text-blue-900 text-sm">3-Tier Global Barcode Scanner Station</span>
-            <span className="text-xs text-blue-700 bg-blue-100 font-semibold px-2.5 py-0.5 rounded-full">
+            <ScanLine size={20} className="text-red-600 animate-pulse" />
+            <span className="font-bold text-red-950 text-sm">3-Tier Global Barcode Scanner Station</span>
+            <span className="text-xs text-red-700 bg-red-100 font-semibold px-2.5 py-0.5 rounded-full border border-red-200">
               Hands-Free Continuous Scanning Active
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMobileModalOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-xs transition-colors cursor-pointer"
               title="Connect Mobile Phone Camera as Barcode Scanner"
             >
               <Smartphone size={14} />
@@ -711,7 +837,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             </button>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 bg-white border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50 shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 bg-white border border-red-200 rounded-lg text-red-700 hover:bg-red-50 shadow-2xs cursor-pointer"
               title="Toggle Scan Sound Feedback"
             >
               {soundEnabled ? <Volume2 size={14} className="text-emerald-600" /> : <VolumeX size={14} className="text-slate-400" />}
@@ -732,7 +858,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                   ? `⚡ Step 2: Now scan Product Barcode (${lastScannedOrder.productCode || 'PRD-...'}) or individual Book Barcodes...`
                   : "⚡ Step 1: Aim scanner at Student Order Barcode (151026001 / ORD-...) to load details..."
               }
-              className="w-full px-4 py-3.5 text-sm font-mono border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 bg-white shadow-xs font-bold"
+              className="w-full px-4 py-3.5 text-sm font-mono border-2 border-red-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-600 bg-white shadow-xs font-bold"
               autoFocus
               disabled={isScanning}
             />
@@ -745,7 +871,7 @@ export const OutgoingOrdersPage: React.FC = () => {
           <button
             onClick={() => handleGlobalScan(scannerCode)}
             disabled={!scannerCode.trim() || isScanning}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-semibold flex items-center gap-2 shrink-0 shadow-xs"
+            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-semibold flex items-center gap-2 shrink-0 shadow-xs cursor-pointer"
           >
             <Zap size={16} /> {isScanning ? 'Verifying...' : lastScannedOrder && lastScannedOrder.totalPending > 0 ? 'Verify Item' : 'Load Order'}
           </button>
@@ -790,10 +916,10 @@ export const OutgoingOrdersPage: React.FC = () => {
         )}
 
         {/* Hint */}
-        <div className="mt-2.5 flex flex-wrap gap-4 text-xs text-blue-700 font-medium">
+        <div className="mt-2.5 flex flex-wrap gap-4 text-xs text-red-700 font-medium">
           <span className="flex items-center gap-1"><Tag size={13} className="text-emerald-700" /> <strong>Step 1</strong>: Scan <strong>Order Barcode (151026001 / ORD-...)</strong> to load order</span>
           <span className="flex items-center gap-1"><Package size={13} className="text-purple-700" /> <strong>Step 2 (Combo)</strong>: Scan <strong>Product Barcode</strong> to tick & dispatch all books</span>
-          <span className="flex items-center gap-1"><BookOpen size={13} className="text-blue-700" /> <strong>Step 2 (Single)</strong>: Scan individual <strong>Book Barcodes</strong> to tick one-by-one</span>
+          <span className="flex items-center gap-1"><BookOpen size={13} className="text-red-700" /> <strong>Step 2 (Single)</strong>: Scan individual <strong>Book Barcodes</strong> to tick one-by-one</span>
         </div>
 
         {/* ─── Zero-Click Live Verification Deck (Shows immediately on scan) ──── */}
@@ -801,7 +927,7 @@ export const OutgoingOrdersPage: React.FC = () => {
           <div className="mt-4 bg-slate-900 text-white rounded-2xl p-5 shadow-xl border border-slate-700 transition-all">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <span className="font-mono text-xs font-bold bg-blue-600 text-white px-2.5 py-1 rounded">
+                <span className="font-mono text-xs font-bold bg-red-600 text-white px-2.5 py-1 rounded">
                   {lastScannedOrder.trackingId}
                 </span>
                 <span className="text-lg font-bold text-white">
@@ -835,11 +961,62 @@ export const OutgoingOrdersPage: React.FC = () => {
                     setLastScannedOrder(null);
                     setScanResult({ type: null, message: '' });
                   }}
-                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
                   title="Close preview"
                 >
                   <X size={16} />
                 </button>
+              </div>
+            </div>
+
+            {/* ─── HIGHLIGHTED: KIS CHEEJ KA ORDER HAI (BIG FONT & HIGHLIGHT) ─── */}
+            <div className="mb-5 p-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-2xl border-2 border-red-300 ring-4 ring-red-500/20">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/20 pb-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                  <span className="text-xs font-black uppercase tracking-widest text-red-100">
+                    ORDER ITEM / COURSE (किस चीज़ का आर्डर है)
+                  </span>
+                </div>
+                <span className="text-xs font-bold bg-white text-red-700 px-3 py-1 rounded-full shadow-xs">
+                  {lastScannedOrder.items.length} {lastScannedOrder.items.length === 1 ? 'Book' : 'Books'} in Package
+                </span>
+              </div>
+
+              {/* Big Font Highlighted Item Name */}
+              <div className="space-y-2">
+                {(() => {
+                  const productNames = Array.from(new Set(lastScannedOrder.items.map((i: any) => i.productName).filter(Boolean)));
+                  if (productNames.length > 0) {
+                    return (
+                      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-wide leading-tight drop-shadow-md">
+                        📦 {productNames.join(' + ')}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Highlighted book titles */}
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  {lastScannedOrder.items.map((item: any, idx: number) => (
+                    <div
+                      key={item.id || idx}
+                      className="bg-black/30 backdrop-blur-sm px-3.5 py-2 rounded-xl border border-white/25 flex items-center gap-2 shadow-sm"
+                    >
+                      <BookOpen size={18} className="text-amber-300 shrink-0" />
+                      <div>
+                        <span className="text-base sm:text-lg font-black text-white">{item.bookName}</span>
+                        <span className="ml-2 font-mono text-xs font-bold bg-yellow-400 text-slate-950 px-2 py-0.5 rounded">
+                          {item.bookCode}
+                        </span>
+                        <span className="ml-1.5 text-xs text-red-100 font-semibold">
+                          ({item.dispatchedQuantity}/{item.requiredQuantity})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -959,7 +1136,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                             <span className="font-mono font-bold text-white text-base">{item.bookCode}</span>
                             <span className="text-xs text-slate-400 font-mono">Qty: {item.dispatchedQuantity}/{item.requiredQuantity}</span>
                           </div>
-                          <div className="text-slate-300 text-xs mt-0.5">{item.bookName}</div>
+                          <div className="text-white text-sm sm:text-base font-bold mt-0.5">{item.bookName}</div>
                         </div>
                       </div>
 
@@ -974,7 +1151,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                           <button
                             onClick={() => handleGlobalScan(item.bookCode)}
                             disabled={isScanning}
-                            className="flex items-center gap-2 bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white border border-slate-600 hover:border-blue-400 px-3.5 py-2 rounded-lg font-bold text-xs transition-all hover:scale-102 cursor-pointer group disabled:opacity-50"
+                            className="flex items-center gap-2 bg-slate-800 hover:bg-red-600 text-slate-200 hover:text-white border border-slate-600 hover:border-red-400 px-3.5 py-2 rounded-lg font-bold text-xs transition-all hover:scale-102 cursor-pointer group disabled:opacity-50"
                             title={`Scan barcode or click mark to verify & dispatch ${item.bookCode}`}
                           >
                             <div className="w-4 h-4 rounded border-2 border-slate-400 group-hover:border-white flex items-center justify-center bg-slate-900/50">
@@ -1000,7 +1177,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                       <button
                         onClick={handleManualFinish}
                         disabled={isScanning}
-                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 transition-colors shadow-xs"
+                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
                         title="Dispatch only scanned books, keep remaining as Pending"
                       >
                         <CheckCircle2 size={14} />
@@ -1010,7 +1187,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                     <button
                       onClick={handleQuickDispatchAll}
                       disabled={isScanning}
-                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-colors shadow-xs"
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
                       title="Quickly dispatch all remaining books for this order without scanning"
                     >
                       <Zap size={14} />
@@ -1031,7 +1208,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
               Outgoing Sheet
             </h1>
-            <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full border border-blue-200">
+            <span className="text-xs bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full border border-red-200">
               Active Dispatch Station
             </span>
           </div>
@@ -1063,7 +1240,7 @@ export const OutgoingOrdersPage: React.FC = () => {
       {/* Top Real-time Queue Statistics Cards ("total count mese ek kam hoge") */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-4.5 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
             <Truck className="w-5 h-5" />
           </div>
           <div>
@@ -1128,7 +1305,7 @@ export const OutgoingOrdersPage: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search student, tracking ID, mobile, book code..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           </div>
@@ -1139,7 +1316,7 @@ export const OutgoingOrdersPage: React.FC = () => {
               <select
                 value={batchId}
                 onChange={(e) => setBatchId(e.target.value)}
-                className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 max-w-[200px] truncate"
+                className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-red-600 max-w-[200px] truncate"
                 title="Filter by uploaded Excel sheet"
               >
                 <option value="">All Uploaded Excel Sheets</option>
@@ -1154,7 +1331,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-red-600"
             >
               <option value="ALL">All Active (Pending & Partial)</option>
               <option value="PENDING">Pending Only</option>
@@ -1211,7 +1388,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                       <tr
                         key={order.id}
                         className={`transition-colors ${
-                          isPending ? 'hover:bg-blue-50/40' : 'hover:bg-slate-50/60 opacity-85'
+                          isPending ? 'hover:bg-red-50/40' : 'hover:bg-slate-50/60 opacity-85'
                         }`}
                       >
                         {/* Student Name & Mobile */}
@@ -1238,7 +1415,7 @@ export const OutgoingOrdersPage: React.FC = () => {
 
                         {/* Tracking ID */}
                         <td className="py-3 px-4">
-                          <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs inline-block">
+                          <span className="font-mono font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200 text-xs inline-block">
                             {order.trackingId}
                           </span>
                         </td>
@@ -1327,7 +1504,7 @@ export const OutgoingOrdersPage: React.FC = () => {
               <X size={20} />
             </button>
 
-            <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center mb-3 shadow-inner">
+            <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 mx-auto flex items-center justify-center mb-3 shadow-inner">
               <Smartphone size={28} />
             </div>
 
@@ -1339,7 +1516,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             </p>
 
             {/* QR Code Canvas */}
-            <div className="my-5 p-4 bg-white border-2 border-dashed border-blue-200 rounded-2xl inline-block shadow-xs">
+            <div className="my-5 p-4 bg-white border-2 border-dashed border-red-200 rounded-2xl inline-block shadow-xs">
               <QRCodeSVG
                 value={`${window.location.origin}/mobile-scanner?session=${stationSessionId}`}
                 size={200}
@@ -1351,7 +1528,7 @@ export const OutgoingOrdersPage: React.FC = () => {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left text-xs space-y-2">
               <div className="flex justify-between items-center text-slate-700">
                 <span className="font-semibold text-slate-600">Station Code:</span>
-                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                <span className="font-mono font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
                   {stationSessionId}
                 </span>
               </div>
