@@ -147,7 +147,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
         if (orderIsNowComplete || isBulkScan) {
           if (soundEnabled) {
             playOrderCompleteFanfare();
-            speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
+            speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order, please.');
           }
           setFeedback({
             type: 'completed',

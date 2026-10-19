@@ -105,6 +105,9 @@ export function playOrderCompleteFanfare() {
   });
 }
 
+// Persistent array holding active utterances to prevent Chromium garbage collection bug
+const activeSpeechUtterances: SpeechSynthesisUtterance[] = [];
+
 /**
  * Speaks a clear human voice announcement (Paytm Soundbox style)
  * e.g., "Done! Next order."
@@ -113,9 +116,11 @@ export function speakVoiceAnnouncement(text: string, onEnd?: () => void) {
   try {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+      activeSpeechUtterances.length = 0;
+
       setTimeout(() => {
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
+        utterance.rate = 0.95;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
 
@@ -127,10 +132,19 @@ export function speakVoiceAnnouncement(text: string, onEnd?: () => void) {
           utterance.voice = preferredVoice;
         }
 
-        if (onEnd) {
-          utterance.onend = () => onEnd();
-          utterance.onerror = () => onEnd();
-        }
+        activeSpeechUtterances.push(utterance);
+
+        utterance.onend = () => {
+          const idx = activeSpeechUtterances.indexOf(utterance);
+          if (idx !== -1) activeSpeechUtterances.splice(idx, 1);
+          onEnd?.();
+        };
+
+        utterance.onerror = () => {
+          const idx = activeSpeechUtterances.indexOf(utterance);
+          if (idx !== -1) activeSpeechUtterances.splice(idx, 1);
+          onEnd?.();
+        };
 
         window.speechSynthesis.speak(utterance);
       }, 60);
@@ -150,7 +164,7 @@ export function speakVoiceAnnouncement(text: string, onEnd?: () => void) {
 export function speakVoiceTwice(
   text: string,
   onAllDone?: () => void,
-  pauseMs: number = 500
+  pauseMs: number = 700
 ) {
   try {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -159,6 +173,7 @@ export function speakVoiceTwice(
     }
 
     window.speechSynthesis.cancel();
+    activeSpeechUtterances.length = 0;
 
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find(
@@ -175,29 +190,37 @@ export function speakVoiceTwice(
 
     const speakIteration = (isSecond: boolean) => {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
+      utterance.rate = 0.95; // Clear natural pacing so words are crisp
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
 
+      activeSpeechUtterances.push(utterance);
+
       utterance.onend = () => {
+        const idx = activeSpeechUtterances.indexOf(utterance);
+        if (idx !== -1) activeSpeechUtterances.splice(idx, 1);
+
         if (!isSecond) {
           // Pause between 1st and 2nd announcement
           setTimeout(() => {
             speakIteration(true);
           }, pauseMs);
         } else {
-          // 2nd announcement finished speaking!
+          // 2nd announcement finished speaking completely!
           setTimeout(() => {
             triggerComplete();
-          }, 600);
+          }, 800);
         }
       };
 
       utterance.onerror = (e) => {
         console.warn('Speech synthesis error in iteration:', e);
+        const idx = activeSpeechUtterances.indexOf(utterance);
+        if (idx !== -1) activeSpeechUtterances.splice(idx, 1);
+
         if (!isSecond) {
           setTimeout(() => speakIteration(true), pauseMs);
         } else {
@@ -210,7 +233,7 @@ export function speakVoiceTwice(
 
     setTimeout(() => {
       speakIteration(false);
-    }, 80);
+    }, 100);
   } catch (e) {
     console.error('Speech synthesis error in speakVoiceTwice:', e);
     onAllDone?.();

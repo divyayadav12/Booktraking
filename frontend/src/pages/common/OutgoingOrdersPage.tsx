@@ -122,7 +122,7 @@ export const OutgoingOrdersPage: React.FC = () => {
 
   const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
   const [completedStudentName, setCompletedStudentName] = useState('');
-  const [successCountdown, setSuccessCountdown] = useState(5);
+  const [successCountdown, setSuccessCountdown] = useState(15);
   const [scanResult, setScanResult] = useState<{
     type: 'success' | 'error' | null;
     message: string;
@@ -152,11 +152,17 @@ export const OutgoingOrdersPage: React.FC = () => {
     fetchOrdersRef.current?.(1);
   };
 
-  // Decrement success overlay countdown every second
+  // Decrement success overlay countdown every second (15s down to 0)
   useEffect(() => {
     if (!showPaytmSuccess) return;
     const interval = setInterval(() => {
-      setSuccessCountdown((prev) => Math.max(0, prev - 1));
+      setSuccessCountdown((prev) => {
+        if (prev <= 1) {
+          handleDismissSuccessOverlay();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(interval);
   }, [showPaytmSuccess]);
@@ -307,28 +313,23 @@ export const OutgoingOrdersPage: React.FC = () => {
           itemsDispatched: countDispatched > 0 ? countDispatched : undefined,
         });
 
-        // 🌟 Confirmation Box: Stays on screen while voice announces 2 times!
+        // 🌟 Confirmation Box: Stays on screen for 15 seconds while voice announces 2 times!
         if (isComplete && !isLoadedOnly) {
           setShowPaytmSuccess(true);
           setCompletedStudentName(updatedOrder?.studentName || '');
-          setSuccessCountdown(10);
+          setSuccessCountdown(15);
           setOrders(prev => prev.filter(o => o.id !== updatedOrder.id));
           setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
 
           if (soundEnabled) {
             playOrderCompleteFanfare();
-            speakVoiceTwice(
-              'Order of upcoming CA is fulfilled at FAST Education. Next order please.',
-              () => {
-                handleDismissSuccessOverlay();
-              }
-            );
+            speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order, please.');
           }
 
-          // Safety fallback timeout: stays visible for 11 seconds (both announcements)
+          // Full 15 seconds duration as requested
           autoCloseTimerRef.current = setTimeout(() => {
             handleDismissSuccessOverlay();
-          }, 11000);
+          }, 15000);
         }
       }
     } catch (err: any) {
@@ -484,16 +485,14 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         setShowPaytmSuccess(true);
         setCompletedStudentName(updatedOrder?.studentName || '');
-        setSuccessCountdown(10);
+        setSuccessCountdown(15);
         if (soundEnabled) {
           playOrderCompleteFanfare();
-          speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order please.', () => {
-            handleDismissSuccessOverlay();
-          });
+          speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order, please.');
         }
         autoCloseTimerRef.current = setTimeout(() => {
           handleDismissSuccessOverlay();
-        }, 11000);
+        }, 15000);
       }
     } catch (err: any) {
       const errMsg = err.response?.data?.message || 'Failed to dispatch all items.';
