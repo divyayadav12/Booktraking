@@ -69,12 +69,8 @@ export const DashboardLayout: React.FC = () => {
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-white p-0.5 flex items-center justify-center shadow-xs overflow-hidden shrink-0 border border-slate-200">
-            <img src="/fast_logo.png" alt="FAST" className="w-full h-full object-contain" />
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="font-extrabold text-slate-900 text-base tracking-wide">FAST</span>
-            <span className="text-[10px] text-red-600 font-extrabold uppercase">Education</span>
+          <div className="bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center">
+            <img src="/fast_logo.png" alt="FAST Education" className="h-9 w-auto max-w-[170px] object-contain" />
           </div>
         </div>
         <button
@@ -93,19 +89,19 @@ export const DashboardLayout: React.FC = () => {
       >
         <div>
           {/* Logo / Header */}
-          <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0 border border-slate-700">
-                <img src="/fast_logo.png" alt="FAST" className="w-full h-full object-contain" />
-              </div>
-              <div>
-                <h1 className="font-black text-white text-lg tracking-wider leading-tight">FAST</h1>
-                <p className="text-[10px] text-red-400 font-bold tracking-widest uppercase">EDUCATION</p>
+          <div className="px-4 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="w-full flex items-center justify-between">
+              <div className="w-full bg-white rounded-xl px-3 py-2.5 shadow-lg border border-slate-700/80 flex items-center justify-center">
+                <img
+                  src="/fast_logo.png"
+                  alt="FAST - First Attempt Success Tutorials"
+                  className="h-11 sm:h-12 w-auto max-w-[210px] object-contain"
+                />
               </div>
             </div>
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="md:hidden text-slate-400 hover:text-white"
+              className="md:hidden text-slate-400 hover:text-white ml-2 p-1"
             >
               <X className="w-5 h-5" />
             </button>

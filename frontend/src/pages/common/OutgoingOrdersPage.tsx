@@ -729,14 +729,16 @@ export const OutgoingOrdersPage: React.FC = () => {
           <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-4 border-red-500 overflow-hidden text-center transform scale-100 transition-all">
             {/* Header / Brand Banner */}
             <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-6 py-6">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner border border-white/30 animate-bounce">
-                <span className="text-3xl">🔔</span>
+              <div className="bg-white rounded-2xl px-5 py-2.5 mx-auto inline-flex items-center justify-center mb-3 shadow-xl border border-white/40">
+                <img src="/fast_logo.png" alt="FAST Education" className="h-10 sm:h-12 w-auto max-w-[220px] object-contain" />
               </div>
-              <div className="inline-block bg-white text-red-700 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full mb-2 shadow-xs">
-                ⚡ NEW ORDER RECEIVED (नया आर्डर प्राप्त हुआ)
+              <div>
+                <span className="inline-block bg-white text-red-700 text-xs font-black uppercase tracking-widest px-3.5 py-1 rounded-full mb-1 shadow-xs">
+                  ⚡ NEW ORDER RECEIVED (नया आर्डर प्राप्त हुआ)
+                </span>
               </div>
-              <h2 className="text-xl font-extrabold text-white">
-                FAST Education Dispatch Station
+              <h2 className="text-sm font-bold text-red-100 tracking-wide mt-1">
+                Dispatch Verification Station
               </h2>
             </div>
 

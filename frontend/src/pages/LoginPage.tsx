@@ -62,16 +62,16 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-white border-2 border-red-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg p-1.5 mb-3">
-            <img src="/fast_logo.png" alt="FAST" className="w-full h-full object-contain" />
+          <div className="bg-white border-2 border-red-500/80 rounded-2xl mx-auto inline-flex items-center justify-center shadow-xl px-6 py-3.5 mb-4">
+            <img
+              src="/fast_logo.png"
+              alt="FAST - First Attempt Success Tutorials"
+              className="h-14 sm:h-16 w-auto max-w-[280px] object-contain"
+            />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-1.5">
-            <span>FAST</span>
-            <span className="text-red-600 font-extrabold text-sm uppercase px-2 py-0.5 bg-red-50 border border-red-200 rounded-md">
-              Education
-            </span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">Student Book Tracking & Dispatch Verification</p>
+          <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+            Student Book Tracking & Dispatch Verification
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
