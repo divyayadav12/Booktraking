@@ -230,7 +230,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-white animate-pulse" />
               <span className="text-xs font-black uppercase tracking-widest text-white/90">
-                ORDER ITEM / COURSE (किस चीज़ का आर्डर है)
+                ORDER ITEM / COURSE
               </span>
             </div>
             <span className="text-xs font-bold bg-white text-[#DE3744] px-3 py-1 rounded-full shadow-xs">

@@ -778,11 +778,11 @@ export const OutgoingOrdersPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* What is this order for (Kis cheez ka order hai) in big highlight */}
+              {/* What is this order for in big highlight */}
               <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-left">
                 <div className="text-xs font-black uppercase tracking-wider text-amber-800 flex items-center gap-1.5 mb-2">
                   <Sparkles size={16} className="text-amber-600" />
-                  Order Items / Course (किस चीज़ का आर्डर है):
+                  Order Items / Course:
                 </div>
                 {/* Product Name if present */}
                 {(() => {
@@ -990,13 +990,13 @@ export const OutgoingOrdersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* ─── HIGHLIGHTED: KIS CHEEJ KA ORDER HAI (BIG FONT & HIGHLIGHT) ─── */}
+            {/* ─── HIGHLIGHTED: ORDER ITEM / COURSE (BIG FONT & HIGHLIGHT) ─── */}
             <div className="mb-5 p-5 rounded-2xl bg-[#DE3744] text-white shadow-2xl border-2 border-[#ff838c]/40 ring-4 ring-[#DE3744]/20">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/20 pb-2 mb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-white animate-pulse" />
                   <span className="text-xs font-black uppercase tracking-widest text-white/90">
-                    ORDER ITEM / COURSE (किस चीज़ का आर्डर है)
+                    ORDER ITEM / COURSE
                   </span>
                 </div>
                 <span className="text-xs font-bold bg-white text-[#DE3744] px-3 py-1 rounded-full shadow-xs">
