@@ -109,7 +109,7 @@ export function playOrderCompleteFanfare() {
  * Speaks a clear human voice announcement (Paytm Soundbox style)
  * e.g., "Done! Next order."
  */
-export function speakVoiceAnnouncement(text: string) {
+export function speakVoiceAnnouncement(text: string, onEnd?: () => void) {
   try {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -127,10 +127,117 @@ export function speakVoiceAnnouncement(text: string) {
           utterance.voice = preferredVoice;
         }
 
+        if (onEnd) {
+          utterance.onend = () => onEnd();
+          utterance.onerror = () => onEnd();
+        }
+
         window.speechSynthesis.speak(utterance);
       }, 60);
+    } else {
+      onEnd?.();
     }
   } catch (e) {
     console.error('Speech synthesis error:', e);
+    onEnd?.();
+  }
+}
+
+/**
+ * Speaks an announcement exactly 2 times with a natural pause in between,
+ * and executes onAllDone ONLY after the 2nd time has completely finished speaking!
+ */
+export function speakVoiceTwice(
+  text: string,
+  onAllDone?: () => void,
+  pauseMs: number = 500
+) {
+  try {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      onAllDone?.();
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) => v.lang.includes('IN') || v.lang.includes('en-GB') || v.lang.includes('en-US')
+    );
+
+    let hasCompleted = false;
+    const triggerComplete = () => {
+      if (!hasCompleted) {
+        hasCompleted = true;
+        onAllDone?.();
+      }
+    };
+
+    const speakIteration = (isSecond: boolean) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onend = () => {
+        if (!isSecond) {
+          // Pause between 1st and 2nd announcement
+          setTimeout(() => {
+            speakIteration(true);
+          }, pauseMs);
+        } else {
+          // 2nd announcement finished speaking!
+          setTimeout(() => {
+            triggerComplete();
+          }, 600);
+        }
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('Speech synthesis error in iteration:', e);
+        if (!isSecond) {
+          setTimeout(() => speakIteration(true), pauseMs);
+        } else {
+          triggerComplete();
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    setTimeout(() => {
+      speakIteration(false);
+    }, 80);
+  } catch (e) {
+    console.error('Speech synthesis error in speakVoiceTwice:', e);
+    onAllDone?.();
+  }
+}
+
+/**
+ * Speaks an error alert message clearly, stripping emoji characters
+ */
+export function speakErrorMessage(rawMessage: string) {
+  try {
+    let clean = (rawMessage || '')
+      .replace(/[❌⚠️❗🚫]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!clean) {
+      clean = 'Wrong barcode scanned. Please verify.';
+    } else {
+      const lower = clean.toLowerCase();
+      if (!lower.startsWith('warning') && !lower.startsWith('wrong') && !lower.startsWith('error')) {
+        clean = `Warning! ${clean}`;
+      }
+    }
+
+    speakVoiceAnnouncement(clean);
+  } catch (e) {
+    console.error('Error speaking error message:', e);
   }
 }

@@ -35,7 +35,7 @@ import {
   QrCode,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement } from '../../utils/sound';
+import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement, speakVoiceTwice, speakErrorMessage } from '../../utils/sound';
 
 export const OutgoingOrdersPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -142,6 +142,9 @@ export const OutgoingOrdersPage: React.FC = () => {
       clearTimeout(autoCloseTimerRef.current);
       autoCloseTimerRef.current = null;
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     setShowPaytmSuccess(false);
     lastScannedOrderRef.current = null;
     setLastScannedOrder(null);
@@ -240,10 +243,7 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         // Play audio feedback & voice announcement
         if (soundEnabled) {
-          if (isComplete && !isLoadedOnly) {
-            playOrderCompleteFanfare();
-            speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
-          } else if (!isLoadedOnly) {
+          if (!isComplete && !isLoadedOnly) {
             playSuccessChime();
           }
         }
@@ -307,33 +307,47 @@ export const OutgoingOrdersPage: React.FC = () => {
           itemsDispatched: countDispatched > 0 ? countDispatched : undefined,
         });
 
-        // 🌟 Auto-close preview card, show Paytm circular checkmark for 5 seconds
+        // 🌟 Confirmation Box: Stays on screen while voice announces 2 times!
         if (isComplete && !isLoadedOnly) {
           setShowPaytmSuccess(true);
           setCompletedStudentName(updatedOrder?.studentName || '');
-          setSuccessCountdown(5);
-          speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
+          setSuccessCountdown(10);
           setOrders(prev => prev.filter(o => o.id !== updatedOrder.id));
           setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+
+          if (soundEnabled) {
+            playOrderCompleteFanfare();
+            speakVoiceTwice(
+              'Order of upcoming CA is fulfilled at FAST Education. Next order please.',
+              () => {
+                handleDismissSuccessOverlay();
+              }
+            );
+          }
+
+          // Safety fallback timeout: stays visible for 11 seconds (both announcements)
           autoCloseTimerRef.current = setTimeout(() => {
-            setShowPaytmSuccess(false);
-            lastScannedOrderRef.current = null;
-            setLastScannedOrder(null);
-            setScanResult({ type: null, message: '' });
-            fetchOrdersRef.current?.(1);
-          }, 5000);
+            handleDismissSuccessOverlay();
+          }, 11000);
         }
       }
     } catch (err: any) {
       if (soundEnabled) playErrorTone();
+      const serverErrMsg = err.response?.data?.message || `Code "${cleanCode}" could not be verified or has no pending books.`;
       setScanResult({
         type: 'error',
-        message: err.response?.data?.message || `Code "${cleanCode}" could not be verified or has no pending books.`,
+        message: serverErrMsg,
       });
-      // Auto-dismiss error alert after 3.5 seconds so employee screen stays clean
+
+      // Voice speaks the error message out loud so operator immediately knows what happened
+      if (soundEnabled) {
+        speakErrorMessage(serverErrMsg);
+      }
+
+      // Auto-dismiss error alert after 5 seconds so employee screen stays clean
       autoCloseTimerRef.current = setTimeout(() => {
         setScanResult({ type: null, message: '' });
-      }, 3500);
+      }, 5000);
     } finally {
       setIsScanning(false);
       setScannerCode('');
@@ -417,10 +431,14 @@ export const OutgoingOrdersPage: React.FC = () => {
         }, 2500);
       }
     } catch (err: any) {
-      if (soundEnabled) playErrorTone();
+      const errMsg = err.response?.data?.message || 'Failed to update order.';
+      if (soundEnabled) {
+        playErrorTone();
+        speakErrorMessage(errMsg);
+      }
       setScanResult({
         type: 'error',
-        message: err.response?.data?.message || 'Failed to update order.',
+        message: errMsg,
       });
     } finally {
       setIsScanning(false);
@@ -466,24 +484,26 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         setShowPaytmSuccess(true);
         setCompletedStudentName(updatedOrder?.studentName || '');
-        setSuccessCountdown(5);
+        setSuccessCountdown(10);
         if (soundEnabled) {
           playOrderCompleteFanfare();
-          speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
+          speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order please.', () => {
+            handleDismissSuccessOverlay();
+          });
         }
         autoCloseTimerRef.current = setTimeout(() => {
-          setShowPaytmSuccess(false);
-          lastScannedOrderRef.current = null;
-          setLastScannedOrder(null);
-          setScanResult({ type: null, message: '' });
-          fetchOrdersRef.current?.(1);
-        }, 5000);
+          handleDismissSuccessOverlay();
+        }, 11000);
       }
     } catch (err: any) {
-      if (soundEnabled) playErrorTone();
+      const errMsg = err.response?.data?.message || 'Failed to dispatch all items.';
+      if (soundEnabled) {
+        playErrorTone();
+        speakErrorMessage(errMsg);
+      }
       setScanResult({
         type: 'error',
-        message: err.response?.data?.message || 'Failed to dispatch all items.',
+        message: errMsg,
       });
     } finally {
       setIsScanning(false);

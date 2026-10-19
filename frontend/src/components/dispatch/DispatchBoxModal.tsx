@@ -20,7 +20,7 @@ import {
   History,
   RotateCcw,
 } from 'lucide-react';
-import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement } from '../../utils/sound';
+import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement, speakVoiceTwice, speakErrorMessage } from '../../utils/sound';
 
 interface DispatchBoxModalProps {
   isOpen: boolean;
@@ -147,7 +147,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
         if (orderIsNowComplete || isBulkScan) {
           if (soundEnabled) {
             playOrderCompleteFanfare();
-            speakVoiceAnnouncement('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
+            speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order please.');
           }
           setFeedback({
             type: 'completed',
@@ -185,10 +185,14 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
         }, 100);
       }
     } catch (err: any) {
-      if (soundEnabled) playErrorTone();
       const serverMsg =
         err.response?.data?.message ||
         `Warning: Book code "${code}" does not match any pending books for this student order.`;
+
+      if (soundEnabled) {
+        playErrorTone();
+        speakErrorMessage(serverMsg);
+      }
 
       setFeedback({
         type: 'warning',
