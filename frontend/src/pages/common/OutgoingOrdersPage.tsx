@@ -992,15 +992,15 @@ export const OutgoingOrdersPage: React.FC = () => {
             </div>
 
             {/* ─── HIGHLIGHTED: KIS CHEEJ KA ORDER HAI (BIG FONT & HIGHLIGHT) ─── */}
-            <div className="mb-5 p-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-2xl border-2 border-red-300 ring-4 ring-red-500/20">
+            <div className="mb-5 p-5 rounded-2xl bg-[#DE3744] text-white shadow-2xl border-2 border-[#ff838c]/40 ring-4 ring-[#DE3744]/20">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/20 pb-2 mb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
-                  <span className="text-xs font-black uppercase tracking-widest text-red-100">
+                  <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                  <span className="text-xs font-black uppercase tracking-widest text-white/90">
                     ORDER ITEM / COURSE (किस चीज़ का आर्डर है)
                   </span>
                 </div>
-                <span className="text-xs font-bold bg-white text-red-700 px-3 py-1 rounded-full shadow-xs">
+                <span className="text-xs font-bold bg-white text-[#DE3744] px-3 py-1 rounded-full shadow-xs">
                   {lastScannedOrder.items.length} {lastScannedOrder.items.length === 1 ? 'Book' : 'Books'} in Package
                 </span>
               </div>
@@ -1024,15 +1024,15 @@ export const OutgoingOrdersPage: React.FC = () => {
                   {lastScannedOrder.items.map((item: any, idx: number) => (
                     <div
                       key={item.id || idx}
-                      className="bg-black/30 backdrop-blur-sm px-3.5 py-2 rounded-xl border border-white/25 flex items-center gap-2 shadow-sm"
+                      className="bg-black/25 backdrop-blur-sm px-3.5 py-2 rounded-xl border border-white/30 flex items-center gap-2 shadow-sm"
                     >
-                      <BookOpen size={18} className="text-amber-300 shrink-0" />
+                      <BookOpen size={18} className="text-white shrink-0" />
                       <div>
                         <span className="text-base sm:text-lg font-black text-white">{item.bookName}</span>
-                        <span className="ml-2 font-mono text-xs font-bold bg-yellow-400 text-slate-950 px-2 py-0.5 rounded">
+                        <span className="ml-2 font-mono text-xs font-black bg-white text-[#DE3744] px-2.5 py-0.5 rounded-md shadow-xs">
                           {item.bookCode}
                         </span>
-                        <span className="ml-1.5 text-xs text-red-100 font-semibold">
+                        <span className="ml-1.5 text-xs text-white font-bold">
                           ({item.dispatchedQuantity}/{item.requiredQuantity})
                         </span>
                       </div>
