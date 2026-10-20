@@ -205,9 +205,9 @@ export const BarcodeCatalogPage: React.FC = () => {
     }
 
     // 🎯 If user searched / filtered to 1 single code (e.g. AFM05-02 / AFB05-02),
-    // automatically fill the FULL A4 SHEET (50 stickers) so 0 paper is wasted!
+    // automatically fill the FULL A4 SHEET with 19 rows x 5 columns = 95 stickers so 0 paper is wasted!
     if (itemsToPrint.length === 1) {
-      handlePrintSingleSticker(itemsToPrint[0].code, itemsToPrint[0].name, 50);
+      handlePrintSingleSticker(itemsToPrint[0].code, itemsToPrint[0].name, 95);
       return;
     }
 
@@ -244,14 +244,14 @@ export const BarcodeCatalogPage: React.FC = () => {
           <style>
             @page {
               size: A4 portrait;
-              margin: 6mm 5mm;
+              margin: 4mm 4mm;
             }
             * { box-sizing: border-box; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
               background: #0f172a;
               margin: 0;
-              padding: 12px 0 30px 0;
+              padding: 10px 0 25px 0;
               color: #0f172a;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -259,13 +259,13 @@ export const BarcodeCatalogPage: React.FC = () => {
 
             .no-print-bar {
               max-width: 210mm;
-              margin: 0 auto 12px auto;
+              margin: 0 auto 10px auto;
               display: flex;
               justify-content: space-between;
               align-items: center;
               background: #1e293b;
               color: white;
-              padding: 10px 16px;
+              padding: 8px 14px;
               border-radius: 8px;
               box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             }
@@ -273,7 +273,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               background: #2563eb;
               color: white;
               border: none;
-              padding: 8px 18px;
+              padding: 7px 16px;
               border-radius: 6px;
               font-weight: 700;
               font-size: 13px;
@@ -284,7 +284,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               background: #475569;
               color: white;
               border: none;
-              padding: 8px 14px;
+              padding: 7px 12px;
               border-radius: 6px;
               font-size: 12px;
               cursor: pointer;
@@ -297,24 +297,24 @@ export const BarcodeCatalogPage: React.FC = () => {
               min-height: 297mm;
               margin: 0 auto;
               background: white;
-              padding: 6mm 5mm;
+              padding: 4mm 4mm;
               box-shadow: 0 6px 20px rgba(0,0,0,0.35);
               border-radius: 2px;
               box-sizing: border-box;
             }
 
-            /* ─── 5 Barcode Stickers Per Line / Row (Paper Saver) ─────────────── */
+            /* ─── 5 Barcode Stickers Per Row, 18-19 Rows Per Column (Ultra Compact) ─── */
             .sticker-grid {
               display: grid;
               grid-template-columns: repeat(5, 1fr);
-              gap: 2.2mm 2mm;
+              gap: 0.8mm 1.5mm;
               width: 100%;
             }
 
             .sticker-card {
               border: 1px dashed #94a3b8;
-              border-radius: 3px;
-              padding: 2px 2px;
+              border-radius: 2px;
+              padding: 1px 1.5px;
               background: white;
               text-align: center;
               page-break-inside: avoid;
@@ -322,37 +322,38 @@ export const BarcodeCatalogPage: React.FC = () => {
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              height: 25.5mm;
+              height: 14.2mm;
               overflow: hidden;
               box-sizing: border-box;
             }
 
             .barcode-wrapper {
               width: 100%;
+              line-height: 0;
               display: flex;
               justify-content: center;
               align-items: center;
             }
             .barcode-wrapper svg {
               max-width: 98%;
-              height: 33px;
+              height: 24px;
               display: block;
               margin: 0 auto;
             }
 
             /* Single line: Code and Subject name together, simple regular text */
             .sticker-line {
-              font-size: 8px;
+              font-size: 7.2px;
               font-weight: 500;
               color: #0f172a;
-              line-height: 1.15;
-              margin-top: 1.5px;
+              line-height: 1;
+              margin-top: 1px;
               text-align: center;
               width: 100%;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              padding: 0 2px;
+              padding: 0 1px;
             }
 
             @media print {
@@ -372,9 +373,9 @@ export const BarcodeCatalogPage: React.FC = () => {
         <body>
           <div class="no-print-bar">
             <div>
-              <strong style="color: #38bdf8; font-size: 14px;">🏷️ Barcode Stickers (${itemsToPrint.length} Items - A4 5 Per Line)</strong>
-              <span style="font-size: 12px; margin-left: 10px; color: #cbd5e1;">
-                💡 A4 पेपर | 'Destination' me <strong>"Save as PDF"</strong> chunein.
+              <strong style="color: #38bdf8; font-size: 13px;">🏷️ Barcode Stickers (${itemsToPrint.length} Items - A4 5 Per Line)</strong>
+              <span style="font-size: 12px; margin-left: 8px; color: #cbd5e1;">
+                💡 1 Column me 18-19 Scanners | 'Destination' me <strong>"Save as PDF"</strong> chunein.
               </span>
             </div>
             <div>
@@ -390,7 +391,6 @@ export const BarcodeCatalogPage: React.FC = () => {
           </div>
 
           <script>
-            // Render all SVG barcodes with JsBarcode (5 per line, displayValue: false so text is handled in single line)
             const items = ${JSON.stringify(itemsToPrint)};
             items.forEach(it => {
               const elId = '#bc-' + it.code.replace(/[^a-zA-Z0-9]/g, '_');
@@ -398,7 +398,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                 JsBarcode(elId, it.code, {
                   format: "CODE128",
                   width: 1.15,
-                  height: 32,
+                  height: 22,
                   margin: 0,
                   displayValue: false
                 });
@@ -416,8 +416,8 @@ export const BarcodeCatalogPage: React.FC = () => {
     win.focus();
   };
 
-  // Print Single Barcode Sticker - Fills Full A4 Page (50 stickers, 5 per row, 0 paper waste)
-  const handlePrintSingleSticker = (code: string, name: string, defaultCount: number = 50) => {
+  // Print Single Barcode Sticker - Fills Full A4 Page (95 stickers, 19 rows x 5 columns, Ultra Compact)
+  const handlePrintSingleSticker = (code: string, name: string, defaultCount: number = 95) => {
     const win = window.open('', '_blank', 'width=1150,height=850');
     if (!win) {
       error('Popup window block ho gayi hai. Browser settings me popups allow karein.');
@@ -425,7 +425,7 @@ export const BarcodeCatalogPage: React.FC = () => {
     }
 
     const initialCount = defaultCount;
-    // Pre-generate 50 sticker cards in the initial HTML so they appear immediately!
+    // Pre-generate 95 sticker cards in the initial HTML so they appear immediately!
     let cardsHtml = '';
     for (let i = 0; i < initialCount; i++) {
       cardsHtml += `
@@ -445,41 +445,41 @@ export const BarcodeCatalogPage: React.FC = () => {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>A4 Barcode Stickers (5 Per Line - Full Sheet) - ${code}</title>
+          <title>A4 Barcode Stickers (19 Scanners/Col - 95 Full Sheet) - ${code}</title>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <style>
             @page {
               size: A4 portrait;
-              margin: 6mm 5mm;
+              margin: 4mm 4mm;
             }
             * { box-sizing: border-box; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
               background: #0f172a;
               margin: 0;
-              padding: 12px 0 30px 0;
+              padding: 10px 0 25px 0;
               color: #0f172a;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
             .no-print-bar {
               max-width: 210mm;
-              margin: 0 auto 12px auto;
+              margin: 0 auto 10px auto;
               display: flex;
               flex-wrap: wrap;
               justify-content: space-between;
               align-items: center;
               background: #1e293b;
               color: white;
-              padding: 10px 16px;
+              padding: 8px 14px;
               border-radius: 8px;
-              gap: 10px;
+              gap: 8px;
               box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             }
             .bar-left {
               display: flex;
               align-items: center;
-              gap: 12px;
+              gap: 10px;
               flex-wrap: wrap;
             }
             .bar-title {
@@ -490,7 +490,7 @@ export const BarcodeCatalogPage: React.FC = () => {
             .qty-group {
               display: flex;
               align-items: center;
-              gap: 6px;
+              gap: 5px;
               font-size: 12px;
               color: #cbd5e1;
             }
@@ -498,7 +498,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               background: #334155;
               color: white;
               border: 1px solid #475569;
-              padding: 4px 10px;
+              padding: 4px 9px;
               border-radius: 4px;
               font-size: 11px;
               font-weight: 600;
@@ -509,8 +509,8 @@ export const BarcodeCatalogPage: React.FC = () => {
               border-color: #3b82f6;
             }
             .qty-input {
-              width: 54px;
-              padding: 3px 6px;
+              width: 52px;
+              padding: 3px 5px;
               border-radius: 4px;
               border: 1px solid #64748b;
               background: #0f172a;
@@ -522,7 +522,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               background: #2563eb;
               color: white;
               border: none;
-              padding: 8px 18px;
+              padding: 7px 16px;
               border-radius: 6px;
               font-weight: 700;
               font-size: 13px;
@@ -535,7 +535,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               background: #475569;
               color: white;
               border: none;
-              padding: 8px 14px;
+              padding: 7px 12px;
               border-radius: 6px;
               font-size: 12px;
               cursor: pointer;
@@ -551,24 +551,24 @@ export const BarcodeCatalogPage: React.FC = () => {
               min-height: 297mm;
               margin: 0 auto;
               background: white;
-              padding: 6mm 5mm;
+              padding: 4mm 4mm;
               box-shadow: 0 6px 20px rgba(0,0,0,0.35);
               border-radius: 2px;
               box-sizing: border-box;
             }
 
-            /* ─── 5 Barcode Stickers Per Line / Row (10 Rows = 50 Stickers) ─── */
+            /* ─── 5 Barcode Stickers Per Row x 18-19 Rows (Ultra Compact - Zero Waste) ─── */
             .sticker-grid {
               display: grid;
               grid-template-columns: repeat(5, 1fr);
-              gap: 2.2mm 2mm;
+              gap: 0.8mm 1.5mm;
               width: 100%;
             }
 
             .sticker-card {
               border: 1px dashed #94a3b8;
-              border-radius: 3px;
-              padding: 2px 2px;
+              border-radius: 2px;
+              padding: 1px 1.5px;
               background: white;
               text-align: center;
               page-break-inside: avoid;
@@ -576,37 +576,38 @@ export const BarcodeCatalogPage: React.FC = () => {
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              height: 25.5mm;
+              height: 14.2mm;
               overflow: hidden;
               box-sizing: border-box;
             }
 
             .barcode-wrapper {
               width: 100%;
+              line-height: 0;
               display: flex;
               justify-content: center;
               align-items: center;
             }
             .barcode-wrapper svg {
               max-width: 98%;
-              height: 33px;
+              height: 24px;
               display: block;
               margin: 0 auto;
             }
 
             /* Single line: Code and Subject name together, simple regular text */
             .sticker-line {
-              font-size: 8px;
+              font-size: 7.2px;
               font-weight: 500;
               color: #0f172a;
-              line-height: 1.15;
-              margin-top: 1.5px;
+              line-height: 1;
+              margin-top: 1px;
               text-align: center;
               width: 100%;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              padding: 0 2px;
+              padding: 0 1px;
             }
 
             @media print {
@@ -626,12 +627,13 @@ export const BarcodeCatalogPage: React.FC = () => {
         <body>
           <div class="no-print-bar">
             <div class="bar-left">
-              <span class="bar-title">🏷️ ${code} (A4 Sheet - 5 Per Line)</span>
+              <span class="bar-title">🏷️ ${code} (1 Col = 19 Scanners | 95 Total)</span>
               <div class="qty-group">
                 <span>Stickers:</span>
-                <button type="button" class="qty-btn ${initialCount === 50 ? 'active' : ''}" onclick="changeCount(50)">1 Sheet (50)</button>
-                <button type="button" class="qty-btn ${initialCount === 100 ? 'active' : ''}" onclick="changeCount(100)">2 Sheets (100)</button>
-                <button type="button" class="qty-btn ${initialCount === 25 ? 'active' : ''}" onclick="changeCount(25)">Half (25)</button>
+                <button type="button" class="qty-btn ${initialCount === 95 ? 'active' : ''}" onclick="changeCount(95)">1 Sheet (19 Rows = 95)</button>
+                <button type="button" class="qty-btn ${initialCount === 90 ? 'active' : ''}" onclick="changeCount(90)">18 Rows (90)</button>
+                <button type="button" class="qty-btn ${initialCount === 190 ? 'active' : ''}" onclick="changeCount(190)">2 Sheets (190)</button>
+                <button type="button" class="qty-btn ${initialCount === 45 ? 'active' : ''}" onclick="changeCount(45)">Half (45)</button>
                 <input type="number" id="qty-box" class="qty-input" value="${initialCount}" min="1" max="500" onchange="changeCount(this.value)" />
               </div>
             </div>
@@ -657,7 +659,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                   JsBarcode('#bc-single-' + i, code, {
                     format: "CODE128",
                     width: 1.15,
-                    height: 32,
+                    height: 22,
                     margin: 0,
                     displayValue: false
                   });
@@ -666,12 +668,13 @@ export const BarcodeCatalogPage: React.FC = () => {
             }
 
             function changeCount(val) {
-              const count = parseInt(val) || 50;
+              const count = parseInt(val) || 95;
               document.getElementById('qty-box').value = count;
               document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
-              if (count === 50) document.querySelectorAll('.qty-btn')[0]?.classList.add('active');
-              if (count === 100) document.querySelectorAll('.qty-btn')[1]?.classList.add('active');
-              if (count === 25) document.querySelectorAll('.qty-btn')[2]?.classList.add('active');
+              if (count === 95) document.querySelectorAll('.qty-btn')[0]?.classList.add('active');
+              if (count === 90) document.querySelectorAll('.qty-btn')[1]?.classList.add('active');
+              if (count === 190) document.querySelectorAll('.qty-btn')[2]?.classList.add('active');
+              if (count === 45) document.querySelectorAll('.qty-btn')[3]?.classList.add('active');
 
               const grid = document.getElementById('grid');
               let html = '';
