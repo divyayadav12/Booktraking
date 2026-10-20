@@ -149,6 +149,15 @@ export async function deleteBookStock(req: AuthenticatedRequest, res: Response, 
   }
 }
 
+export async function updateBookDetails(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.updateBookDetails(req.user!.id, req.params.identifier, req.body);
+    return successResponse(res, result.message, result.book);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getPendingBooks(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { search, status, priority, page, limit } = req.query;

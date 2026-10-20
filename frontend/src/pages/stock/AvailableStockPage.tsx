@@ -68,6 +68,15 @@ export const AvailableStockPage: React.FC = () => {
   const [deleteModalBook, setDeleteModalBook] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+  // Edit Book Details Modal
+  const [editModalBook, setEditModalBook] = useState<any>(null);
+  const [editBookCode, setEditBookCode] = useState<string>('');
+  const [editBookName, setEditBookName] = useState<string>('');
+  const [editProductCode, setEditProductCode] = useState<string>('');
+  const [editAvailableQty, setEditAvailableQty] = useState<string>('0');
+  const [editThreshold, setEditThreshold] = useState<string>('10');
+  const [isUpdatingBook, setIsUpdatingBook] = useState<boolean>(false);
+
   const fetchStock = async (targetPage = 1) => {
     setIsLoading(true);
     try {
@@ -217,6 +226,51 @@ export const AvailableStockPage: React.FC = () => {
       error(err.response?.data?.message || 'Book delete karne me samasya aayi');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Open Edit Book Modal
+  const handleOpenEditModal = (book: any) => {
+    setEditModalBook(book);
+    setEditBookCode(book.bookCode || '');
+    setEditBookName(book.bookName || '');
+    setEditProductCode(book.productCode || '');
+    setEditAvailableQty(String(book.availableQuantity ?? 0));
+    setEditThreshold(String(book.lowStockThreshold ?? 10));
+  };
+
+  // Submit Edit Book Form
+  const handleEditBookSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editModalBook) return;
+    if (!editBookCode.trim()) {
+      error('Book Code / Barcode darj karein');
+      return;
+    }
+    if (!editBookName.trim()) {
+      error('Book Name / Title darj karein');
+      return;
+    }
+
+    setIsUpdatingBook(true);
+    try {
+      const res = await api.put(`/stock/book/${encodeURIComponent(editModalBook.bookCode)}`, {
+        bookCode: editBookCode.trim(),
+        bookName: editBookName.trim(),
+        productCode: editProductCode.trim(),
+        availableQuantity: parseInt(editAvailableQty, 10),
+        lowStockThreshold: parseInt(editThreshold, 10),
+      });
+
+      if (res.data.success) {
+        success(res.data.message || 'Book details successfully update ho gayi hain!');
+        setEditModalBook(null);
+        fetchStock(page);
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Book details update karne me samasya aayi');
+    } finally {
+      setIsUpdatingBook(false);
     }
   };
 
@@ -600,6 +654,14 @@ export const AvailableStockPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditModal(b)}
+                            className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white rounded border border-amber-200 transition-colors cursor-pointer"
+                            title="Edit Book Code, Name, Product Combo & Stock Details"
+                          >
+                            <Edit3 size={12} />
+                            <span>Edit</span>
+                          </button>
                           <button
                             onClick={() => openAdjustModal(b, 'SET')}
                             className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded border border-indigo-200 transition-colors cursor-pointer"
@@ -1041,6 +1103,130 @@ export const AvailableStockPage: React.FC = () => {
                   ) : (
                     'Confirm & Set New Stock'
                   )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Edit Book Details Modal ────────────────────────────────────────── */}
+      {editModalBook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Edit3 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Edit Book Details (किताब का विवरण बदलें)</h3>
+                  <p className="text-xs text-slate-500">
+                    Book Code, Name, Product Combo ya Stock details update karein
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditModalBook(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEditBookSubmit} className="space-y-3.5">
+              {/* Book Code / Barcode */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Book Code / Barcode (बारकोड कोड) *
+                </label>
+                <input
+                  type="text"
+                  value={editBookCode}
+                  onChange={(e) => setEditBookCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. DTSM-002, AF-01..."
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase bg-amber-50/40"
+                />
+                <span className="text-[10px] text-slate-400">Yeh barcode code scanner gun se scan karne me use hota hai</span>
+              </div>
+
+              {/* Book Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Book Name / Title (किताब का नाम) *
+                </label>
+                <input
+                  type="text"
+                  value={editBookName}
+                  onChange={(e) => setEditBookName(e.target.value)}
+                  placeholder="e.g. DT Study Mate May27 Part - 01"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Product Combo Code (Optional) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Product / Course Combo Code (ऑप्शनल - किस कोर्स की किताब है)
+                </label>
+                <input
+                  type="text"
+                  value={editProductCode}
+                  onChange={(e) => setEditProductCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. AFMEO-002, CA-FINAL-01..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase"
+                />
+              </div>
+
+              {/* Grid: Available Quantity & Low Stock Alert */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Available Stock (उपलब्ध स्टॉक)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editAvailableQty}
+                    onChange={(e) => setEditAvailableQty(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Low Stock Alert (कम स्टॉक चेतावनी)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editThreshold}
+                    onChange={(e) => setEditThreshold(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isUpdatingBook}
+                  onClick={() => setEditModalBook(null)}
+                >
+                  Cancel (रद्द करें)
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isUpdatingBook}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isUpdatingBook ? <LoadingSpinner /> : <><Edit3 size={14} /><span>Save Changes (अपडेट करें)</span></>}
                 </Button>
               </div>
             </form>

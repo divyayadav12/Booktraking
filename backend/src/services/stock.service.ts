@@ -658,6 +658,114 @@ export async function deleteBookStock(userId: string, identifier: string) {
   };
 }
 
+/**
+ * Update Book details in stock master (Book Code, Book Name, Product Code, Low Stock Threshold, Available Stock)
+ */
+export async function updateBookDetails(
+  userId: string,
+  identifier: string,
+  updateData: {
+    bookCode?: string;
+    bookName?: string;
+    productCode?: string;
+    lowStockThreshold?: number;
+    availableQuantity?: number;
+  }
+) {
+  const cleanId = identifier.trim();
+  let book = null;
+
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    book = await BookStock.findById(cleanId);
+  }
+  if (!book) {
+    const cleanCode = normalizeCode(cleanId);
+    book = await BookStock.findOne({ bookCode: cleanCode });
+  }
+
+  if (!book) {
+    throw { statusCode: 404, message: `Book "${identifier}" not found in stock master`, code: 'BOOK_NOT_FOUND' };
+  }
+
+  const oldCode = book.bookCode;
+  const oldName = book.bookName;
+  const oldProductCode = book.productCode || '';
+  const oldThreshold = book.lowStockThreshold || 10;
+  const oldAvailable = book.availableQuantity;
+
+  let newCode = oldCode;
+  if (updateData.bookCode && updateData.bookCode.trim()) {
+    newCode = normalizeCode(updateData.bookCode);
+    if (newCode !== oldCode) {
+      // Check if newCode already belongs to another book
+      const existing = await BookStock.findOne({ bookCode: newCode });
+      if (existing && existing._id.toString() !== book._id.toString()) {
+        throw {
+          statusCode: 400,
+          message: `Book code "${newCode}" already exists for another book (${existing.bookName})! Duplicate code not allowed.`,
+          code: 'DUPLICATE_BOOK_CODE',
+        };
+      }
+    }
+  }
+
+  const newName = updateData.bookName && updateData.bookName.trim() ? updateData.bookName.trim() : oldName;
+  const newProductCode = updateData.productCode !== undefined ? updateData.productCode.trim().toUpperCase() : oldProductCode;
+  const newThreshold =
+    updateData.lowStockThreshold !== undefined && Number(updateData.lowStockThreshold) > 0
+      ? Number(updateData.lowStockThreshold)
+      : oldThreshold;
+
+  book.bookCode = newCode;
+  book.bookName = newName;
+  book.productCode = newProductCode;
+  book.lowStockThreshold = newThreshold;
+
+  // If availableQuantity is also updated
+  if (
+    updateData.availableQuantity !== undefined &&
+    !isNaN(Number(updateData.availableQuantity)) &&
+    Number(updateData.availableQuantity) >= 0
+  ) {
+    const newQty = Number(updateData.availableQuantity);
+    book.availableQuantity = newQty;
+    // Align totalInward if needed so totalInward >= totalDispatched + availableQuantity
+    if (book.totalInward < book.totalDispatched + newQty) {
+      book.totalInward = book.totalDispatched + newQty;
+    }
+  }
+
+  await book.save();
+
+  // If bookCode or bookName changed, also sync across StockInward and PendingBook so records match
+  if (newCode !== oldCode || newName !== oldName) {
+    await StockInward.updateMany(
+      { bookCode: oldCode },
+      { $set: { bookCode: newCode, bookName: newName } }
+    );
+    await PendingBook.updateMany(
+      { bookCode: oldCode },
+      { $set: { bookCode: newCode, bookName: newName } }
+    );
+  }
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'BOOK_STOCK_UPDATED',
+    entityType: 'BookStock',
+    entityId: book._id.toString(),
+    metadata: {
+      old: { bookCode: oldCode, bookName: oldName, productCode: oldProductCode, lowStockThreshold: oldThreshold, availableQuantity: oldAvailable },
+      new: { bookCode: newCode, bookName: newName, productCode: newProductCode, lowStockThreshold: newThreshold, availableQuantity: book.availableQuantity },
+    },
+  });
+
+  return {
+    message: `Book "${newName}" (${newCode}) ki details successfully update ho gayi hain!`,
+    book,
+  };
+}
+
 export interface AdjustStockInput {
   bookCode: string;
   bookName?: string;
