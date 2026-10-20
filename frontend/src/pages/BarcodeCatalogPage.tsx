@@ -176,7 +176,7 @@ export const BarcodeCatalogPage: React.FC = () => {
     }
   };
 
-  // Print All Filtered Barcode Stickers (4 Stickers per line / row)
+  // Print All Filtered Barcode Stickers (5 Stickers per line / row - Zero Paper Waste)
   const handlePrintAllStickers = () => {
     const win = window.open('', '_blank', 'width=1150,height=850');
     if (!win) {
@@ -210,7 +210,7 @@ export const BarcodeCatalogPage: React.FC = () => {
       return;
     }
 
-    // Circled Sticker Card: Barcode + Code + Name (Clean & Compact!)
+    // Circled Sticker Card: Barcode + [Code - Subject Name in 1 single line, not bold]
     const cardsHtml = itemsToPrint
       .map(
         (item) => `
@@ -218,7 +218,9 @@ export const BarcodeCatalogPage: React.FC = () => {
         <div class="barcode-wrapper">
           <svg id="bc-${item.code.replace(/[^a-zA-Z0-9]/g, '_')}"></svg>
         </div>
-        <div class="item-name" title="${item.name}">${item.name}</div>
+        <div class="sticker-line" title="${item.code} - ${item.name}">
+          ${item.code} - ${item.name}
+        </div>
       </div>
     `
       )
@@ -229,13 +231,13 @@ export const BarcodeCatalogPage: React.FC = () => {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Master Barcode Stickers (4 Per Line) - ${new Date().toLocaleDateString('en-IN')}</title>
+          <title>Master Barcode Stickers (5 Per Line) - ${new Date().toLocaleDateString('en-IN')}</title>
           <!-- JsBarcode for crisp printing in new window -->
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <style>
             @page {
               size: A4 portrait;
-              margin: 6mm 4mm;
+              margin: 5mm 4mm;
             }
             * { box-sizing: border-box; }
             body {
@@ -280,17 +282,17 @@ export const BarcodeCatalogPage: React.FC = () => {
               margin-left: 8px;
             }
 
-            /* ─── 4 Barcode Stickers Per Line / Row (Paper Saver) ─────────────── */
+            /* ─── 5 Barcode Stickers Per Line / Row (Paper Saver) ─────────────── */
             .sticker-grid {
               display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 5px;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 2.5mm;
             }
 
             .sticker-card {
-              border: 1px dashed #64748b;
-              border-radius: 4px;
-              padding: 4px 3px;
+              border: 1px dashed #94a3b8;
+              border-radius: 3px;
+              padding: 2px 2px;
               background: white;
               text-align: center;
               page-break-inside: avoid;
@@ -298,7 +300,7 @@ export const BarcodeCatalogPage: React.FC = () => {
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              height: 86px;
+              height: 24.5mm;
               overflow: hidden;
             }
 
@@ -309,20 +311,21 @@ export const BarcodeCatalogPage: React.FC = () => {
               align-items: center;
             }
             .barcode-wrapper svg {
-              max-width: 100%;
-              height: 48px;
+              max-width: 98%;
+              height: 32px;
               display: block;
               margin: 0 auto;
             }
 
-            .item-name {
-              font-weight: 800;
-              font-size: 10px;
+            /* Single line: Code and Subject name together, simple regular text */
+            .sticker-line {
+              font-size: 8.5px;
+              font-weight: 500;
               color: #0f172a;
-              line-height: 1.2;
-              margin-top: 1px;
+              line-height: 1.15;
+              margin-top: 1.5px;
               text-align: center;
-              max-width: 100%;
+              width: 100%;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
@@ -332,16 +335,16 @@ export const BarcodeCatalogPage: React.FC = () => {
             @media print {
               .no-print { display: none !important; }
               body { background: white !important; padding: 0 !important; }
-              .sticker-card { border: 1px solid #334155 !important; }
+              .sticker-card { border: 1px solid #475569 !important; }
             }
           </style>
         </head>
         <body>
           <div class="no-print">
             <div>
-              <strong style="color: #38bdf8; font-size: 14px;">🏷️ Barcode Stickers (1 Line me 4 Barcode - Paper Saver)</strong>
+              <strong style="color: #38bdf8; font-size: 14px;">🏷️ Barcode Stickers (1 Line me 5 Barcodes - Paper Saver)</strong>
               <span style="font-size: 12px; margin-left: 10px; color: #cbd5e1;">
-                💡 1 लाइन में 4 बारकोड (Stationery Saver) | 'Destination' me <strong>"Save as PDF"</strong> chunein.
+                💡 1 लाइन में 5 बारकोड | 'Destination' me <strong>"Save as PDF"</strong> chunein.
               </span>
             </div>
             <div>
@@ -355,19 +358,17 @@ export const BarcodeCatalogPage: React.FC = () => {
           </div>
 
           <script>
-            // Render all SVG barcodes with JsBarcode (4 per line)
+            // Render all SVG barcodes with JsBarcode (5 per line, displayValue: false so text is handled in single line)
             const items = ${JSON.stringify(itemsToPrint)};
             items.forEach(it => {
               const elId = '#bc-' + it.code.replace(/[^a-zA-Z0-9]/g, '_');
               try {
                 JsBarcode(elId, it.code, {
                   format: "CODE128",
-                  width: 1.35,
-                  height: 38,
-                  fontSize: 10.5,
-                  margin: 1,
-                  textMargin: 2,
-                  displayValue: true
+                  width: 1.15,
+                  height: 32,
+                  margin: 0,
+                  displayValue: false
                 });
               } catch(e) {}
             });
@@ -383,42 +384,247 @@ export const BarcodeCatalogPage: React.FC = () => {
     win.focus();
   };
 
-  // Print Single Barcode Sticker
+  // Print Single Barcode Sticker - Fills Full Page (50 stickers, 5 per row, 0 paper waste)
   const handlePrintSingleSticker = (code: string, name: string) => {
-    const win = window.open('', '_blank', 'width=550,height=380');
-    if (!win) return;
+    const win = window.open('', '_blank', 'width=1150,height=850');
+    if (!win) {
+      error('Popup window block ho gayi hai. Browser settings me popups allow karein.');
+      return;
+    }
+
     win.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Barcode Sticker - ${code}</title>
+          <meta charset="utf-8" />
+          <title>Barcode Sticker Sheet (5 Per Row) - ${code}</title>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <style>
-            @page { margin: 6mm; }
-            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; margin: 0; background: #f8fafc; }
-            .no-print { margin-bottom: 15px; display: flex; justify-content: space-between; }
-            .sticker { border: 1.5px dashed #0f172a; padding: 12px 8px; border-radius: 6px; max-width: 250px; margin: auto; background: white; }
-            .name { font-weight: 800; font-size: 13px; margin-top: 4px; color: #0f172a; }
-            @media print { .no-print { display: none; } body { background: white; padding: 0; } }
+            @page {
+              size: A4 portrait;
+              margin: 5mm 4mm;
+            }
+            * { box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+              background: #f8fafc;
+              margin: 0;
+              padding: 8px;
+              color: #0f172a;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .no-print {
+              display: flex;
+              flex-wrap: wrap;
+              justify-content: space-between;
+              align-items: center;
+              background: #0f172a;
+              color: white;
+              padding: 10px 16px;
+              border-radius: 8px;
+              margin-bottom: 12px;
+              gap: 10px;
+              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15);
+            }
+            .no-print-left {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              flex-wrap: wrap;
+            }
+            .title-info {
+              font-size: 13px;
+              font-weight: 700;
+              color: #38bdf8;
+            }
+            .qty-selector {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 12px;
+              color: #cbd5e1;
+            }
+            .qty-btn {
+              background: #334155;
+              color: white;
+              border: 1px solid #475569;
+              padding: 4px 10px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.15s;
+            }
+            .qty-btn:hover, .qty-btn.active {
+              background: #2563eb;
+              border-color: #3b82f6;
+            }
+            .qty-input {
+              width: 56px;
+              padding: 3px 6px;
+              border-radius: 4px;
+              border: 1px solid #64748b;
+              background: #1e293b;
+              color: white;
+              font-size: 12px;
+              text-align: center;
+            }
+            .btn-print {
+              background: #2563eb;
+              color: white;
+              border: none;
+              padding: 8px 18px;
+              border-radius: 6px;
+              font-weight: 700;
+              font-size: 13px;
+              cursor: pointer;
+            }
+            .btn-print:hover {
+              background: #1d4ed8;
+            }
+            .btn-close {
+              background: #475569;
+              color: white;
+              border: none;
+              padding: 8px 14px;
+              border-radius: 6px;
+              font-size: 12px;
+              cursor: pointer;
+              margin-left: 8px;
+            }
+            .btn-close:hover {
+              background: #334155;
+            }
+
+            /* ─── 5 Barcode Stickers Per Line / Row (Paper Saver) ─────────────── */
+            .sticker-grid {
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 2.5mm;
+            }
+
+            .sticker-card {
+              border: 1px dashed #94a3b8;
+              border-radius: 3px;
+              padding: 2px 2px;
+              background: white;
+              text-align: center;
+              page-break-inside: avoid;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 24.5mm;
+              overflow: hidden;
+            }
+
+            .barcode-wrapper {
+              width: 100%;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            }
+            .barcode-wrapper svg {
+              max-width: 98%;
+              height: 32px;
+              display: block;
+              margin: 0 auto;
+            }
+
+            /* Single line: Code and Subject name together, simple regular text */
+            .sticker-line {
+              font-size: 8.5px;
+              font-weight: 500;
+              color: #0f172a;
+              line-height: 1.15;
+              margin-top: 1.5px;
+              text-align: center;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              padding: 0 2px;
+            }
+
+            @media print {
+              .no-print { display: none !important; }
+              body { background: white !important; padding: 0 !important; }
+              .sticker-card { border: 1px solid #475569 !important; }
+            }
           </style>
         </head>
         <body>
           <div class="no-print">
-            <span style="font-size: 12px;">💡 Destination me <strong>"Save as PDF"</strong> chunein.</span>
+            <div class="no-print-left">
+              <span class="title-info">🏷️ ${code} (1 Line me 5 Barcodes - Full Sheet)</span>
+              <div class="qty-selector">
+                <span>Stickers:</span>
+                <button type="button" class="qty-btn active" onclick="setCount(50)">1 Sheet (50)</button>
+                <button type="button" class="qty-btn" onclick="setCount(100)">2 Sheets (100)</button>
+                <button type="button" class="qty-btn" onclick="setCount(25)">Half Sheet (25)</button>
+                <input type="number" id="custom-qty" class="qty-input" value="50" min="1" max="500" onchange="setCount(this.value)" />
+              </div>
+            </div>
             <div>
-              <button onclick="window.print()" style="background:#2563eb;color:white;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">🖨️ Print / Save PDF</button>
-              <button onclick="window.close()" style="background:#475569;color:white;padding:6px 10px;border:none;border-radius:4px;cursor:pointer;margin-left:6px;">✕ Close</button>
+              <button onclick="window.print()" class="btn-print">🖨️ Print / Save as PDF</button>
+              <button onclick="window.close()" class="btn-close">✕ Close</button>
             </div>
           </div>
-          <div class="sticker">
-            <div style="margin: 4px 0;"><svg id="bc"></svg></div>
-            <div class="name">${name}</div>
-          </div>
+
+          <div class="sticker-grid" id="sticker-container"></div>
+
           <script>
-            try {
-              JsBarcode("#bc", "${code}", { format: "CODE128", width: 1.8, height: 48, fontSize: 12, margin: 2, displayValue: true });
-            } catch(e) {}
-            setTimeout(() => { window.print(); }, 400);
+            const code = ${JSON.stringify(code)};
+            const name = ${JSON.stringify(name)};
+            let currentCount = 50;
+
+            function render(count) {
+              currentCount = parseInt(count) || 50;
+              document.getElementById('custom-qty').value = currentCount;
+              const container = document.getElementById('sticker-container');
+              let html = '';
+              for (let i = 0; i < currentCount; i++) {
+                html += \`
+                  <div class="sticker-card">
+                    <div class="barcode-wrapper">
+                      <svg id="bc-single-\${i}"></svg>
+                    </div>
+                    <div class="sticker-line" title="\${code} - \${name}">
+                      \${code} - \${name}
+                    </div>
+                  </div>
+                \`;
+              }
+              container.innerHTML = html;
+
+              for (let i = 0; i < currentCount; i++) {
+                try {
+                  JsBarcode('#bc-single-' + i, code, {
+                    format: "CODE128",
+                    width: 1.15,
+                    height: 32,
+                    margin: 0,
+                    displayValue: false
+                  });
+                } catch(e) {}
+              }
+            }
+
+            function setCount(num) {
+              document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
+              if (num == 50) document.querySelectorAll('.qty-btn')[0]?.classList.add('active');
+              if (num == 100) document.querySelectorAll('.qty-btn')[1]?.classList.add('active');
+              if (num == 25) document.querySelectorAll('.qty-btn')[2]?.classList.add('active');
+              render(num);
+            }
+
+            // Initial render: 50 stickers to fill the full A4 sheet
+            render(50);
+
+            setTimeout(() => {
+              window.print();
+            }, 500);
           </script>
         </body>
       </html>
