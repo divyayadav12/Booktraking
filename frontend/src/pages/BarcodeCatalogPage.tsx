@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   Zap,
   Sparkles,
+  Edit3,
+  X,
 } from 'lucide-react';
 import { BarcodeDisplay } from '../components/common/BarcodeDisplay';
 import api from '../services/api';
@@ -35,6 +37,7 @@ interface BookItem {
 }
 
 interface ProductItem {
+  id?: string;
   productCode: string;
   productName: string;
   books: string[];
@@ -58,6 +61,21 @@ export const BarcodeCatalogPage: React.FC = () => {
   // Custom Barcode Tester
   const [testerInput, setTesterInput] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Edit Product Modal State
+  const [editProductModal, setEditProductModal] = useState<ProductItem | null>(null);
+  const [editProductCode, setEditProductCode] = useState('');
+  const [editProductName, setEditProductName] = useState('');
+  const [editProductBooks, setEditProductBooks] = useState('');
+  const [isUpdatingProduct, setIsUpdatingProduct] = useState(false);
+
+  // Edit Book Modal State
+  const [editBookModal, setEditBookModal] = useState<BookItem | null>(null);
+  const [editBookCode, setEditBookCode] = useState('');
+  const [editBookName, setEditBookName] = useState('');
+  const [editBookProductCode, setEditBookProductCode] = useState('');
+  const [editBookAvailableStock, setEditBookAvailableStock] = useState('0');
+  const [isUpdatingBook, setIsUpdatingBook] = useState(false);
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +106,93 @@ export const BarcodeCatalogPage: React.FC = () => {
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
     success(`"${code}" copy ho gaya!`);
+  };
+
+  // Open Edit Product Modal
+  const handleOpenEditProduct = (p: ProductItem) => {
+    setEditProductModal(p);
+    setEditProductCode(p.productCode);
+    setEditProductName(p.productName);
+    setEditProductBooks(p.books.join(', '));
+  };
+
+  // Save Edit Product
+  const handleSaveEditProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProductModal) return;
+    if (!editProductCode.trim()) {
+      error('Product code zaroori hai');
+      return;
+    }
+    if (!editProductName.trim()) {
+      error('Product name zaroori hai');
+      return;
+    }
+
+    const booksArr = editProductBooks
+      .split(',')
+      .map((b) => b.trim().toUpperCase())
+      .filter(Boolean);
+
+    setIsUpdatingProduct(true);
+    try {
+      const res = await api.put(`/stock/product/${encodeURIComponent(editProductModal.productCode)}`, {
+        productCode: editProductCode.trim(),
+        productName: editProductName.trim(),
+        books: booksArr,
+      });
+      if (res.data?.success) {
+        success(res.data?.message || 'Product successfully update ho gaya!');
+        setEditProductModal(null);
+        fetchCatalog();
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Product update karne me samasya aayi');
+    } finally {
+      setIsUpdatingProduct(false);
+    }
+  };
+
+  // Open Edit Book Modal
+  const handleOpenEditBook = (b: BookItem) => {
+    setEditBookModal(b);
+    setEditBookCode(b.bookCode);
+    setEditBookName(b.bookName);
+    setEditBookProductCode(b.productCode || '');
+    setEditBookAvailableStock(String(b.availableQuantity ?? 0));
+  };
+
+  // Save Edit Book
+  const handleSaveEditBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editBookModal) return;
+    if (!editBookCode.trim()) {
+      error('Book code zaroori hai');
+      return;
+    }
+    if (!editBookName.trim()) {
+      error('Book name zaroori hai');
+      return;
+    }
+
+    setIsUpdatingBook(true);
+    try {
+      const res = await api.put(`/stock/book/${encodeURIComponent(editBookModal.bookCode)}`, {
+        bookCode: editBookCode.trim(),
+        bookName: editBookName.trim(),
+        productCode: editBookProductCode.trim(),
+        availableQuantity: parseInt(editBookAvailableStock, 10),
+      });
+      if (res.data?.success) {
+        success(res.data?.message || 'Book details successfully update ho gayi hain!');
+        setEditBookModal(null);
+        fetchCatalog();
+      }
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Book update karne me samasya aayi');
+    } finally {
+      setIsUpdatingBook(false);
+    }
   };
 
   // Filtered Books
@@ -986,13 +1091,23 @@ export const BarcodeCatalogPage: React.FC = () => {
                           )}
                         </button>
 
-                        <button
-                          onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
-                          className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
-                        >
-                          <Printer size={11} />
-                          <span>Print</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditProduct(p)}
+                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
+                            title="Edit Product Code & Course Name"
+                          >
+                            <Edit3 size={11} />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
+                            className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
+                          >
+                            <Printer size={11} />
+                            <span>Print</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1036,14 +1151,24 @@ export const BarcodeCatalogPage: React.FC = () => {
                               ))}
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <button
-                              onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
-                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Printer size={12} />
-                              <span>Print</span>
-                            </button>
+                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditProduct(p)}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
+                                title="Edit Product Code & Course Name"
+                              >
+                                <Edit3 size={12} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
+                                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Printer size={12} />
+                                <span>Print</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1131,13 +1256,23 @@ export const BarcodeCatalogPage: React.FC = () => {
                             )}
                           </button>
 
-                          <button
-                            onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
-                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
-                          >
-                            <Printer size={11} />
-                            <span>Print</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditBook(b)}
+                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
+                              title="Edit Book Code & Book Name"
+                            >
+                              <Edit3 size={11} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
+                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
+                            >
+                              <Printer size={11} />
+                              <span>Print</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1185,14 +1320,24 @@ export const BarcodeCatalogPage: React.FC = () => {
                               {b.availableQuantity}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <button
-                              onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
-                              className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Printer size={12} />
-                              <span>Print</span>
-                            </button>
+                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditBook(b)}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
+                                title="Edit Book Code & Book Name"
+                              >
+                                <Edit3 size={12} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
+                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Printer size={12} />
+                                <span>Print</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1213,6 +1358,242 @@ export const BarcodeCatalogPage: React.FC = () => {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── Edit Product Modal ─────────────────────────────────────────────── */}
+      {editProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                  <Package size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Edit Product / Course Barcode (प्रोडक्ट विवरण बदलें)</h3>
+                  <p className="text-xs text-slate-500">
+                    Product Code ya Course Name update karein
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditProductModal(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditProduct} className="space-y-3.5">
+              {/* Product Code */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Product / Course Code (प्रोडक्ट कोड) *
+                </label>
+                <input
+                  type="text"
+                  value={editProductCode}
+                  onChange={(e) => setEditProductCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. AFB05-02, AFMEO-002..."
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase bg-indigo-50/40"
+                />
+                <span className="text-[10px] text-slate-400">Yeh code barcode scan & order bundles me use hota hai</span>
+              </div>
+
+              {/* Product Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Product / Course Name (कोर्स का नाम) *
+                </label>
+                <input
+                  type="text"
+                  value={editProductName}
+                  onChange={(e) => setEditProductName(e.target.value)}
+                  placeholder="e.g. AFM Outscanner Multi-Colour QB"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Books in Bundle */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Books in Bundle (इस कॉम्बो में शामिल किताबें - कॉमा से अलग करें)
+                </label>
+                <input
+                  type="text"
+                  value={editProductBooks}
+                  onChange={(e) => setEditProductBooks(e.target.value.toUpperCase())}
+                  placeholder="e.g. AF051-002, AF052-002"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
+                />
+                <span className="text-[10px] text-slate-400">Example: AF051-002, AF052-002 (comma separated)</span>
+              </div>
+
+              {/* Live Barcode Preview */}
+              {editProductCode.trim() && (
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500">Live Preview:</span>
+                  <div className="bg-white px-2 py-1 rounded border border-slate-200">
+                    <BarcodeDisplay value={editProductCode.trim()} height={30} width={1.2} fontSize={9} />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isUpdatingProduct}
+                  onClick={() => setEditProductModal(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
+                >
+                  Cancel (रद्द करें)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingProduct}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isUpdatingProduct ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <Edit3 size={13} />
+                      <span>Save Changes (अपडेट करें)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Edit Book Modal ────────────────────────────────────────────────── */}
+      {editBookModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Edit Book Barcode (किताब विवरण बदलें)</h3>
+                  <p className="text-xs text-slate-500">
+                    Book Code, Title ya Combo details update karein
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditBookModal(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditBook} className="space-y-3.5">
+              {/* Book Code */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Book Code / Barcode (किताब बारकोड कोड) *
+                </label>
+                <input
+                  type="text"
+                  value={editBookCode}
+                  onChange={(e) => setEditBookCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. AF-01, DTSM-002..."
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 uppercase bg-red-50/40"
+                />
+                <span className="text-[10px] text-slate-400">Yeh code book sticker aur scanner gun se scan karne me use hota hai</span>
+              </div>
+
+              {/* Book Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Book Name / Title (किताब का नाम) *
+                </label>
+                <input
+                  type="text"
+                  value={editBookName}
+                  onChange={(e) => setEditBookName(e.target.value)}
+                  placeholder="e.g. Audit Regular Book"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              {/* Product Combo Code */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Associated Product Combo (किस कोर्स कॉम्बो की किताब है - ऑप्शनल)
+                </label>
+                <input
+                  type="text"
+                  value={editBookProductCode}
+                  onChange={(e) => setEditBookProductCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. AFB05-02, AFMEO-002..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 uppercase"
+                />
+              </div>
+
+              {/* Available Stock */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Available Stock (उपलब्ध स्टॉक)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editBookAvailableStock}
+                  onChange={(e) => setEditBookAvailableStock(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              {/* Live Barcode Preview */}
+              {editBookCode.trim() && (
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500">Live Preview:</span>
+                  <div className="bg-white px-2 py-1 rounded border border-slate-200">
+                    <BarcodeDisplay value={editBookCode.trim()} height={30} width={1.2} fontSize={9} />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isUpdatingBook}
+                  onClick={() => setEditBookModal(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
+                >
+                  Cancel (रद्द करें)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingBook}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isUpdatingBook ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <Edit3 size={13} />
+                      <span>Save Changes (अपडेट करें)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

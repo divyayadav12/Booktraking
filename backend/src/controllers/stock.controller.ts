@@ -219,4 +219,13 @@ export async function getBarcodeCatalog(req: AuthenticatedRequest, res: Response
   }
 }
 
+export async function updateProductDetails(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.updateProductDetails(req.user!.id, req.params.identifier, req.body);
+    return successResponse(res, result.message, result.product);
+  } catch (error) {
+    next(error);
+  }
+}
+
 
