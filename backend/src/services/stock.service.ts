@@ -1297,16 +1297,6 @@ export async function receivePendingBook(userId: string, id: string, input: { re
     let newCode = oldCode;
     if (updateData.productCode && updateData.productCode.trim()) {
       newCode = updateData.productCode.trim().toUpperCase();
-      if (newCode !== oldCode) {
-        const existing = await ProductCatalog.findOne({ productCode: newCode });
-        if (existing && (!product || existing._id.toString() !== product._id.toString())) {
-          throw {
-            statusCode: 400,
-            message: `Product code "${newCode}" already exists for another product (${existing.productName})! Duplicate code not allowed.`,
-            code: 'DUPLICATE_PRODUCT_CODE',
-          };
-        }
-      }
     }
 
     const newName = updateData.productName && updateData.productName.trim() ? updateData.productName.trim() : oldName;

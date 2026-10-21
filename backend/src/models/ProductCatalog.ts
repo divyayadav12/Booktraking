@@ -14,7 +14,6 @@ const ProductCatalogSchema = new Schema<IProductCatalog>(
     productCode: {
       type: String,
       required: true,
-      unique: true,
       uppercase: true,
       trim: true,
       index: true,

@@ -1,12 +1,21 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { ENV } from './env';
-import { User } from '../models';
+import { ProductCatalog, User } from '../models';
 
 export async function connectDatabase() {
   try {
     await mongoose.connect(ENV.MONGODB_URI);
     console.log('✅ Connected to MongoDB database via Mongoose');
+
+    const productCatalogIndexes = await ProductCatalog.collection.indexes();
+    const uniqueProductCodeIndex = productCatalogIndexes.find(
+      (index) => index.key.productCode === 1 && index.unique && typeof index.name === 'string'
+    );
+    if (uniqueProductCodeIndex?.name) {
+      await ProductCatalog.collection.dropIndex(uniqueProductCodeIndex.name);
+      console.log('🧹 Removed unique ProductCatalog productCode index');
+    }
 
     // Clean up legacy unique index on productCode if it exists
     try {
