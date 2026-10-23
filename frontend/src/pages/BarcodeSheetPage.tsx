@@ -20,12 +20,14 @@ import {
   LayoutList,
   Layers,
   ArrowRight,
+  Trash2,
 } from 'lucide-react';
 import { BarcodeDisplay } from '../components/common/BarcodeDisplay';
 import { DispatchBoxModal } from '../components/dispatch/DispatchBoxModal';
 import { Order } from '../types';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 interface OrderItem {
   id: string;
@@ -62,12 +64,15 @@ interface BarcodeOrder {
 
 export const BarcodeSheetPage: React.FC = () => {
   const { success, error, warning } = useToast();
+  const { isAdmin } = useAuth();
   const [orders, setOrders] = useState<BarcodeOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [isDeletingOrders, setIsDeletingOrders] = useState(false);
 
   // Fast Barcode Scanner state
   const [fastScanInput, setFastScanInput] = useState('');
@@ -105,8 +110,50 @@ export const BarcodeSheetPage: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearch(searchInput);
+    setSelectedOrderIds(new Set());
     fetchOrders(searchInput);
   };
+
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds((current) => {
+      const updated = new Set(current);
+      if (updated.has(orderId)) updated.delete(orderId);
+      else updated.add(orderId);
+      return updated;
+    });
+  };
+
+  const toggleAllVisibleOrders = () => {
+    const visibleIds = filteredOrders.map((order) => order.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedOrderIds.has(id));
+    setSelectedOrderIds((current) => {
+      const updated = new Set(current);
+      visibleIds.forEach((id) => (allSelected ? updated.delete(id) : updated.add(id)));
+      return updated;
+    });
+  };
+
+  const handleDeleteOrderIds = async (orderIds: string[]) => {
+    if (orderIds.length === 0 || isDeletingOrders) return;
+    const confirmed = window.confirm(
+      `${orderIds.length} selected order(s) and their dispatch history will be permanently deleted. Physical dispatch stock will NOT be restored. Continue?`
+    );
+    if (!confirmed) return;
+
+    setIsDeletingOrders(true);
+    try {
+      const res = await api.delete('/orders/bulk-delete', { data: { orderIds } });
+      success(res.data?.message || `${orderIds.length} order(s) deleted`);
+      setSelectedOrderIds(new Set());
+      await fetchOrders(search);
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Selected orders delete nahi ho paye');
+    } finally {
+      setIsDeletingOrders(false);
+    }
+  };
+
+  const handleDeleteSelectedOrders = () => handleDeleteOrderIds(Array.from(selectedOrderIds));
 
   // Fast Barcode Scan Trigger (Gun scanner or manual typing)
   const handleFastBarcodeScan = (e: React.FormEvent) => {
@@ -446,6 +493,9 @@ export const BarcodeSheetPage: React.FC = () => {
               .no-print {
                 display: none !important;
               }
+              .no-print-cell {
+                display: none !important;
+              }
               body {
                 background: white !important;
                 padding: 0 !important;
@@ -589,6 +639,7 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             @media print {
               .no-print { display: none !important; }
+              .no-print-cell { display: none !important; }
               body { background: white !important; padding: 0 !important; }
             }
           </style>
@@ -751,7 +802,10 @@ export const BarcodeSheetPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-1.5 text-xs">
           <button
-            onClick={() => setStatusFilter('ALL')}
+            onClick={() => {
+              setStatusFilter('ALL');
+              setSelectedOrderIds(new Set());
+            }}
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
               statusFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
@@ -759,7 +813,10 @@ export const BarcodeSheetPage: React.FC = () => {
             All Orders ({orders.length})
           </button>
           <button
-            onClick={() => setStatusFilter('PENDING')}
+            onClick={() => {
+              setStatusFilter('PENDING');
+              setSelectedOrderIds(new Set());
+            }}
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1 ${
               statusFilter === 'PENDING' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
             }`}
@@ -768,7 +825,10 @@ export const BarcodeSheetPage: React.FC = () => {
             <span>Pending ({pendingOrdersCount})</span>
           </button>
           <button
-            onClick={() => setStatusFilter('COMPLETED')}
+            onClick={() => {
+              setStatusFilter('COMPLETED');
+              setSelectedOrderIds(new Set());
+            }}
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1 ${
               statusFilter === 'COMPLETED'
                 ? 'bg-emerald-600 text-white'
@@ -802,6 +862,7 @@ export const BarcodeSheetPage: React.FC = () => {
             onClick={() => {
               setSearchInput('');
               setSearch('');
+              setSelectedOrderIds(new Set());
               fetchOrders('');
             }}
             className="p-1.5 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
@@ -809,6 +870,18 @@ export const BarcodeSheetPage: React.FC = () => {
           >
             <RefreshCw size={14} />
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleDeleteSelectedOrders}
+              disabled={selectedOrderIds.size === 0 || isDeletingOrders}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Permanently delete selected orders"
+            >
+              <Trash2 size={13} />
+              {isDeletingOrders ? 'Deleting...' : `Delete Selected (${selectedOrderIds.size})`}
+            </button>
+          )}
         </form>
       </div>
 
@@ -841,6 +914,16 @@ export const BarcodeSheetPage: React.FC = () => {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-900 text-white uppercase text-[11px] tracking-wider font-bold">
+                    {isAdmin && (
+                      <th className="no-print py-3 px-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredOrders.length > 0 && filteredOrders.every((order) => selectedOrderIds.has(order.id))}
+                          onChange={toggleAllVisibleOrders}
+                          aria-label="Select all visible orders"
+                        />
+                      </th>
+                    )}
                     <th className="py-3 px-3 text-center w-64">Bar Code (बारकोड)</th>
                     <th className="py-3 px-3 whitespace-nowrap">Student Code</th>
                     <th className="py-3 px-3 whitespace-nowrap">Tracking ID</th>
@@ -870,6 +953,16 @@ export const BarcodeSheetPage: React.FC = () => {
                           : 'hover:bg-red-50/40'
                       }`}
                     >
+                      {isAdmin && (
+                        <td className="no-print py-2.5 px-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.has(order.id)}
+                            onChange={() => toggleOrderSelection(order.id)}
+                            aria-label={`Select order for ${order.studentName}`}
+                          />
+                        </td>
+                      )}
                       {/* 1. Barcode Column (Code128 Graphic - Extra Large & Scannable) */}
                       <td className="py-2.5 px-3 text-center barcode-cell bg-white/60">
                         <div className="inline-block bg-white p-1.5 rounded border border-slate-200 shadow-2xs">
@@ -939,6 +1032,16 @@ export const BarcodeSheetPage: React.FC = () => {
                           >
                             <Printer size={13} />
                           </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteOrderIds([order.id])}
+                              disabled={isDeletingOrders}
+                              className="no-print p-1 text-rose-600 hover:text-white hover:bg-rose-600 rounded border border-rose-200 transition-colors disabled:opacity-50"
+                              title="Delete this order"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -964,6 +1067,16 @@ export const BarcodeSheetPage: React.FC = () => {
               <div key={order.id} className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
                   <div>
+                    {isAdmin && (
+                      <label className="no-print flex items-center gap-1.5 text-xs text-slate-600 mb-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.has(order.id)}
+                          onChange={() => toggleOrderSelection(order.id)}
+                        />
+                        Select order for delete
+                      </label>
+                    )}
                     <h3 className="font-bold text-slate-900 text-base">{order.studentName}</h3>
                     <p className="text-xs text-slate-500">
                       Student Code: <strong className="font-mono text-slate-700">{order.orderCode || '-'}</strong>
@@ -985,6 +1098,16 @@ export const BarcodeSheetPage: React.FC = () => {
                     >
                       <Printer size={14} />
                     </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDeleteOrderIds([order.id])}
+                        disabled={isDeletingOrders}
+                        className="no-print p-1.5 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 disabled:opacity-50"
+                        title="Delete this order"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
 

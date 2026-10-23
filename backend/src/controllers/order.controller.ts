@@ -114,3 +114,15 @@ export async function clearAllOrders(req: AuthenticatedRequest, res: Response, n
   }
 }
 
+export async function deleteOrders(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { orderIds } = req.body;
+    if (!Array.isArray(orderIds) || orderIds.some((id: unknown) => typeof id !== 'string')) {
+      return errorResponse(res, 'orderIds must be an array of order IDs', 'INVALID_ORDER_IDS', 400);
+    }
+    const result = await orderService.deleteOrders(req.user!.id, orderIds);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}

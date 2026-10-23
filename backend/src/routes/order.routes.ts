@@ -18,6 +18,7 @@ router.get('/:id/items', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOr
 // Clear all orders and dispatch history (Admin only)
 router.post('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders);
 router.delete('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders);
+router.delete('/bulk-delete', requireRole('ADMIN'), orderController.deleteOrders);
 
 // All orders list is accessible to ADMIN
 router.get('/', requireRole('ADMIN'), orderController.getOrders);

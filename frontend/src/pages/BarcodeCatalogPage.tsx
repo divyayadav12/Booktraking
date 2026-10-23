@@ -19,10 +19,12 @@ import {
   Sparkles,
   Edit3,
   X,
+  Plus,
 } from 'lucide-react';
 import { BarcodeDisplay } from '../components/common/BarcodeDisplay';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 interface BookItem {
   id: string;
@@ -48,6 +50,7 @@ interface ProductItem {
 
 export const BarcodeCatalogPage: React.FC = () => {
   const { success, error, warning } = useToast();
+  const { isAdmin } = useAuth();
   const [books, setBooks] = useState<BookItem[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +79,16 @@ export const BarcodeCatalogPage: React.FC = () => {
   const [editBookProductCode, setEditBookProductCode] = useState('');
   const [editBookAvailableStock, setEditBookAvailableStock] = useState('0');
   const [isUpdatingBook, setIsUpdatingBook] = useState(false);
+  const [showAddBookModal, setShowAddBookModal] = useState(false);
+  const [addBookCode, setAddBookCode] = useState('');
+  const [addBookName, setAddBookName] = useState('');
+  const [addBookProductCode, setAddBookProductCode] = useState('');
+  const [isAddingBook, setIsAddingBook] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [addProductCode, setAddProductCode] = useState('');
+  const [addProductName, setAddProductName] = useState('');
+  const [addProductBooks, setAddProductBooks] = useState('');
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +112,50 @@ export const BarcodeCatalogPage: React.FC = () => {
   useEffect(() => {
     fetchCatalog();
   }, []);
+
+  const handleAddBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingBook(true);
+    try {
+      const res = await api.post('/stock/barcode-catalog/book', {
+        bookCode: addBookCode.trim(),
+        bookName: addBookName.trim(),
+        productCode: addBookProductCode.trim(),
+      });
+      success(res.data?.message || 'Book barcode added successfully');
+      setShowAddBookModal(false);
+      setAddBookCode('');
+      setAddBookName('');
+      setAddBookProductCode('');
+      await fetchCatalog();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Book barcode add nahi ho paya');
+    } finally {
+      setIsAddingBook(false);
+    }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingProduct(true);
+    try {
+      const res = await api.post('/stock/barcode-catalog/product', {
+        productCode: addProductCode.trim(),
+        productName: addProductName.trim(),
+        books: addProductBooks.split(',').map((book) => book.trim()).filter(Boolean),
+      });
+      success(res.data?.message || 'Product barcode added successfully');
+      setShowAddProductModal(false);
+      setAddProductCode('');
+      setAddProductName('');
+      setAddProductBooks('');
+      await fetchCatalog();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Product barcode add nahi ho paya');
+    } finally {
+      setIsAddingProduct(false);
+    }
+  };
 
   // Copy to clipboard
   const handleCopy = (code: string) => {
@@ -450,8 +507,8 @@ export const BarcodeCatalogPage: React.FC = () => {
             .sticker-code {
               display: block !important;
               flex: 0 0 auto;
-              font-size: 5px;
-              font-weight: 700;
+              font-size: 9px;
+              font-weight: 400;
               color: #0f172a;
               line-height: 1;
               margin-top: 1px;
@@ -465,7 +522,7 @@ export const BarcodeCatalogPage: React.FC = () => {
             .sticker-name {
               display: block !important;
               flex: 0 0 auto;
-              font-size: 4px;
+              font-size: 9px;
               font-weight: 400;
               color: #334155;
               line-height: 1;
@@ -718,8 +775,8 @@ export const BarcodeCatalogPage: React.FC = () => {
             .sticker-code {
               display: block !important;
               flex: 0 0 auto;
-              font-size: 5px;
-              font-weight: 700;
+              font-size: 9px;
+              font-weight: 400;
               color: #0f172a;
               line-height: 1;
               margin-top: 1px;
@@ -733,7 +790,7 @@ export const BarcodeCatalogPage: React.FC = () => {
             .sticker-name {
               display: block !important;
               flex: 0 0 auto;
-              font-size: 4px;
+              font-size: 9px;
               font-weight: 400;
               color: #334155;
               line-height: 1;
@@ -980,8 +1037,28 @@ export const BarcodeCatalogPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Search & Layout Toggle */}
+        {/* Add barcode actions, search & layout toggle */}
         <div className="flex items-center gap-2">
+          {isAdmin && (activeTab === 'ALL' || activeTab === 'BOOKS') && (
+            <button
+              type="button"
+              onClick={() => setShowAddBookModal(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold whitespace-nowrap"
+            >
+              <Plus size={13} />
+              Add Book Code
+            </button>
+          )}
+          {isAdmin && (activeTab === 'ALL' || activeTab === 'PRODUCTS') && (
+            <button
+              type="button"
+              onClick={() => setShowAddProductModal(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold whitespace-nowrap"
+            >
+              <Plus size={13} />
+              Add Product Code
+            </button>
+          )}
           {/* Search Input */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1387,6 +1464,117 @@ export const BarcodeCatalogPage: React.FC = () => {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {showAddBookModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+          <form onSubmit={handleAddBook} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Add Book Barcode</h3>
+                <p className="text-xs text-slate-500">Book code aur name add karein. Initial stock 0 rahega.</p>
+              </div>
+              <button type="button" onClick={() => setShowAddBookModal(false)} className="p-1 text-slate-400 hover:text-slate-700">
+                <X size={18} />
+              </button>
+            </div>
+            <label className="block text-xs font-bold text-slate-700">
+              Book Code *
+              <input
+                value={addBookCode}
+                onChange={(e) => setAddBookCode(e.target.value.toUpperCase())}
+                required
+                maxLength={50}
+                placeholder="e.g. AF-01"
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase"
+              />
+            </label>
+            <label className="block text-xs font-bold text-slate-700">
+              Book Name *
+              <input
+                value={addBookName}
+                onChange={(e) => setAddBookName(e.target.value)}
+                required
+                maxLength={200}
+                placeholder="Book title"
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </label>
+            <label className="block text-xs font-bold text-slate-700">
+              Product Code (optional)
+              <input
+                value={addBookProductCode}
+                onChange={(e) => setAddBookProductCode(e.target.value.toUpperCase())}
+                maxLength={50}
+                placeholder="e.g. AFBFL-002"
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase"
+              />
+            </label>
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+              <button type="button" onClick={() => setShowAddBookModal(false)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold">
+                Cancel
+              </button>
+              <button type="submit" disabled={isAddingBook} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold disabled:opacity-50">
+                {isAddingBook ? 'Adding...' : 'Add Book Barcode'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showAddProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+          <form onSubmit={handleAddProduct} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Add Product Barcode</h3>
+                <p className="text-xs text-slate-500">Product code aur course name add karein.</p>
+              </div>
+              <button type="button" onClick={() => setShowAddProductModal(false)} className="p-1 text-slate-400 hover:text-slate-700">
+                <X size={18} />
+              </button>
+            </div>
+            <label className="block text-xs font-bold text-slate-700">
+              Product Code *
+              <input
+                value={addProductCode}
+                onChange={(e) => setAddProductCode(e.target.value.toUpperCase())}
+                required
+                maxLength={50}
+                placeholder="e.g. AFBFL-002"
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase"
+              />
+            </label>
+            <label className="block text-xs font-bold text-slate-700">
+              Product / Course Name *
+              <input
+                value={addProductName}
+                onChange={(e) => setAddProductName(e.target.value)}
+                required
+                maxLength={200}
+                placeholder="Course bundle name"
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </label>
+            <label className="block text-xs font-bold text-slate-700">
+              Included Book Codes (optional, comma separated)
+              <input
+                value={addProductBooks}
+                onChange={(e) => setAddProductBooks(e.target.value.toUpperCase())}
+                placeholder="AF-01, AF-02"
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase"
+              />
+            </label>
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+              <button type="button" onClick={() => setShowAddProductModal(false)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold">
+                Cancel
+              </button>
+              <button type="submit" disabled={isAddingProduct} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold disabled:opacity-50">
+                {isAddingProduct ? 'Adding...' : 'Add Product Barcode'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

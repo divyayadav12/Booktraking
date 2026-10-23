@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Order, DispatchLog, ImportBatch, VerificationAttempt } from '../models';
 import { logAudit } from '../utils/audit';
 import { parseDateFilter } from '../utils/date';
@@ -377,5 +378,53 @@ export async function clearAllOrders(userId: string) {
     message: 'All orders, batches, and dispatch history have been deleted successfully.',
     ordersRemoved: deletedOrders.deletedCount,
     batchesRemoved: deletedBatches.deletedCount,
+  };
+}
+
+export async function deleteOrders(userId: string, orderIds: string[]) {
+  const uniqueIds = Array.from(new Set(orderIds.map((id) => id.trim())));
+  if (uniqueIds.length === 0 || uniqueIds.length > 500 || uniqueIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+    throw {
+      statusCode: 400,
+      message: 'Select between 1 and 500 valid orders to delete.',
+      code: 'INVALID_ORDER_IDS',
+    };
+  }
+
+  const objectIds = uniqueIds.map((id) => new mongoose.Types.ObjectId(id));
+  const orders = await Order.find({ _id: { $in: objectIds } }).select('_id');
+  if (orders.length !== objectIds.length) {
+    throw {
+      statusCode: 404,
+      message: 'One or more selected orders were not found. Refresh the page and try again.',
+      code: 'ORDERS_NOT_FOUND',
+    };
+  }
+
+  const existingIds = orders.map((order) => order._id);
+  const [deletedLogs, deletedAttempts] = await Promise.all([
+    DispatchLog.deleteMany({ orderId: { $in: existingIds } }),
+    VerificationAttempt.deleteMany({ orderId: { $in: existingIds } }),
+  ]);
+  const deletedOrders = await Order.deleteMany({ _id: { $in: existingIds } });
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'ORDERS_BULK_DELETED',
+    entityType: 'Order',
+    entityId: 'BULK',
+    metadata: {
+      orderIds: uniqueIds,
+      ordersRemoved: deletedOrders.deletedCount,
+      logsRemoved: deletedLogs.deletedCount,
+      attemptsRemoved: deletedAttempts.deletedCount,
+    },
+  });
+
+  return {
+    message: `${deletedOrders.deletedCount} selected order(s) and their dispatch history deleted. Physical dispatch stock was not restored.`,
+    ordersRemoved: deletedOrders.deletedCount,
+    logsRemoved: deletedLogs.deletedCount,
+    attemptsRemoved: deletedAttempts.deletedCount,
   };
 }

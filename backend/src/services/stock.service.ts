@@ -34,6 +34,75 @@ export function normalizeCode(code: string): string {
   return (code || '').trim().toUpperCase();
 }
 
+export async function addBookBarcode(userId: string, input: { bookCode: string; bookName: string; productCode?: string }) {
+  if (
+    typeof input.bookCode !== 'string' ||
+    typeof input.bookName !== 'string' ||
+    (input.productCode !== undefined && typeof input.productCode !== 'string')
+  ) {
+    throw { statusCode: 400, message: 'Book code, name, and product code must be text', code: 'INVALID_BOOK_DETAILS' };
+  }
+  const bookCode = normalizeCode(input.bookCode);
+  const bookName = (input.bookName || '').trim();
+  if (!bookCode || !bookName) {
+    throw { statusCode: 400, message: 'Book code and book name are required', code: 'BOOK_DETAILS_REQUIRED' };
+  }
+
+  if (await BookStock.exists({ bookCode })) {
+    throw { statusCode: 409, message: `Book code "${bookCode}" already exists`, code: 'BOOK_CODE_EXISTS' };
+  }
+
+  const book = await BookStock.create({
+    bookCode,
+    bookName,
+    productCode: normalizeCode(input.productCode || ''),
+    availableQuantity: 0,
+    totalInward: 0,
+    totalDispatched: 0,
+  });
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'BOOK_BARCODE_CREATED',
+    entityType: 'BookStock',
+    entityId: book._id.toString(),
+    metadata: { bookCode, bookName, productCode: book.productCode },
+  });
+
+  return { message: `Book barcode "${bookCode}" added successfully`, book };
+}
+
+export async function addProductBarcode(userId: string, input: { productCode: string; productName: string; books?: string[] }) {
+  if (
+    typeof input.productCode !== 'string' ||
+    typeof input.productName !== 'string' ||
+    (input.books !== undefined && (!Array.isArray(input.books) || input.books.some((book) => typeof book !== 'string')))
+  ) {
+    throw { statusCode: 400, message: 'Product details and included book codes must be text', code: 'INVALID_PRODUCT_DETAILS' };
+  }
+  const productCode = normalizeCode(input.productCode);
+  const productName = (input.productName || '').trim();
+  if (!productCode || !productName) {
+    throw { statusCode: 400, message: 'Product code and product name are required', code: 'PRODUCT_DETAILS_REQUIRED' };
+  }
+  if (await ProductCatalog.exists({ productCode })) {
+    throw { statusCode: 409, message: `Product code "${productCode}" already exists`, code: 'PRODUCT_CODE_EXISTS' };
+  }
+
+  const books = Array.from(new Set((input.books || []).map(normalizeCode).filter(Boolean)));
+  const product = await ProductCatalog.create({ productCode, productName, books });
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'PRODUCT_BARCODE_CREATED',
+    entityType: 'ProductCatalog',
+    entityId: product._id.toString(),
+    metadata: { productCode, productName, books },
+  });
+
+  return { message: `Product barcode "${productCode}" added successfully`, product };
+}
+
 /**
  * Get available warehouse stock with aggregate summary statistics
  */
