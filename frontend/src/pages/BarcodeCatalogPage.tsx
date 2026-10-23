@@ -39,7 +39,7 @@ interface BookItem {
 }
 
 interface ProductItem {
-  id?: string;
+  id: string;
   productCode: string;
   productName: string;
   books: string[];
@@ -193,7 +193,7 @@ export const BarcodeCatalogPage: React.FC = () => {
 
     setIsUpdatingProduct(true);
     try {
-      const res = await api.put(`/stock/product/${encodeURIComponent(editProductModal.productCode)}`, {
+      const res = await api.put(`/stock/product/${encodeURIComponent(editProductModal.id)}`, {
         productCode: editProductCode.trim(),
         productName: editProductName.trim(),
         books: booksArr,
@@ -1143,7 +1143,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {filteredProducts.map((p) => (
                     <div
-                      key={p.productCode}
+                      key={p.id}
                       className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between space-y-2.5"
                     >
                       <div className="space-y-2">
@@ -1233,7 +1233,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredProducts.map((p) => (
-                        <tr key={p.productCode} className="hover:bg-indigo-50/30">
+                        <tr key={p.id} className="hover:bg-indigo-50/30">
                           <td className="py-2 px-3 text-center">
                             <div className="inline-block p-1 bg-white rounded border border-slate-200">
                               <BarcodeDisplay value={p.productCode} height={32} width={1.3} fontSize={9} />

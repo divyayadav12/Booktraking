@@ -85,8 +85,8 @@ export async function addProductBarcode(userId: string, input: { productCode: st
   if (!productCode || !productName) {
     throw { statusCode: 400, message: 'Product code and product name are required', code: 'PRODUCT_DETAILS_REQUIRED' };
   }
-  if (await ProductCatalog.exists({ productCode })) {
-    throw { statusCode: 409, message: `Product code "${productCode}" already exists`, code: 'PRODUCT_CODE_EXISTS' };
+  if (await ProductCatalog.exists({ productCode, productName })) {
+    throw { statusCode: 409, message: `Product "${productName}" with code "${productCode}" already exists`, code: 'PRODUCT_EXISTS' };
   }
 
   const books = Array.from(new Set((input.books || []).map(normalizeCode).filter(Boolean)));
@@ -1221,47 +1221,50 @@ export async function receivePendingBook(userId: string, id: string, input: { re
       { $unwind: '$items' },
       {
         $group: {
-          _id: '$items.productCode',
-          productName: { $first: '$items.productName' },
+          _id: {
+            productCode: '$items.productCode',
+            productName: '$items.productName',
+          },
           books: { $addToSet: '$items.bookCode' },
           totalOrdersCount: { $sum: 1 },
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { '_id.productCode': 1, '_id.productName': 1 } },
     ]);
 
-    // Build order counts & aggregated books map
+    const productKey = (code: string, name: string) =>
+      `${code.toUpperCase().trim()}\u0000${name.trim().toLowerCase()}`;
     const orderCountMap = new Map<string, number>();
-    const orderBooksMap = new Map<string, string[]>();
     productAgg.forEach((p) => {
-      if (p._id) {
-        const c = p._id.toUpperCase().trim();
-        orderCountMap.set(c, p.totalOrdersCount || 0);
-        orderBooksMap.set(c, (p.books || []).map((b: string) => b.toUpperCase().trim()));
+      const code = (p._id.productCode || '').toUpperCase().trim();
+      const name = (p._id.productName || code).trim();
+      if (code) {
+        const key = productKey(code, name);
+        orderCountMap.set(key, (orderCountMap.get(key) || 0) + (p.totalOrdersCount || 0));
       }
     });
 
-    // If ProductCatalog is empty, seed it with orders and bookStock combos!
+    // Seed catalog entries by both code and name so same-code products stay separate.
     if (catalogProducts.length === 0) {
       const seedMap = new Map<string, { code: string; name: string; books: Set<string> }>();
       productAgg.forEach((p) => {
-        if (p._id) {
-          const c = p._id.toUpperCase().trim();
-          seedMap.set(c, {
-            code: c,
-            name: p.productName || c,
-            books: new Set((p.books || []).map((b: string) => b.toUpperCase().trim())),
-          });
+        const c = (p._id.productCode || '').toUpperCase().trim();
+        const name = (p._id.productName || c).trim();
+        if (c) {
+          const key = productKey(c, name);
+          if (!seedMap.has(key)) seedMap.set(key, { code: c, name, books: new Set() });
+          (p.books || []).forEach((book: string) => seedMap.get(key)!.books.add(book.toUpperCase().trim()));
         }
       });
       booksStock.forEach((b) => {
         const pCode = (b.productCode || '').toUpperCase().trim();
-        if (pCode) {
-          if (!seedMap.has(pCode)) {
-            seedMap.set(pCode, { code: pCode, name: `${pCode} Course Bundle`, books: new Set([b.bookCode]) });
-          } else {
-            seedMap.get(pCode)!.books.add(b.bookCode);
+        const hasCatalogProduct = Array.from(seedMap.values()).some((item) => item.code === pCode);
+        const key = productKey(pCode, `${pCode} Course Bundle`);
+        if (pCode && !hasCatalogProduct) {
+          if (!seedMap.has(key)) {
+            seedMap.set(key, { code: pCode, name: `${pCode} Course Bundle`, books: new Set() });
           }
+          seedMap.get(key)!.books.add(b.bookCode.toUpperCase().trim());
         }
       });
 
@@ -1276,31 +1279,44 @@ export async function receivePendingBook(userId: string, id: string, input: { re
       }
     }
 
-    // Merge any products from Orders or BookStock that might not yet be in ProductCatalog
-    const knownCodes = new Set(catalogProducts.map((p) => p.productCode.toUpperCase().trim()));
+    // Add only missing code/name identities. Do not merge catalog products by code.
+    const knownProducts = new Set(catalogProducts.map((p) => productKey(p.productCode, p.productName)));
     const missingDocs: any[] = [];
+    const orderProducts = new Map<string, { code: string; name: string; books: Set<string> }>();
     productAgg.forEach((p) => {
-      if (p._id) {
-        const c = p._id.toUpperCase().trim();
-        if (!knownCodes.has(c)) {
-          knownCodes.add(c);
-          missingDocs.push({
-            productCode: c,
-            productName: p.productName || c,
-            books: (p.books || []).sort(),
-          });
-        }
+      const c = (p._id.productCode || '').toUpperCase().trim();
+      const name = (p._id.productName || c).trim();
+      const key = productKey(c, name);
+      if (c) {
+        if (!orderProducts.has(key)) orderProducts.set(key, { code: c, name, books: new Set() });
+        (p.books || []).forEach((book: string) => orderProducts.get(key)!.books.add(book.toUpperCase().trim()));
       }
     });
+    orderProducts.forEach((product, key) => {
+      if (!knownProducts.has(key)) {
+        knownProducts.add(key);
+        missingDocs.push({
+          productCode: product.code,
+          productName: product.name,
+          books: Array.from(product.books).sort(),
+        });
+      }
+    });
+    const stockOnlyProducts = new Map<string, Set<string>>();
     booksStock.forEach((b) => {
       const pCode = (b.productCode || '').toUpperCase().trim();
-      if (pCode && !knownCodes.has(pCode)) {
-        knownCodes.add(pCode);
-        missingDocs.push({
-          productCode: pCode,
-          productName: `${pCode} Course Bundle`,
-          books: [b.bookCode],
-        });
+      const hasCode = catalogProducts.some((product) => product.productCode.toUpperCase().trim() === pCode);
+      if (pCode && !hasCode) {
+        if (!stockOnlyProducts.has(pCode)) stockOnlyProducts.set(pCode, new Set());
+        stockOnlyProducts.get(pCode)!.add(b.bookCode.toUpperCase().trim());
+      }
+    });
+    stockOnlyProducts.forEach((books, pCode) => {
+      const name = `${pCode} Course Bundle`;
+      const key = productKey(pCode, name);
+      if (!knownProducts.has(key)) {
+        knownProducts.add(key);
+        missingDocs.push({ productCode: pCode, productName: name, books: Array.from(books).sort() });
       }
     });
 
@@ -1309,21 +1325,19 @@ export async function receivePendingBook(userId: string, id: string, input: { re
       catalogProducts = await ProductCatalog.find({}).sort({ productCode: 1 }).lean();
     }
 
-    // Map all catalog products with live order counts
+    // Keep each product's explicitly configured bundle isolated from same-code records.
     const productsList = catalogProducts.map((p) => {
       const c = p.productCode.toUpperCase().trim();
-      const stockBooks = booksStock
-        .filter((b) => (b.productCode || '').toUpperCase().trim() === c)
-        .map((b) => b.bookCode);
-      const combinedBooks = Array.from(new Set([...(p.books || []), ...stockBooks, ...(orderBooksMap.get(c) || [])])).sort();
+      const name = p.productName || c;
+      const books = Array.from(new Set((p.books || []).map((book) => book.toUpperCase().trim()))).sort();
 
       return {
         id: p._id.toString(),
         productCode: c,
-        productName: p.productName || c,
-        books: combinedBooks,
-        totalBooksCount: combinedBooks.length,
-        totalOrdersCount: orderCountMap.get(c) || 0,
+        productName: name,
+        books,
+        totalBooksCount: books.length,
+        totalOrdersCount: orderCountMap.get(productKey(c, name)) || 0,
         type: 'PRODUCT' as const,
       };
     });
@@ -1353,15 +1367,28 @@ export async function receivePendingBook(userId: string, id: string, input: { re
     }
   ) {
     const cleanId = identifier.trim().toUpperCase();
-    let product = await ProductCatalog.findOne({
-      $or: [
-        { productCode: cleanId },
-        ...(mongoose.Types.ObjectId.isValid(identifier) ? [{ _id: identifier }] : []),
-      ],
-    });
+    const isRecordId = mongoose.Types.ObjectId.isValid(identifier);
+    let product = isRecordId
+      ? await ProductCatalog.findById(identifier)
+      : await ProductCatalog.findOne({ productCode: cleanId });
+
+    if (isRecordId && !product) {
+      throw { statusCode: 404, message: 'Product record was not found', code: 'PRODUCT_NOT_FOUND' };
+    }
+    if (!isRecordId) {
+      const matchingProducts = await ProductCatalog.countDocuments({ productCode: cleanId });
+      if (matchingProducts > 1) {
+        throw {
+          statusCode: 409,
+          message: `Product code "${cleanId}" belongs to multiple products. Refresh the catalog and edit the selected product.`,
+          code: 'AMBIGUOUS_PRODUCT_CODE',
+        };
+      }
+    }
 
     const oldCode = product ? product.productCode : cleanId;
     const oldName = product ? product.productName : cleanId;
+    const oldBooks = product ? product.books : [];
 
     let newCode = oldCode;
     if (updateData.productCode && updateData.productCode.trim()) {
@@ -1386,22 +1413,29 @@ export async function receivePendingBook(userId: string, id: string, input: { re
     }
     await product.save();
 
-    // 1. Sync across Orders (items.productCode & items.productName, and root productCode)
+    // Historical orders have no catalog ID, so use both code and name to avoid
+    // changing orders that belong to a different product sharing the same code.
     await Order.updateMany(
-      { 'items.productCode': oldCode },
-      { $set: { 'items.$[elem].productCode': newCode, 'items.$[elem].productName': newName } },
-      { arrayFilters: [{ 'elem.productCode': oldCode }] }
+      {
+        productCode: oldCode,
+        items: { $elemMatch: { productCode: oldCode, productName: oldName } },
+      },
+      { $set: { productCode: newCode } }
     );
     await Order.updateMany(
-      { productCode: oldCode },
-      { $set: { productCode: newCode } }
+      { items: { $elemMatch: { productCode: oldCode, productName: oldName } } },
+      { $set: { 'items.$[elem].productCode': newCode, 'items.$[elem].productName': newName } },
+      { arrayFilters: [{ 'elem.productCode': oldCode, 'elem.productName': oldName }] }
     );
 
-    // 2. Sync across BookStock:
-    await BookStock.updateMany(
-      { productCode: oldCode },
-      { $set: { productCode: newCode } }
-    );
+    // BookStock is linked by book code; update only books selected for this product.
+    const removedBooks = oldBooks.filter((book) => !newBooks.includes(book));
+    if (removedBooks.length > 0) {
+      await BookStock.updateMany(
+        { productCode: oldCode, bookCode: { $in: removedBooks } },
+        { $unset: { productCode: '' } }
+      );
+    }
     if (newBooks.length > 0) {
       await BookStock.updateMany(
         { bookCode: { $in: newBooks } },
