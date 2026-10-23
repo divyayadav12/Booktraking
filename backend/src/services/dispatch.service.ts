@@ -189,14 +189,11 @@ export async function verifyAndDispatchBook(params: {
   // Check available stock in warehouse BookStock master
   const cleanBookCode = normalizeBookCode(currentItem.bookCode);
   const bookStock = await BookStock.findOne({ bookCode: cleanBookCode });
-  if (!bookStock || bookStock.availableQuantity < 1) {
-    throw {
-      statusCode: 400,
-      message: `❌ Out of Stock: Book "${currentItem.bookName} (${currentItem.bookCode})" has 0 available stock in warehouse! Kripya pehle "Invert" page me stock add karein.`,
-      code: 'OUT_OF_STOCK',
-      bookCode: currentItem.bookCode,
-    };
-  }
+  const stockBeforeDispatch = bookStock?.availableQuantity ?? 0;
+  const stockWarning =
+    stockBeforeDispatch < 1
+      ? `Warning: "${currentItem.bookName} (${currentItem.bookCode})" was not available in system stock. Physical dispatch was recorded and stock is now ${stockBeforeDispatch - 1}. Add inward stock to reconcile this balance.`
+      : undefined;
 
   // Atomically increment dispatchedQuantity ensuring it doesn't exceed requiredQuantity
   const updatedOrder = await Order.findOneAndUpdate(
@@ -225,12 +222,20 @@ export async function verifyAndDispatchBook(params: {
 
   const updatedItem = updatedOrder.items.find((i: any) => i._id.toString() === resolvedItemId)!;
 
-  // Deduct 1 from available warehouse stock
+  // Record physical dispatch even when stock is missing or already depleted.
   await BookStock.findOneAndUpdate(
     { bookCode: cleanBookCode },
     {
+      $setOnInsert: {
+        bookCode: cleanBookCode,
+        bookName: currentItem.bookName,
+        totalInward: 0,
+        lowStockThreshold: 10,
+        lastRestockedAt: new Date(),
+      },
       $inc: { availableQuantity: -1, totalDispatched: 1 },
-    }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: false }
   );
 
   // Create immutable dispatch log
@@ -291,7 +296,13 @@ export async function verifyAndDispatchBook(params: {
 
   return {
     success: true,
-    message: `Book code "${updatedItem.bookCode}" verified! 1 copy dispatched successfully.${copyInfo}`,
+    message: [
+      `Book code "${updatedItem.bookCode}" verified! 1 copy dispatched successfully.${copyInfo}`,
+      stockWarning,
+    ]
+      .filter(Boolean)
+      .join(' '),
+    stockWarning,
     orderItem: {
       id: updatedItem._id.toString(),
       bookCode: updatedItem.bookCode,

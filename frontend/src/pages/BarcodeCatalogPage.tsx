@@ -206,7 +206,7 @@ export const BarcodeCatalogPage: React.FC = () => {
 
     if (!matchesSearch) return false;
     if (stockFilter === 'IN_STOCK') return b.availableQuantity > 0;
-    if (stockFilter === 'OUT_OF_STOCK') return b.availableQuantity === 0;
+    if (stockFilter === 'OUT_OF_STOCK') return b.availableQuantity <= 0;
     return true;
   });
 
@@ -322,7 +322,7 @@ export const BarcodeCatalogPage: React.FC = () => {
       return;
     }
 
-    // Circled Sticker Card: Barcode + [Code - Subject Name in 1 single line, not bold]
+    // Keep the barcode size unchanged and print the code and name on separate compact lines.
     const cardsHtml = itemsToPrint
       .map(
         (item) => `
@@ -330,8 +330,9 @@ export const BarcodeCatalogPage: React.FC = () => {
         <div class="barcode-wrapper">
           <svg id="bc-${item.code.replace(/[^a-zA-Z0-9]/g, '_')}"></svg>
         </div>
-        <div class="sticker-line" title="${item.code} - ${item.name}">
-          ${item.code} - ${item.name}
+        <div class="sticker-code">${item.code}</div>
+        <div class="sticker-name" title="${item.name}">
+          ${item.name}
         </div>
       </div>
     `
@@ -446,13 +447,28 @@ export const BarcodeCatalogPage: React.FC = () => {
               margin: 0 auto;
             }
 
-            /* Single line: Code and Subject name together, simple regular text */
-            .sticker-line {
-              font-size: 7.2px;
-              font-weight: 500;
+            .sticker-code {
+              display: block !important;
+              flex: 0 0 auto;
+              font-size: 5px;
+              font-weight: 700;
               color: #0f172a;
               line-height: 1;
               margin-top: 1px;
+              text-align: center;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              padding: 0 1px;
+            }
+            .sticker-name {
+              display: block !important;
+              flex: 0 0 auto;
+              font-size: 4px;
+              font-weight: 400;
+              color: #334155;
+              line-height: 1;
               text-align: center;
               width: 100%;
               white-space: nowrap;
@@ -538,9 +554,8 @@ export const BarcodeCatalogPage: React.FC = () => {
           <div class="barcode-wrapper">
             <svg id="bc-single-${i}"></svg>
           </div>
-          <div class="sticker-line" title="${code} - ${name}">
-            ${code} - ${name}
-          </div>
+          <div class="sticker-code">${code}</div>
+          <div class="sticker-name" title="${name}">${name}</div>
         </div>
       `;
     }
@@ -700,13 +715,28 @@ export const BarcodeCatalogPage: React.FC = () => {
               margin: 0 auto;
             }
 
-            /* Single line: Code and Subject name together, simple regular text */
-            .sticker-line {
-              font-size: 7.2px;
-              font-weight: 500;
+            .sticker-code {
+              display: block !important;
+              flex: 0 0 auto;
+              font-size: 5px;
+              font-weight: 700;
               color: #0f172a;
               line-height: 1;
               margin-top: 1px;
+              text-align: center;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              padding: 0 1px;
+            }
+            .sticker-name {
+              display: block !important;
+              flex: 0 0 auto;
+              font-size: 4px;
+              font-weight: 400;
+              color: #334155;
+              line-height: 1;
               text-align: center;
               width: 100%;
               white-space: nowrap;
@@ -789,9 +819,8 @@ export const BarcodeCatalogPage: React.FC = () => {
                     <div class="barcode-wrapper">
                       <svg id="bc-single-\${i}"></svg>
                     </div>
-                    <div class="sticker-line" title="\${code} - \${name}">
-                      \${code} - \${name}
-                    </div>
+                    <div class="sticker-code">\${code}</div>
+                    <div class="sticker-name" title="\${name}">\${name}</div>
                   </div>
                 \`;
               }
@@ -1216,7 +1245,7 @@ export const BarcodeCatalogPage: React.FC = () => {
                                   : 'bg-rose-50 text-rose-800 border-rose-200'
                               }`}
                             >
-                              {isInStock ? `${b.availableQuantity} in stock` : '0 stock'}
+                              {isInStock ? `${b.availableQuantity} in stock` : b.availableQuantity < 0 ? `${b.availableQuantity} deficit` : '0 stock'}
                             </span>
                           </div>
 

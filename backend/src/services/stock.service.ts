@@ -51,7 +51,7 @@ export async function getAvailableStock(params: GetAvailableStockParams) {
   }
 
   if (params.status === 'OUT_OF_STOCK') {
-    query.availableQuantity = 0;
+    query.availableQuantity = { $lte: 0 };
   } else if (params.status === 'LOW_STOCK') {
     query.availableQuantity = { $gt: 0, $lte: 10 };
   } else if (params.status === 'IN_STOCK') {
@@ -74,7 +74,7 @@ export async function getAvailableStock(params: GetAvailableStockParams) {
           totalInwardCopies: { $sum: '$totalInward' },
           totalDispatchedCopies: { $sum: '$totalDispatched' },
           outOfStockTitles: {
-            $sum: { $cond: [{ $eq: ['$availableQuantity', 0] }, 1, 0] },
+            $sum: { $cond: [{ $lte: ['$availableQuantity', 0] }, 1, 0] },
           },
           lowStockTitles: {
             $sum: {
@@ -112,7 +112,7 @@ export async function getAvailableStock(params: GetAvailableStockParams) {
 
   const formattedBooks = books.map((b: any) => {
     let stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' = 'IN_STOCK';
-    if (b.availableQuantity === 0) {
+    if (b.availableQuantity <= 0) {
       stockStatus = 'OUT_OF_STOCK';
     } else if (b.availableQuantity <= (b.lowStockThreshold || 10)) {
       stockStatus = 'LOW_STOCK';
@@ -421,7 +421,7 @@ export async function deleteInwardEntry(userId: string, inwardId: string) {
   // Deduct from BookStock
   const stock = await BookStock.findOne({ bookCode: entry.bookCode });
   if (stock) {
-    stock.availableQuantity = Math.max(0, stock.availableQuantity - entry.quantity);
+    stock.availableQuantity -= entry.quantity;
     stock.totalInward = Math.max(0, stock.totalInward - entry.quantity);
     await stock.save();
   }
@@ -517,7 +517,7 @@ export async function exportStockExcel(): Promise<Buffer> {
 
   stocks.forEach((s) => {
     let status = 'In Stock';
-    if (s.availableQuantity === 0) status = 'Out of Stock';
+    if (s.availableQuantity <= 0) status = 'Out of Stock';
     else if (s.availableQuantity <= (s.lowStockThreshold || 10)) status = 'Low Stock';
 
     sheet.addRow({
@@ -626,11 +626,11 @@ export async function deleteBookStock(userId: string, identifier: string) {
     throw { statusCode: 404, message: `Book "${identifier}" not found in stock master`, code: 'BOOK_NOT_FOUND' };
   }
 
-  // Only books with 0 available stock can be deleted
-  if (book.availableQuantity > 0) {
+  // Preserve negative balances until they are reconciled with inward stock.
+  if (book.availableQuantity !== 0) {
     throw {
       statusCode: 400,
-      message: `Keval 0 stock wali book hi delete ho sakti hai! Is book me abhi ${book.availableQuantity} copies available hain. Pehle stock ko 0 karein.`,
+      message: `Book record can only be deleted when its stock balance is 0. Current balance is ${book.availableQuantity}; reconcile any negative balance before deleting.`,
       code: 'CANNOT_DELETE_ACTIVE_STOCK',
     };
   }
@@ -858,7 +858,7 @@ export async function adjustStock(userId: string, input: AdjustStockInput) {
       totalInward: stock.totalInward,
       totalDispatched: stock.totalDispatched,
       lowStockThreshold: stock.lowStockThreshold,
-      stockStatus: stock.availableQuantity === 0 ? 'OUT_OF_STOCK' : stock.availableQuantity <= stock.lowStockThreshold ? 'LOW_STOCK' : 'IN_STOCK',
+      stockStatus: stock.availableQuantity <= 0 ? 'OUT_OF_STOCK' : stock.availableQuantity <= stock.lowStockThreshold ? 'LOW_STOCK' : 'IN_STOCK',
       lastRestockedAt: stock.lastRestockedAt,
     },
   };
@@ -1266,7 +1266,7 @@ export async function receivePendingBook(userId: string, id: string, input: { re
         totalBooks: booksList.length,
         totalProducts: productsList.length,
         totalInStockBooks: booksList.filter((b) => b.availableQuantity > 0).length,
-        totalOutOfStockBooks: booksList.filter((b) => b.availableQuantity === 0).length,
+        totalOutOfStockBooks: booksList.filter((b) => b.availableQuantity <= 0).length,
       },
     };
   }

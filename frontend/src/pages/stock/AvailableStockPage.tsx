@@ -203,10 +203,10 @@ export const AvailableStockPage: React.FC = () => {
     }
   };
 
-  // Delete individual book (Only allowed if availableQuantity === 0)
+  // Keep a negative stock balance until it has been reconciled with inward stock.
   const initiateDelete = (book: any) => {
-    if (book.availableQuantity > 0) {
-      error(`❌ Keval 0 stock wali book hi delete ki ja sakti hai! Is book me abhi ${book.availableQuantity} copies available hain.`);
+    if (book.availableQuantity !== 0) {
+      error(`Book record tabhi delete ho sakta hai jab stock balance 0 ho. Current balance: ${book.availableQuantity}.`);
       return;
     }
     setDeleteModalBook(book);
@@ -404,7 +404,7 @@ export const AvailableStockPage: React.FC = () => {
             <XCircle size={16} className="text-rose-500" />
           </div>
           <p className="text-2xl font-black text-rose-600 mt-1">{summary.outOfStockTitles || 0}</p>
-          <p className="text-[11px] text-rose-700/80 font-medium mt-0.5">0 stock (Dispatch Blocked)</p>
+          <p className="text-[11px] text-rose-700/80 font-medium mt-0.5">0 ya negative balance (scan record hua)</p>
         </div>
 
         {/* Total Dispatched */}
@@ -576,7 +576,7 @@ export const AvailableStockPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {books.map((b, idx) => {
-                  const isOutOfStock = b.availableQuantity === 0;
+                  const isOutOfStock = b.availableQuantity <= 0;
                   const isLowStock = b.availableQuantity > 0 && b.availableQuantity <= (b.lowStockThreshold || 10);
 
                   return (
@@ -620,7 +620,7 @@ export const AvailableStockPage: React.FC = () => {
                         {isOutOfStock ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
                             <XCircle size={12} />
-                            <span>Out of Stock (Blocked)</span>
+                            <span>{b.availableQuantity < 0 ? 'Negative Stock' : 'Out of Stock'}</span>
                           </span>
                         ) : isLowStock ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
@@ -680,7 +680,7 @@ export const AvailableStockPage: React.FC = () => {
                           </button>
                           <button
                             onClick={() => initiateDelete(b)}
-                            disabled={b.availableQuantity > 0}
+                            disabled={b.availableQuantity !== 0}
                             className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded border transition-colors ${
                               b.availableQuantity === 0
                                 ? 'bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border-rose-200 cursor-pointer'
@@ -689,7 +689,7 @@ export const AvailableStockPage: React.FC = () => {
                             title={
                               b.availableQuantity === 0
                                 ? 'Delete this 0-stock book record'
-                                : `Keval 0 stock wali book delete ho sakti hai (Current: ${b.availableQuantity})`
+                                : `Reconcile stock to 0 before deleting (Current: ${b.availableQuantity})`
                             }
                           >
                             <Trash2 size={13} />

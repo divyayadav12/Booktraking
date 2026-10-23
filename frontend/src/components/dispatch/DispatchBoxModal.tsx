@@ -112,6 +112,7 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
         const isBulkScan = isOrderScan || isProductScan;
         const updatedOrderData: Order = res.data.data.order;
         const updatedItemData: OrderItem | undefined = res.data.data.orderItem;
+        const hasStockWarning = Boolean(res.data.data.stockWarning);
 
         setActiveOrder(updatedOrderData);
         if (updatedItemData) {
@@ -144,7 +145,14 @@ export const DispatchBoxModal: React.FC<DispatchBoxModalProps> = ({
 
         const orderIsNowComplete = updatedOrderData.totalPending === 0;
 
-        if (orderIsNowComplete || isBulkScan) {
+        if (hasStockWarning) {
+          setFeedback({
+            type: 'warning',
+            message: res.data.data.stockWarning,
+            bookTitle: updatedItemData?.bookName,
+            bookCode: updatedItemData?.bookCode,
+          });
+        } else if (orderIsNowComplete || isBulkScan) {
           if (soundEnabled) {
             playOrderCompleteFanfare();
             speakVoiceTwice('Order of upcoming CA is fulfilled at FAST Education. Next order, please.');

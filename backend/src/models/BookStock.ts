@@ -48,7 +48,6 @@ const BookStockSchema = new Schema<IBookStock>(
     availableQuantity: {
       type: Number,
       default: 0,
-      min: 0,
       index: true,
     },
     lowStockThreshold: {
