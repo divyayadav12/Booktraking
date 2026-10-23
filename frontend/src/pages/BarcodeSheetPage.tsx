@@ -162,7 +162,8 @@ export const BarcodeSheetPage: React.FC = () => {
 
         return {
           'S.No': idx + 1,
-          'Tracking ID / Barcode': order.trackingId || order.orderCode || '-',
+          'Student Code (Barcode)': order.orderCode || '-',
+          'Tracking ID': order.trackingId || '-',
           'Student Name': order.studentName || '-',
           'Mobile Number': order.mobileNumber || '-',
           'Email': order.email || '-',
@@ -187,7 +188,8 @@ export const BarcodeSheetPage: React.FC = () => {
       // Auto-fit column widths
       worksheet['!cols'] = [
         { wch: 6 },  // S.No
-        { wch: 24 }, // Tracking ID / Barcode
+        { wch: 24 }, // Student Code (Barcode)
+        { wch: 24 }, // Tracking ID
         { wch: 22 }, // Student Name
         { wch: 15 }, // Mobile
         { wch: 26 }, // Email
@@ -602,8 +604,9 @@ export const BarcodeSheetPage: React.FC = () => {
           <div class="slip">
             <div class="slip-header">
               <span class="title">📦 Student Dispatch Slip</span>
-              <span style="font-family: monospace; font-weight: bold;">${order.trackingId}</span>
+              <span style="font-family: monospace; font-weight: bold;">Student Code: ${order.orderCode || '-'}</span>
             </div>
+            <div class="row"><span class="label">Tracking ID:</span><span class="val" style="font-family: monospace;">${order.trackingId || '-'}</span></div>
             <div class="row"><span class="label">Student Name:</span><span class="val" style="font-size: 14px;">${order.studentName}</span></div>
             <div class="row"><span class="label">Mobile / Phone:</span><span class="val">${order.mobileNumber || '-'}</span></div>
             <div class="row"><span class="label">Email:</span><span class="val">${order.email || '-'}</span></div>
@@ -839,7 +842,8 @@ export const BarcodeSheetPage: React.FC = () => {
                 <thead>
                   <tr className="bg-slate-900 text-white uppercase text-[11px] tracking-wider font-bold">
                     <th className="py-3 px-3 text-center w-64">Bar Code (बारकोड)</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Tracking ID / Code</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Student Code</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Tracking ID</th>
                     <th className="py-3 px-3 whitespace-nowrap">Student Name</th>
                     <th className="py-3 px-3">Course (कोर्स)</th>
                     <th className="py-3 px-3 whitespace-nowrap">P_Code</th>
@@ -870,7 +874,7 @@ export const BarcodeSheetPage: React.FC = () => {
                       <td className="py-2.5 px-3 text-center barcode-cell bg-white/60">
                         <div className="inline-block bg-white p-1.5 rounded border border-slate-200 shadow-2xs">
                           <BarcodeDisplay
-                            value={order.trackingId || order.orderCode || 'ORDER'}
+                            value={order.orderCode || ''}
                             height={52}
                             width={1.85}
                             fontSize={11}
@@ -878,19 +882,21 @@ export const BarcodeSheetPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* 2. Tracking ID */}
+                      {/* 2. Student Code */}
                       <td className="py-2.5 px-3 tracking-cell whitespace-nowrap">
                         <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-sm">
-                          {order.trackingId}
+                          {order.orderCode || '-'}
                         </span>
-                        {order.orderCode && order.orderCode !== order.trackingId && (
-                          <span className="block font-mono text-[10px] text-slate-400 mt-0.5">
-                            {order.orderCode}
-                          </span>
-                        )}
                       </td>
 
-                      {/* 3. Student Name */}
+                      {/* 3. Tracking ID from Excel */}
+                      <td className="py-2.5 px-3 tracking-cell whitespace-nowrap">
+                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-sm">
+                          {order.trackingId || '-'}
+                        </span>
+                      </td>
+
+                      {/* 4. Student Name */}
                       <td className="py-2.5 px-3 name-cell whitespace-nowrap">
                         <div className="font-bold text-slate-900 text-sm">{order.studentName}</div>
                       </td>
@@ -960,7 +966,9 @@ export const BarcodeSheetPage: React.FC = () => {
                   <div>
                     <h3 className="font-bold text-slate-900 text-base">{order.studentName}</h3>
                     <p className="text-xs text-slate-500">
-                      Tracking: <strong className="font-mono text-red-700">{order.trackingId}</strong> | Course: {courseName} ({productCode})
+                      Student Code: <strong className="font-mono text-slate-700">{order.orderCode || '-'}</strong>
+                      {' | '}Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
+                      {' | '}Course: {courseName} ({productCode})
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -985,7 +993,7 @@ export const BarcodeSheetPage: React.FC = () => {
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Student Order Barcode
                     </span>
-                    <BarcodeDisplay value={order.trackingId} height={50} width={1.8} fontSize={12} />
+                    <BarcodeDisplay value={order.orderCode || ''} height={50} width={1.8} fontSize={12} />
                   </div>
 
                   <div className="p-3 bg-red-50/50 rounded-lg border border-red-200">

@@ -613,11 +613,8 @@ export async function confirmImport(
   orderCodeCounter = maxCounter + 1;
 
   for (const orderData of orderGroups.values()) {
-    // If trackingId is already in DDMMYYNNN format, use it as orderCode directly!
-    const orderCode =
-      orderData.trackingId && orderData.trackingId.startsWith(orderPrefix)
-        ? orderData.trackingId
-        : `${orderPrefix}${String(orderCodeCounter).padStart(3, '0')}`;
+    // Keep the generated student code independent from the Excel tracking ID.
+    const orderCode = `${orderPrefix}${String(orderCodeCounter).padStart(3, '0')}`;
     orderCodeCounter++;
 
     // Primary product code from the first item
