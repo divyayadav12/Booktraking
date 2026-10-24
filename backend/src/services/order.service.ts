@@ -490,13 +490,19 @@ export async function getBarcodeSheetData(params: {
     query.importBatchId = new mongoose.Types.ObjectId(params.batchId);
   }
   if (params.search) {
-    const regex = new RegExp(params.search, 'i');
+    const escapedSearch = params.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedSearch, 'i');
     query.$or = [
       { orderCode: regex },
       { studentName: regex },
       { trackingId: regex },
+      { email: regex },
       { productCode: regex },
       { mobileNumber: regex },
+      { 'items.productCode': regex },
+      { 'items.productName': regex },
+      { 'items.bookCode': regex },
+      { 'items.bookName': regex },
     ];
   }
 

@@ -70,6 +70,9 @@ export const BarcodeSheetPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+  const [productCodeFilter, setProductCodeFilter] = useState('');
   const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [isDeletingOrders, setIsDeletingOrders] = useState(false);
@@ -680,14 +683,43 @@ export const BarcodeSheetPage: React.FC = () => {
     win.focus();
   };
 
-  // Filter orders by status
+  const productCodeOptions = Array.from(
+    new Set(orders.flatMap((order) => (order.products || []).map((product) => product.productCode)))
+  ).filter(Boolean);
+
+  // Date inputs and order timestamps are compared using the business timezone (IST).
+  const getOrderDateKey = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? ''
+      : new Date(date.getTime() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  };
+
+  // Apply status, date range, and course filters to the loaded search results.
   const filteredOrders = orders.filter((order) => {
-    if (statusFilter === 'PENDING') return order.status !== 'COMPLETED';
-    if (statusFilter === 'COMPLETED') return order.status === 'COMPLETED';
+    if (statusFilter === 'PENDING' && order.status === 'COMPLETED') return false;
+    if (statusFilter === 'COMPLETED' && order.status !== 'COMPLETED') return false;
+    if (productCodeFilter && !(order.products || []).some((product) => product.productCode === productCodeFilter)) {
+      return false;
+    }
+
+    const orderDate = order.createdAt ? getOrderDateKey(order.createdAt) : '';
+    if (startDateFilter && (!orderDate || orderDate < startDateFilter)) return false;
+    if (endDateFilter && (!orderDate || orderDate > endDateFilter)) return false;
     return true;
   });
 
-  const pendingOrdersCount = orders.filter((o) => o.status !== 'COMPLETED').length;
+  const matchingOrders = orders.filter((order) => {
+    if (productCodeFilter && !(order.products || []).some((product) => product.productCode === productCodeFilter)) {
+      return false;
+    }
+    const orderDate = order.createdAt ? getOrderDateKey(order.createdAt) : '';
+    if (startDateFilter && (!orderDate || orderDate < startDateFilter)) return false;
+    if (endDateFilter && (!orderDate || orderDate > endDateFilter)) return false;
+    return true;
+  });
+  const pendingOrdersCount = matchingOrders.filter((order) => order.status !== 'COMPLETED').length;
+  const completedOrdersCount = matchingOrders.length - pendingOrdersCount;
 
   return (
     <div className="space-y-5">
@@ -799,8 +831,8 @@ export const BarcodeSheetPage: React.FC = () => {
 
 
       {/* ─── Search & Status Filters ─────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-1.5 text-xs">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <button
             onClick={() => {
               setStatusFilter('ALL');
@@ -810,7 +842,7 @@ export const BarcodeSheetPage: React.FC = () => {
               statusFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            All Orders ({orders.length})
+            All Orders ({matchingOrders.length})
           </button>
           <button
             onClick={() => {
@@ -836,21 +868,70 @@ export const BarcodeSheetPage: React.FC = () => {
             }`}
           >
             <CheckCircle2 size={13} />
-            <span>Completed ({orders.length - pendingOrdersCount})</span>
+            <span>Completed ({completedOrdersCount})</span>
           </button>
         </div>
 
-        <form onSubmit={handleSearch} className="flex items-center gap-2">
+        <form onSubmit={handleSearch} className="flex flex-wrap items-center justify-end gap-2">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by student, email, tracking, course..."
+              placeholder="Student, email, tracking, book..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 w-64 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 w-56 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
+          <select
+            value={productCodeFilter}
+            onChange={(e) => {
+              setProductCodeFilter(e.target.value);
+              setSelectedOrderIds(new Set());
+            }}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white max-w-44 focus:outline-none focus:ring-2 focus:ring-red-500"
+            aria-label="Filter by course or product"
+          >
+            <option value="">All courses</option>
+            {productCodeOptions.map((productCode) => {
+              const productName = orders
+                .flatMap((order) => order.products || [])
+                .find((product) => product.productCode === productCode)?.productName;
+              return (
+                <option key={productCode} value={productCode}>
+                  {productName ? `${productName} (${productCode})` : productCode}
+                </option>
+              );
+            })}
+          </select>
+          <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+            From
+            <input
+              type="date"
+              value={startDateFilter}
+              max={endDateFilter || undefined}
+              onChange={(e) => {
+                setStartDateFilter(e.target.value);
+                setSelectedOrderIds(new Set());
+              }}
+              className="px-2 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              aria-label="Start date"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+            To
+            <input
+              type="date"
+              value={endDateFilter}
+              min={startDateFilter || undefined}
+              onChange={(e) => {
+                setEndDateFilter(e.target.value);
+                setSelectedOrderIds(new Set());
+              }}
+              className="px-2 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              aria-label="End date"
+            />
+          </label>
           <button
             type="submit"
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg cursor-pointer"
@@ -862,6 +943,10 @@ export const BarcodeSheetPage: React.FC = () => {
             onClick={() => {
               setSearchInput('');
               setSearch('');
+              setStartDateFilter('');
+              setEndDateFilter('');
+              setProductCodeFilter('');
+              setStatusFilter('ALL');
               setSelectedOrderIds(new Set());
               fetchOrders('');
             }}
