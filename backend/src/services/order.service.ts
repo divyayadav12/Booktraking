@@ -178,37 +178,71 @@ export async function markOrderEmailSent(orderId: string, actorUserId: string) {
     throw { statusCode: 404, message: 'Order not found', code: 'ORDER_NOT_FOUND' };
   }
 
+  if (order.emailSentAt) {
+    if (order.whatsappSentAt) {
+      return {
+        id: order._id.toString(),
+        emailSentAt: order.emailSentAt,
+        whatsappSentAt: order.whatsappSentAt,
+        studentName: order.studentName,
+        trackingId: order.trackingId,
+        emailDelivery: { sent: true, alreadySent: true },
+        whatsappDelivery: { sent: true, alreadySent: true },
+        alreadySent: true,
+      };
+    }
+  }
+
   const dispatchItems = order.items.map((item: any) => ({
     bookCode: item.bookCode,
     bookName: item.bookName,
+    productName: item.productName,
     requiredQuantity: item.requiredQuantity,
     dispatchedQuantity: item.dispatchedQuantity,
   }));
 
-  const emailResult = await sendOrderEmail(
-    {
-      name: order.studentName,
-      email: order.email,
-      trackingId: order.trackingId,
-      orderCode: order.orderCode,
-    },
-    dispatchItems
-  );
+  const [emailOutcome, whatsappOutcome] = await Promise.allSettled([
+    order.emailSentAt
+      ? Promise.resolve({ sent: true, alreadySent: true })
+      : sendOrderEmail(
+          {
+            name: order.studentName,
+            email: order.email,
+            trackingId: order.trackingId,
+            orderCode: order.orderCode,
+          },
+          dispatchItems
+        ),
+    order.whatsappSentAt
+      ? Promise.resolve({ sent: true, alreadySent: true })
+      : sendOrderWhatsAppMessage(
+          {
+            name: order.studentName,
+            mobileNumber: order.mobileNumber,
+            trackingId: order.trackingId,
+            orderCode: order.orderCode,
+            courierName: order.courierName || '',
+            courierTrackingUrl: order.courierTrackingUrl || '',
+            dispatchDate: new Date(),
+            email: order.email,
+          },
+          dispatchItems
+        ),
+  ]);
 
-  const whatsappResult = await sendOrderWhatsAppMessage(
-    {
-      name: order.studentName,
-      mobileNumber: order.mobileNumber,
-      trackingId: order.trackingId,
-      orderCode: order.orderCode,
-    },
-    dispatchItems
-  );
+  const emailResult =
+    emailOutcome.status === 'fulfilled'
+      ? emailOutcome.value
+      : { sent: false, reason: 'DELIVERY_FAILED', error: String(emailOutcome.reason) };
+  const whatsappResult =
+    whatsappOutcome.status === 'fulfilled'
+      ? whatsappOutcome.value
+      : { sent: false, reason: 'DELIVERY_FAILED', error: String(whatsappOutcome.reason) };
 
-  if (!order.emailSentAt) {
-    order.emailSentAt = new Date();
-    await order.save();
-  }
+  const sentAt = new Date();
+  if (emailResult.sent && !order.emailSentAt) order.emailSentAt = sentAt;
+  if (whatsappResult.sent && !order.whatsappSentAt) order.whatsappSentAt = sentAt;
+  if (emailResult.sent || whatsappResult.sent) await order.save();
 
   await logAudit({
     actorUserId,
@@ -221,6 +255,7 @@ export async function markOrderEmailSent(orderId: string, actorUserId: string) {
       mobileNumber: order.mobileNumber,
       trackingId: order.trackingId,
       emailSentAt: order.emailSentAt,
+      whatsappSentAt: order.whatsappSentAt,
       emailDelivery: emailResult,
       whatsappDelivery: whatsappResult,
     },
@@ -229,10 +264,12 @@ export async function markOrderEmailSent(orderId: string, actorUserId: string) {
   return {
     id: order._id.toString(),
     emailSentAt: order.emailSentAt,
+    whatsappSentAt: order.whatsappSentAt,
     studentName: order.studentName,
     trackingId: order.trackingId,
     emailDelivery: emailResult,
     whatsappDelivery: whatsappResult,
+    alreadySent: false,
   };
 }
 

@@ -11,6 +11,8 @@ export interface ParsedRowData {
   mobileNumber: string;
   email: string | null;
   trackingId: string;
+  courierName?: string;
+  courierTrackingUrl?: string;
   productCode: string;
   productName: string;
   bookCode: string;
@@ -204,6 +206,17 @@ export async function parseAndPreviewExcel(
     else if (val.includes('email') || val.includes('mail')) {
       columnMap['email'] = colNumber;
     }
+    // Courier tracking URL / link
+    else if (
+      (val.includes('courier') || val.includes('tracking') || val.includes('track')) &&
+      (val.includes('url') || val.includes('link') || val.includes('website') || val.includes('web site'))
+    ) {
+      columnMap['courierTrackingUrl'] = colNumber;
+    }
+    // Courier company/name or an ambiguous Courier column, classified by cell value below
+    else if (val.includes('courier') || val.includes('carrier')) {
+      columnMap['courier'] = colNumber;
+    }
     // Tracking ID / AWB / Barcode
     else if (
       val.includes('tracking') ||
@@ -365,6 +378,13 @@ export async function parseAndPreviewExcel(
     const email = rawEmail ? normalizeEmail(String(rawEmail)) : null;
     const parsedQuantity = Number(rawQuantity);
     const quantity = Number.isFinite(parsedQuantity) ? parsedQuantity : NaN;
+    const rawCourier = columnMap['courier'] ? String(row.getCell(columnMap['courier']).value || '').trim() : '';
+    const rawCourierUrl = columnMap['courierTrackingUrl']
+      ? String(row.getCell(columnMap['courierTrackingUrl']).value || '').trim()
+      : '';
+    const courierValueIsUrl = /^(https?:\/\/|www\.)/i.test(rawCourier) || /\.[a-z]{2,}(\/|$)/i.test(rawCourier);
+    const courierName = courierValueIsUrl ? '' : rawCourier;
+    const courierTrackingUrl = rawCourierUrl || (courierValueIsUrl ? rawCourier : '');
 
     if (!studentName) rowErrors.push('Student name is required.');
     if (!mobileNumber) {
@@ -441,6 +461,8 @@ export async function parseAndPreviewExcel(
           mobileNumber,
           email,
           trackingId,
+          courierName,
+          courierTrackingUrl,
           productCode: cleanProductCode,
           productName: pName,
           bookCode: cleanBookCode,
@@ -553,6 +575,8 @@ export async function confirmImport(
     mobileNumber: string;
     email: string | null;
     trackingId: string;
+    courierName: string;
+    courierTrackingUrl: string;
     items: {
       productCode: string;
       productName: string;
@@ -570,8 +594,16 @@ export async function confirmImport(
         mobileNumber: row.mobileNumber,
         email: row.email,
         trackingId: row.trackingId,
+        courierName: row.courierName || '',
+        courierTrackingUrl: row.courierTrackingUrl || '',
         items: [],
       });
+    } else {
+      const existingGroup = orderGroups.get(orderKey)!;
+      if (!existingGroup.courierName && row.courierName) existingGroup.courierName = row.courierName;
+      if (!existingGroup.courierTrackingUrl && row.courierTrackingUrl) {
+        existingGroup.courierTrackingUrl = row.courierTrackingUrl;
+      }
     }
 
     const group = orderGroups.get(orderKey)!;
@@ -633,6 +665,8 @@ export async function confirmImport(
       mobileNumber: orderData.mobileNumber,
       email: orderData.email,
       trackingId: orderData.trackingId,
+      courierName: orderData.courierName,
+      courierTrackingUrl: orderData.courierTrackingUrl,
       importBatchId: batch._id,
       items: orderData.items.map((item) => ({
         productCode: item.productCode,

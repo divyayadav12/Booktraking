@@ -307,7 +307,9 @@ export const OutgoingOrdersPage: React.FC = () => {
 
         setScanResult({
           type: 'success',
-          message: data.message,
+          message: data.notification
+            ? `${data.message} Email: ${data.notification.emailDelivery?.sent ? 'sent' : 'not sent'}. WhatsApp: ${data.notification.whatsappDelivery?.sent ? 'sent' : 'not sent'}.`
+            : data.message,
           scanType,
           studentName: updatedOrder?.studentName,
           trackingId: updatedOrder?.trackingId,
@@ -422,7 +424,9 @@ export const OutgoingOrdersPage: React.FC = () => {
         }
         setScanResult({
           type: 'success',
-          message: res.data.message,
+          message: data.notification
+            ? `${res.data.message} Email: ${data.notification.emailDelivery?.sent ? 'sent' : 'not sent'}. WhatsApp: ${data.notification.whatsappDelivery?.sent ? 'sent' : 'not sent'}.`
+            : res.data.message,
           scanType: '📦 Partial Order Finished',
           studentName: updatedOrder?.studentName,
           trackingId: updatedOrder?.trackingId,

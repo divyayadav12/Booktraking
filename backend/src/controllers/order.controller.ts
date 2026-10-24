@@ -73,7 +73,9 @@ export async function markOrderEmailSent(req: AuthenticatedRequest, res: Respons
   try {
     const { id } = req.params;
     const order = await orderService.markOrderEmailSent(id, req.user?.id || 'system');
-    return successResponse(res, 'Student email marked as sent. Order removed from outgoing queue.', order);
+    const emailStatus = order.emailDelivery?.sent ? 'sent' : 'not sent';
+    const whatsappStatus = order.whatsappDelivery?.sent ? 'sent' : 'not sent';
+    return successResponse(res, `Notification result — email: ${emailStatus}; WhatsApp: ${whatsappStatus}.`, order);
   } catch (error) {
     next(error);
   }

@@ -99,10 +99,15 @@ export const OrderDetailPage: React.FC = () => {
     try {
       const res = await api.post(`/orders/${id}/mark-email-sent`);
       if (res.data.success) {
-        const sentAt = res.data.data?.emailSentAt || new Date().toISOString();
-        setOrder((prev) => (prev ? { ...prev, emailSentAt: sentAt } : prev));
-        toastSuccess('Student email marked as sent. Order removed from outgoing queue.');
-        navigate(backUrl, { replace: true });
+        const { emailDelivery, whatsappDelivery, emailSentAt } = res.data.data || {};
+        setOrder((prev) => (prev ? { ...prev, emailSentAt: emailSentAt || prev.emailSentAt } : prev));
+        const deliverySummary = `Email: ${emailDelivery?.sent ? 'sent' : 'not sent'}; WhatsApp: ${whatsappDelivery?.sent ? 'sent' : 'not sent'}.`;
+        if (emailSentAt) {
+          toastSuccess(deliverySummary);
+          navigate(backUrl, { replace: true });
+        } else {
+          toastWarning(deliverySummary);
+        }
       }
     } catch (err: any) {
       toastError(err.response?.data?.message || 'Failed to mark the student email as sent.');

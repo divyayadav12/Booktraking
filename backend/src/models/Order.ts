@@ -17,7 +17,10 @@ export interface IOrder extends Document {
   mobileNumber: string;
   email: string | null;
   emailSentAt: Date | null;
+  whatsappSentAt: Date | null;
   trackingId: string;
+  courierName?: string;
+  courierTrackingUrl?: string;
   importBatchId: mongoose.Types.ObjectId;
   items: IOrderItem[];
   createdAt: Date;
@@ -53,7 +56,10 @@ const OrderSchema = new Schema<IOrder>(
     mobileNumber: { type: String, required: true, trim: true, index: true },
     email: { type: String, trim: true, lowercase: true, default: null },
     emailSentAt: { type: Date, default: null },
+    whatsappSentAt: { type: Date, default: null },
     trackingId: { type: String, required: true, trim: true, uppercase: true, index: true },
+    courierName: { type: String, trim: true, default: '' },
+    courierTrackingUrl: { type: String, trim: true, default: '' },
     importBatchId: { type: Schema.Types.ObjectId, ref: 'ImportBatch', required: true, index: true },
     items: [OrderItemSchema],
   },

@@ -1,12 +1,27 @@
 import { ENV } from '../config/env';
 
-export async function sendOrderWhatsAppMessage(student: {
-  name: string;
-  mobileNumber?: string | null;
-  trackingId: string;
-  orderCode?: string;
-}, items: Array<{ bookCode: string; bookName: string; requiredQuantity: number; dispatchedQuantity: number }>) {
-  const cleanNumber = (student.mobileNumber || '').replace(/\D/g, '');
+export async function sendOrderWhatsAppMessage(
+  student: {
+    name: string;
+    mobileNumber?: string | null;
+    trackingId: string;
+    orderCode?: string;
+    courierName?: string;
+    courierTrackingUrl?: string;
+    dispatchDate?: Date;
+    email?: string | null;
+  },
+  items: Array<{
+    bookCode: string;
+    bookName: string;
+    requiredQuantity: number;
+    dispatchedQuantity: number;
+    productName?: string;
+  }>
+) {
+  const digits = (student.mobileNumber || '').replace(/\D/g, '');
+  const normalizedDigits = digits.length === 11 && digits.startsWith('0') ? digits.slice(1) : digits;
+  const cleanNumber = normalizedDigits.length === 10 ? `91${normalizedDigits}` : normalizedDigits;
 
   if (!cleanNumber) {
     return { sent: false, reason: 'NO_MOBILE' };
@@ -14,25 +29,42 @@ export async function sendOrderWhatsAppMessage(student: {
 
   const webhookUrl = ENV.WHATSAPP_WEBHOOK_URL?.trim();
   if (!ENV.WHATSAPP_ENABLED || !webhookUrl) {
-    console.log(`[WHATSAPP] Dev fallback: order update for ${cleanNumber} would be sent via WhatsApp webhook.`);
+    console.warn('[WHATSAPP] Not sent: WHATSAPP_ENABLED or WHATSAPP_WEBHOOK_URL is not configured.');
     return {
-      sent: true,
+      sent: false,
       fallback: true,
+      reason: 'NOT_CONFIGURED',
       webhookUrl,
       preview: `${student.name} (${student.trackingId}) — WhatsApp message queued for local testing`,
     };
   }
 
-  const messageText = `Hello ${student.name}, your order ${student.orderCode || student.trackingId} has been dispatched. Tracking ID: ${student.trackingId}. Items:\n${items
-    .map((item) => `${item.bookCode} - ${item.bookName} (${item.dispatchedQuantity}/${item.requiredQuantity})`)
-    .join('\n')}`;
+  const rowData: Array<string | number> = Array(19).fill('');
+  const dispatchDate = (student.dispatchDate || new Date()).toISOString();
+  const productNames = [...new Set(
+    items
+      .map((item) => item.productName?.trim())
+      .filter((name): name is string => Boolean(name && name !== 'Product' && name !== 'Default Product'))
+  )];
+  const orderName = productNames.length > 0
+    ? productNames.join(' & ')
+    : [...new Set(items.map((item) => item.bookName))].join(' & ');
+
+  rowData[1] = dispatchDate;
+  rowData[2] = student.trackingId;
+  rowData[3] = student.name;
+  rowData[4] = normalizedDigits;
+  rowData[11] = student.email || '';
+  rowData[12] = student.courierName || '';
+  rowData[13] = student.courierTrackingUrl || '';
+  rowData[14] = orderName;
+  rowData[16] = dispatchDate;
+  rowData[17] = cleanNumber;
 
   const payload = {
-    to: cleanNumber,
-    text: messageText,
-    template: 'order_dispatch',
-    trackingId: student.trackingId,
-    orderCode: student.orderCode || student.trackingId,
+    rowNumber: 2,
+    rowData,
+    type: 'EDIT',
   };
 
   const response = await fetch(webhookUrl, {
@@ -53,8 +85,7 @@ export async function sendOrderWhatsAppMessage(student: {
   return {
     sent: true,
     fallback: false,
-    webhookUrl,
     status: response.status,
-    response: text,
+    response: text.slice(0, 1000),
   };
 }

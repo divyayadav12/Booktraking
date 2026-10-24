@@ -29,12 +29,11 @@ export async function sendOrderEmail(
   }
 
   if (!ENV.EMAIL_ENABLED || !transporter) {
-    console.log(`[EMAIL] Dev fallback: order email for ${student.email} would be sent.`);
+    console.warn('[EMAIL] Not sent: EMAIL_ENABLED or SMTP configuration is missing.');
     return {
-      sent: true,
+      sent: false,
       fallback: true,
-      messageId: `dev-fallback-${Date.now()}`,
-      preview: `${student.name} (${student.trackingId}) — email queued for local testing`,
+      reason: 'NOT_CONFIGURED',
     };
   }
 
@@ -53,11 +52,11 @@ export async function sendOrderEmail(
   const info = await transporter.sendMail({
     from: ENV.SMTP_FROM,
     to: student.email,
-    subject: `Your order ${student.orderCode || student.trackingId} is ready for dispatch`,
+    subject: `Your order ${student.orderCode || student.trackingId} has been dispatched`,
     html: `
       <div style="font-family:Arial,sans-serif; color:#111827; line-height:1.6;">
         <h2 style="margin-bottom:12px;">Hello ${student.name},</h2>
-        <p>Your books are ready to be dispatched.</p>
+        <p>Your books have been dispatched.</p>
         <p><strong>Tracking ID:</strong> ${student.trackingId}</p>
         <p><strong>Order Code:</strong> ${student.orderCode || 'N/A'}</p>
         <table style="border-collapse:collapse; width:100%; margin-top:16px;">
@@ -74,7 +73,7 @@ export async function sendOrderEmail(
         <p style="margin-top:18px;">Thank you.</p>
       </div>
     `,
-    text: `Hello ${student.name},\n\nYour order ${student.orderCode || student.trackingId} is ready for dispatch.\nTracking ID: ${student.trackingId}\n\nItems:\n${items
+    text: `Hello ${student.name},\n\nYour order ${student.orderCode || student.trackingId} has been dispatched.\nTracking ID: ${student.trackingId}\n\nItems:\n${items
       .map(
         (item) => `${item.bookCode} - ${item.bookName} (${item.requiredQuantity} required, ${item.dispatchedQuantity} dispatched)`
       )

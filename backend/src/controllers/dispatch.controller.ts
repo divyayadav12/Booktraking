@@ -4,9 +4,18 @@ import { verifyDispatchSchema } from '../validators/dispatch.validator';
 import * as dispatchService from '../services/dispatch.service';
 import { Order } from '../models';
 import { successResponse, errorResponse } from '../utils/response';
+import * as orderService from '../services/order.service';
 import { computeOrderStatus, computeItemStatus } from '../services/order.service';
 import { normalizeBookCode } from '../utils/normalize';
 import { logAudit } from '../utils/audit';
+
+async function notifyOrderWhenFullyDispatched(orderId: string, actorUserId: string, totalPending: number) {
+  if (!orderId || totalPending > 0) {
+    return null;
+  }
+
+  return orderService.markOrderEmailSent(orderId, actorUserId);
+}
 
 export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -73,7 +82,17 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
         employeeId: req.user.id,
         requestId,
       });
-      return successResponse(res, result.message, result);
+
+      const notification = await notifyOrderWhenFullyDispatched(
+        result.order?.id || order._id.toString(),
+        req.user.id,
+        result.order?.totalPending ?? 0
+      );
+
+      return successResponse(res, result.message, {
+        ...result,
+        notification,
+      });
     }
 
     if (!scannedCode) {
@@ -178,10 +197,15 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
             employeeId: req.user.id,
             requestId,
           });
+          const notification = await notifyOrderWhenFullyDispatched(
+            result.order?.id || activeOrder._id.toString(),
+            req.user.id,
+            result.order?.totalPending ?? 0
+          );
           return successResponse(
             res,
             `Product Code "${scannedCode}" Scanned & Verified! All combo books verified & dispatched for ${activeOrder.studentName}.`,
-            result
+            { ...result, notification }
           );
         }
 
@@ -207,10 +231,15 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
             employeeId: req.user.id,
             requestId,
           });
+          const notification = await notifyOrderWhenFullyDispatched(
+            result.order?.id || activeOrder._id.toString(),
+            req.user.id,
+            result.order?.totalPending ?? 0
+          );
           return successResponse(
             res,
             `Book Code "${scannedCode}" Scanned & Verified! 1 copy verified for ${activeOrder.studentName}.`,
-            { ...result, scanType: 'BOOK_CODE', verifiedBookCode: scannedCode }
+            { ...result, scanType: 'BOOK_CODE', verifiedBookCode: scannedCode, notification }
           );
         }
 
@@ -237,7 +266,12 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
         employeeId: req.user.id,
         requestId,
       });
-      return successResponse(res, result.message, result);
+      const notification = await notifyOrderWhenFullyDispatched(
+        result.order?.id || matchedByProduct._id.toString(),
+        req.user.id,
+        result.order?.totalPending ?? 0
+      );
+      return successResponse(res, result.message, { ...result, notification });
     }
 
     // Try matching book code across active orders
@@ -248,8 +282,13 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
       employeeId: req.user.id,
       requestId,
     });
+    const notification = await notifyOrderWhenFullyDispatched(
+      result.order?.id || orderId || result.orderItem?.id,
+      req.user.id,
+      result.order?.totalPending ?? 0
+    );
 
-    return successResponse(res, result.message, { ...result, scanType: 'BOOK_CODE' });
+    return successResponse(res, result.message, { ...result, scanType: 'BOOK_CODE', notification });
   } catch (error) {
     next(error);
   }
