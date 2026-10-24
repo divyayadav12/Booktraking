@@ -37,6 +37,7 @@ router.get('/barcode-catalog', requireRole('ADMIN', 'EMPLOYEE'), stockController
 router.post('/barcode-catalog/book', requireRole('ADMIN'), stockController.addBookBarcode);
 router.post('/barcode-catalog/product', requireRole('ADMIN'), stockController.addProductBarcode);
 router.put('/product/:identifier', requireRole('ADMIN', 'EMPLOYEE'), stockController.updateProductDetails);
+router.delete('/product/:identifier', requireRole('ADMIN', 'EMPLOYEE'), stockController.deleteProduct);
 
 // Pending Book Stock Routes (पेंडिंग बुक स्टॉक)
 router.get('/pending', requireRole('ADMIN', 'EMPLOYEE'), stockController.getPendingBooks);

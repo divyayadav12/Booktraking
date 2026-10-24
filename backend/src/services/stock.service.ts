@@ -103,6 +103,64 @@ export async function addProductBarcode(userId: string, input: { productCode: st
   return { message: `Product barcode "${productCode}" added successfully`, product };
 }
 
+export async function deleteProduct(userId: string, identifier: string) {
+  const cleanId = identifier.trim();
+  if (!mongoose.Types.ObjectId.isValid(cleanId)) {
+    throw { statusCode: 400, message: 'A valid product record ID is required', code: 'INVALID_PRODUCT_ID' };
+  }
+
+  const product = await ProductCatalog.findById(cleanId);
+  if (!product) {
+    throw { statusCode: 404, message: 'Product record was not found', code: 'PRODUCT_NOT_FOUND' };
+  }
+
+  const orderCount = await Order.countDocuments({
+    items: {
+      $elemMatch: {
+        productCode: product.productCode,
+        productName: product.productName,
+      },
+    },
+  });
+  if (orderCount > 0) {
+    throw {
+      statusCode: 409,
+      message: `This product is used by ${orderCount} order(s) and cannot be deleted. Historical order records are preserved.`,
+      code: 'PRODUCT_IN_USE',
+    };
+  }
+
+  const anotherProductWithCode = await ProductCatalog.exists({
+    _id: { $ne: product._id },
+    productCode: product.productCode,
+  });
+  if (!anotherProductWithCode) {
+    await BookStock.updateMany(
+      { productCode: product.productCode },
+      { $unset: { productCode: '' } }
+    );
+  }
+
+  const productCode = product.productCode;
+  const productName = product.productName;
+  const productId = product._id.toString();
+  await ProductCatalog.findByIdAndDelete(product._id);
+
+  await logAudit({
+    actorUserId: userId,
+    action: 'PRODUCT_DELETED',
+    entityType: 'ProductCatalog',
+    entityId: productId,
+    metadata: { productCode, productName },
+  });
+
+  return {
+    message: `Product "${productName}" (${productCode}) has been deleted.`,
+    productCode,
+    productName,
+  };
+}
+
 /**
  * Get available warehouse stock with aggregate summary statistics
  */
@@ -709,6 +767,10 @@ export async function deleteBookStock(userId: string, identifier: string) {
   const stockId = book._id.toString();
 
   await BookStock.findByIdAndDelete(book._id);
+  await ProductCatalog.updateMany(
+    { books: bookCode },
+    { $pull: { books: bookCode } }
+  );
 
   await logAudit({
     actorUserId: userId,

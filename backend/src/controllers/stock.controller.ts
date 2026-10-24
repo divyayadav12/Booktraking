@@ -246,3 +246,11 @@ export async function updateProductDetails(req: AuthenticatedRequest, res: Respo
   }
 }
 
+export async function deleteProduct(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const result = await stockService.deleteProduct(req.user!.id, req.params.identifier);
+    return successResponse(res, result.message, result);
+  } catch (error) {
+    next(error);
+  }
+}

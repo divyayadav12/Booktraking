@@ -18,6 +18,7 @@ import {
   Zap,
   Sparkles,
   Edit3,
+  Trash2,
   X,
   Plus,
 } from 'lucide-react';
@@ -71,6 +72,7 @@ export const BarcodeCatalogPage: React.FC = () => {
   const [editProductName, setEditProductName] = useState('');
   const [editProductBooks, setEditProductBooks] = useState('');
   const [isUpdatingProduct, setIsUpdatingProduct] = useState(false);
+  const [deletingBarcode, setDeletingBarcode] = useState<string | null>(null);
 
   // Edit Book Modal State
   const [editBookModal, setEditBookModal] = useState<BookItem | null>(null);
@@ -210,6 +212,24 @@ export const BarcodeCatalogPage: React.FC = () => {
     }
   };
 
+  const handleDeleteProduct = async (product: ProductItem) => {
+    if (!window.confirm(
+      `Kya aap "${product.productName}" (${product.productCode}) ko delete karna chahte hain? Is product se linked historical orders wale product ko delete nahi kiya ja sakta.`
+    )) return;
+
+    const key = `PRODUCT:${product.id}`;
+    setDeletingBarcode(key);
+    try {
+      const res = await api.delete(`/stock/product/${encodeURIComponent(product.id)}`);
+      success(res.data?.message || 'Product barcode deleted successfully');
+      await fetchCatalog();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Product barcode delete nahi ho paya');
+    } finally {
+      setDeletingBarcode(null);
+    }
+  };
+
   // Open Edit Book Modal
   const handleOpenEditBook = (b: BookItem) => {
     setEditBookModal(b);
@@ -249,6 +269,24 @@ export const BarcodeCatalogPage: React.FC = () => {
       error(err.response?.data?.message || 'Book update karne me samasya aayi');
     } finally {
       setIsUpdatingBook(false);
+    }
+  };
+
+  const handleDeleteBook = async (book: BookItem) => {
+    if (!window.confirm(
+      `Kya aap "${book.bookName}" (${book.bookCode}) ka barcode delete karna chahte hain? Iske liye stock balance 0 hona zaroori hai. Historical orders delete nahi honge.`
+    )) return;
+
+    const key = `BOOK:${book.bookCode}`;
+    setDeletingBarcode(key);
+    try {
+      const res = await api.delete(`/stock/book/${encodeURIComponent(book.bookCode)}`);
+      success(res.data?.message || 'Book barcode deleted successfully');
+      await fetchCatalog();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Book barcode delete nahi ho paya');
+    } finally {
+      setDeletingBarcode(null);
     }
   };
 
@@ -1207,6 +1245,15 @@ export const BarcodeCatalogPage: React.FC = () => {
                             <span>Edit</span>
                           </button>
                           <button
+                            onClick={() => handleDeleteProduct(p)}
+                            disabled={deletingBarcode === `PRODUCT:${p.id}`}
+                            className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete Product Barcode"
+                          >
+                            <Trash2 size={11} />
+                            <span>{deletingBarcode === `PRODUCT:${p.id}` ? 'Deleting...' : 'Delete'}</span>
+                          </button>
+                          <button
                             onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
                             className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
                           >
@@ -1266,6 +1313,15 @@ export const BarcodeCatalogPage: React.FC = () => {
                               >
                                 <Edit3 size={12} />
                                 <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(p)}
+                                disabled={deletingBarcode === `PRODUCT:${p.id}`}
+                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Delete Product Barcode"
+                              >
+                                <Trash2 size={12} />
+                                <span>{deletingBarcode === `PRODUCT:${p.id}` ? 'Deleting...' : 'Delete'}</span>
                               </button>
                               <button
                                 onClick={() => handlePrintSingleSticker(p.productCode, p.productName)}
@@ -1372,6 +1428,15 @@ export const BarcodeCatalogPage: React.FC = () => {
                               <span>Edit</span>
                             </button>
                             <button
+                              onClick={() => handleDeleteBook(b)}
+                              disabled={deletingBarcode === `BOOK:${b.bookCode}`}
+                              className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px] disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete Book Barcode"
+                            >
+                              <Trash2 size={11} />
+                              <span>{deletingBarcode === `BOOK:${b.bookCode}` ? 'Deleting...' : 'Delete'}</span>
+                            </button>
+                            <button
                               onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
                               className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
                             >
@@ -1435,6 +1500,15 @@ export const BarcodeCatalogPage: React.FC = () => {
                               >
                                 <Edit3 size={12} />
                                 <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBook(b)}
+                                disabled={deletingBarcode === `BOOK:${b.bookCode}`}
+                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded inline-flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Delete Book Barcode"
+                              >
+                                <Trash2 size={12} />
+                                <span>{deletingBarcode === `BOOK:${b.bookCode}` ? 'Deleting...' : 'Delete'}</span>
                               </button>
                               <button
                                 onClick={() => handlePrintSingleSticker(b.bookCode, b.bookName)}
