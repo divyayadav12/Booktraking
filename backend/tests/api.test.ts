@@ -217,6 +217,77 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
       await ImportBatch.findByIdAndDelete(order!.importBatchId);
       await BookStock.deleteOne({ bookCode: 'SINGLE-BOOK-001' });
     });
+
+    it('should dispatch a product-code order when stock is missing without a MongoDB update conflict', async () => {
+      const trackingId = 'PRODUCTSCANCONFLICTTEST';
+      const bookCode = 'PRODUCT-SCAN-BOOK-001';
+      await Order.deleteOne({ trackingId });
+      await BookStock.deleteOne({ bookCode });
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Product Scan');
+      worksheet.columns = [
+        { header: 'Student Name', key: 'studentName' },
+        { header: 'Mobile Number', key: 'mobileNumber' },
+        { header: 'Tracking ID', key: 'trackingId' },
+        { header: 'P_CODE', key: 'productCode' },
+        { header: 'Course', key: 'course' },
+        { header: 'P_Books', key: 'bookCode' },
+        { header: 'Book Name', key: 'bookName' },
+      ];
+      worksheet.addRow({
+        studentName: 'Product Scan Test Student',
+        mobileNumber: '9988776655',
+        trackingId,
+        productCode: 'PRODUCT-SCAN-COMBO-001',
+        course: 'Product Scan Test Course',
+        bookCode,
+        bookName: 'Product Scan Test Book',
+      });
+
+      const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+      let batchId: string | undefined;
+      try {
+        const preview = await request(app)
+          .post('/api/imports/preview')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .attach('file', buffer, 'product_scan_order.xlsx');
+        expect(preview.status).toBe(200);
+
+        const confirmed = await request(app)
+          .post('/api/imports/confirm')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            originalFileName: 'product_scan_order.xlsx',
+            fileHash: preview.body.data.fileHash,
+            validRows: preview.body.data.validRows,
+          });
+        expect(confirmed.status).toBe(201);
+
+        const order = await Order.findOne({ trackingId });
+        expect(order).toBeDefined();
+        batchId = order!.importBatchId.toString();
+
+        const dispatch = await request(app)
+          .post('/api/dispatch/verify')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            orderId: order!._id.toString(),
+            enteredCode: 'PRODUCT-SCAN-COMBO-001',
+          });
+
+        expect(dispatch.status).toBe(200);
+        expect(dispatch.body.success).toBe(true);
+        expect(dispatch.body.data.scanType).toBe('PRODUCT_CODE');
+        const stock = await BookStock.findOne({ bookCode });
+        expect(stock?.availableQuantity).toBe(-1);
+        expect(stock?.bookName).toBe('Product Scan Test Book');
+      } finally {
+        const order = await Order.findOneAndDelete({ trackingId });
+        await ImportBatch.findByIdAndDelete(batchId || order?.importBatchId);
+        await BookStock.deleteOne({ bookCode });
+      }
+    });
   });
 
   describe('4. Server-Side Book Dispatch Verification', () => {

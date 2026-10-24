@@ -578,9 +578,7 @@ export async function dispatchByProductCode(params: {
       {
         $setOnInsert: {
           bookCode: cleanCode,
-          bookName: item.bookName,
           totalInward: 0,
-          totalDispatched: 0,
           lowStockThreshold: 10,
           lastRestockedAt: new Date(),
         },
