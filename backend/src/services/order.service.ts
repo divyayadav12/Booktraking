@@ -98,7 +98,7 @@ export async function listOrders(params: ListOrdersParams) {
     const itemsWithStatus = order.items.map((item: any) => ({
       id: item._id.toString(),
       orderId: order._id.toString(),
-      productCode: item.productCode || order.productCode,
+      productCode: item.productCode || order.productCode || '',
       productName: item.productName || 'Product',
       bookCode: item.bookCode,
       bookName: item.bookName,
@@ -392,7 +392,7 @@ export async function getOrderById(orderId: string) {
     return {
       id: item._id.toString(),
       orderId: order._id.toString(),
-      productCode: item.productCode || order.productCode,
+      productCode: item.productCode || order.productCode || '',
       productName: item.productName || 'Product',
       bookCode: item.bookCode,
       bookName: item.bookName,
@@ -514,7 +514,7 @@ export async function getBarcodeSheetData(params: {
     // Extract distinct products in this order
     const productsMap = new Map<string, string>();
     order.items.forEach((item: any) => {
-      const pCode = item.productCode || order.productCode || 'PRD-01';
+      const pCode = item.productCode || order.productCode || '';
       const pName = item.productName || 'Product';
       if (!productsMap.has(pCode)) {
         productsMap.set(pCode, pName);
@@ -541,7 +541,7 @@ export async function getBarcodeSheetData(params: {
       status: computeOrderStatus(order.items),
       items: order.items.map((item: any) => ({
         id: item._id.toString(),
-        productCode: item.productCode || order.productCode,
+        productCode: item.productCode || order.productCode || '',
         productName: item.productName || 'Product',
         bookCode: item.bookCode,
         bookName: item.bookName,

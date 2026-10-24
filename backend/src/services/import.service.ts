@@ -426,7 +426,7 @@ export async function parseAndPreviewExcel(
 
     for (let pIdx = 0; pIdx < totalProductLines; pIdx++) {
       const pName = courseLines[pIdx] || courseLines[0] || rawBookName || 'Product';
-      const pCode = pCodeLines[pIdx] || pCodeLines[0] || (rawPCode || 'PRD-01');
+      const pCode = pCodeLines[pIdx] || pCodeLines[0] || rawPCode;
       const bCodesStr = booksLines[pIdx] || booksLines[0] || pCode;
       const explicitBookName = bookNameLines[pIdx] || bookNameLines[0] || '';
 
@@ -437,7 +437,8 @@ export async function parseAndPreviewExcel(
         .filter(Boolean);
 
       if (bookCodes.length === 0) {
-        bookCodes.push(pCode);
+        rowErrors.push('Book code is required for dispatch.');
+        bookCodes.push('');
       }
 
       for (const rawCode of bookCodes) {
@@ -613,7 +614,7 @@ export async function confirmImport(
       existing.requiredQuantity += row.quantity;
     } else {
       group.items.push({
-        productCode: row.productCode || 'PRD-01',
+        productCode: row.productCode || '',
         productName: row.productName || 'Product',
         bookCode: row.bookCode,
         bookName: row.bookName,
@@ -656,7 +657,7 @@ export async function confirmImport(
     orderCodeCounter++;
 
     // Primary product code from the first item
-    const primaryProductCode = orderData.items[0]?.productCode || 'PRD-01';
+    const primaryProductCode = orderData.items[0]?.productCode || '';
 
     await Order.create({
       orderCode,

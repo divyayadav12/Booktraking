@@ -3,7 +3,7 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import app from '../src/app';
 import { connectDatabase, disconnectDatabase } from '../src/config/db';
-import { Order, DispatchLog, VerificationAttempt } from '../src/models';
+import { Order, DispatchLog, VerificationAttempt, ImportBatch, BookStock } from '../src/models';
 import ExcelJS from 'exceljs';
 
 describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
@@ -151,6 +151,71 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
       expect(res.body.data.validRowsCount).toBe(1);
       expect(res.body.data.invalidRowsCount).toBe(1);
       expect(res.body.data.invalidRows[0].errors).toContain('Quantity must be a positive integer greater than 0.');
+    });
+
+    it('should keep a single book order product code blank and preserve its book code', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Single Book');
+      worksheet.columns = [
+        { header: 'Student Name', key: 'studentName' },
+        { header: 'Mobile Number', key: 'mobileNumber' },
+        { header: 'Tracking ID', key: 'trackingId' },
+        { header: 'P_CODE', key: 'productCode' },
+        { header: 'Course', key: 'course' },
+        { header: 'P_Books', key: 'bookCode' },
+        { header: 'Book Name', key: 'bookName' },
+      ];
+      worksheet.addRow({
+        studentName: 'Single Book Student',
+        mobileNumber: '9988776655',
+        trackingId: 'SINGLEBOOKTEST',
+        productCode: '',
+        course: 'Single Book Course',
+        bookCode: 'SINGLE-BOOK-001',
+        bookName: 'Single Test Book',
+      });
+
+      const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+      const preview = await request(app)
+        .post('/api/imports/preview')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', buffer, 'single_book_order.xlsx');
+
+      expect(preview.status).toBe(200);
+      expect(preview.body.data.validRowsCount).toBe(1);
+      expect(preview.body.data.validRows[0].productCode).toBe('');
+      expect(preview.body.data.validRows[0].bookCode).toBe('SINGLE-BOOK-001');
+
+      const confirmed = await request(app)
+        .post('/api/imports/confirm')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          originalFileName: 'single_book_order.xlsx',
+          fileHash: preview.body.data.fileHash,
+          validRows: preview.body.data.validRows,
+        });
+
+      expect(confirmed.status).toBe(201);
+      const order = await Order.findOne({ trackingId: 'SINGLEBOOKTEST' });
+      expect(order).toBeDefined();
+      expect(order!.productCode).toBe('');
+      expect(order!.items).toHaveLength(1);
+      expect(order!.items[0].productCode).toBe('');
+      expect(order!.items[0].bookCode).toBe('SINGLE-BOOK-001');
+
+      const dispatch = await request(app)
+        .post('/api/dispatch/verify')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          orderItemId: order!.items[0]._id.toString(),
+          enteredBookCode: 'SINGLE-BOOK-001',
+        });
+      expect(dispatch.status).toBe(200);
+      expect(dispatch.body.data.scanType).toBe('BOOK_CODE');
+
+      await Order.findByIdAndDelete(order!._id);
+      await ImportBatch.findByIdAndDelete(order!.importBatchId);
+      await BookStock.deleteOne({ bookCode: 'SINGLE-BOOK-001' });
     });
   });
 

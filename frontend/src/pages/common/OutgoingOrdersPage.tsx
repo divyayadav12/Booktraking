@@ -787,7 +787,9 @@ export const OutgoingOrdersPage: React.FC = () => {
               onKeyDown={e => { if (e.key === 'Enter' && scannerCode.trim()) handleGlobalScan(scannerCode); }}
               placeholder={
                 lastScannedOrder && lastScannedOrder.totalPending > 0
-                  ? `⚡ Step 2: Now scan Product Barcode (${lastScannedOrder.productCode || 'PRD-...'}) or individual Book Barcodes...`
+                  ? lastScannedOrder.productCode
+                    ? `⚡ Step 2: Scan Product Barcode (${lastScannedOrder.productCode}) or individual Book Barcodes...`
+                    : '⚡ Step 2: Scan the individual Book Barcode to dispatch this order...'
                   : "⚡ Step 1: Aim scanner at Student Order Barcode (151026001 / ORD-...) to load details..."
               }
               className="w-full px-4 py-3.5 text-sm font-mono border-2 border-red-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-600 bg-white shadow-xs font-bold"
@@ -1341,7 +1343,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                         {/* Product Code */}
                         <td className="py-3 px-4">
                           <span className="font-mono text-xs font-bold text-purple-800 bg-purple-50 px-2.5 py-1 rounded border border-purple-300 inline-flex items-center gap-1 shadow-2xs" title="Product Combo Barcode (Tier 2)">
-                            📦 {order.productCode || 'PRD-01'}
+                            📦 {order.productCode || '-'}
                           </span>
                         </td>
 

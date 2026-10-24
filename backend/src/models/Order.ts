@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IOrderItem {
   _id: mongoose.Types.ObjectId;
-  productCode: string;       // From Excel e.g. PRD-CA-01 (or default PRD-01)
+  productCode: string;       // From Excel e.g. PRD-CA-01; blank for book-only orders
   productName: string;       // From Excel e.g. CA Foundation Full Combo
   bookCode: string;          // From Excel e.g. QB101
   bookName: string;          // From Excel e.g. Quantitative Bank
@@ -12,7 +12,7 @@ export interface IOrderItem {
 
 export interface IOrder extends Document {
   orderCode: string;         // Auto-generated unique order code e.g. ORD-2410-00001
-  productCode: string;       // Primary product code (or auto code)
+  productCode: string;       // Primary product code; blank for book-only orders
   studentName: string;
   mobileNumber: string;
   email: string | null;
@@ -29,7 +29,7 @@ export interface IOrder extends Document {
 
 const OrderItemSchema = new Schema<IOrderItem>(
   {
-    productCode: { type: String, uppercase: true, trim: true, default: 'PRD-01', index: true },
+    productCode: { type: String, uppercase: true, trim: true, default: '', index: true },
     productName: { type: String, trim: true, default: 'Default Product' },
     bookCode: { type: String, required: true, uppercase: true, trim: true, index: true },
     bookName: { type: String, required: true, trim: true },
@@ -51,7 +51,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
 const OrderSchema = new Schema<IOrder>(
   {
     orderCode: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
-    productCode: { type: String, uppercase: true, trim: true, default: 'PRD-01', index: true },
+    productCode: { type: String, uppercase: true, trim: true, default: '', index: true },
     studentName: { type: String, required: true, trim: true, index: true },
     mobileNumber: { type: String, required: true, trim: true, index: true },
     email: { type: String, trim: true, lowercase: true, default: null },

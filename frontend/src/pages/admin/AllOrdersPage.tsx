@@ -180,7 +180,7 @@ export const AllOrdersPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-mono text-xs font-bold text-purple-800 bg-purple-50 px-2.5 py-1 rounded border border-purple-300 inline-flex items-center gap-1 shadow-2xs" title="Product Combo Barcode (Tier 2)">
-                          📦 {order.productCode || 'PRD-01'}
+                          📦 {order.productCode || '-'}
                         </span>
                       </td>
                       <td className="py-3 px-4">
