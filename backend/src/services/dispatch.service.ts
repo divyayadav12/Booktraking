@@ -548,18 +548,18 @@ export async function dispatchByProductCode(params: {
     };
   }
 
-  // Verify that all matching combo items have sufficient available stock in warehouse
+  const stockWarnings: string[] = [];
+
+  // Physical dispatch is recorded even if the stock ledger is missing or short.
   for (const item of matchingItems) {
     const remaining = item.requiredQuantity - item.dispatchedQuantity;
     const cleanCode = normalizeBookCode(item.bookCode);
     const stock = await BookStock.findOne({ bookCode: cleanCode });
-    if (!stock || stock.availableQuantity < remaining) {
-      throw {
-        statusCode: 400,
-        message: `❌ Out of Stock: Combo book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Stock Inward" page me stock enter karein.`,
-        code: 'OUT_OF_STOCK',
-        bookCode: item.bookCode,
-      };
+    const availableQuantity = stock?.availableQuantity ?? 0;
+    if (availableQuantity < remaining) {
+      stockWarnings.push(
+        `Warning: "${item.bookName} (${item.bookCode})" needs ${remaining} copies; system stock was ${availableQuantity}. Physical dispatch was recorded and stock balance will be negative until inward stock is added.`
+      );
     }
   }
 
@@ -576,11 +576,23 @@ export async function dispatchByProductCode(params: {
     await BookStock.findOneAndUpdate(
       { bookCode: cleanCode },
       {
+        $setOnInsert: {
+          bookCode: cleanCode,
+          bookName: item.bookName,
+          totalInward: 0,
+          totalDispatched: 0,
+          lowStockThreshold: 10,
+          lastRestockedAt: new Date(),
+        },
+        $set: {
+          bookName: item.bookName,
+        },
         $inc: {
           availableQuantity: -remaining,
           totalDispatched: remaining,
         },
-      }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     await DispatchLog.create({
@@ -618,14 +630,23 @@ export async function dispatchByProductCode(params: {
       productCode: normalizedProductCode,
       student: order.studentName,
       itemsDispatched: matchingItems.length,
+      stockWarnings,
     },
   });
+
+  const stockWarning = stockWarnings.length > 0 ? stockWarnings.join(' ') : undefined;
 
   return {
     success: true,
     scanType: 'PRODUCT_CODE',
     productCode: normalizedProductCode,
-    message: `Product Code "${normalizedProductCode}" verified! ${matchingItems.length} book(s) dispatched for ${order.studentName}.`,
+    message: [
+      `Product Code "${normalizedProductCode}" verified! ${matchingItems.length} book(s) dispatched for ${order.studentName}.`,
+      stockWarning,
+    ]
+      .filter(Boolean)
+      .join(' '),
+    stockWarning,
     order: {
       id: order._id.toString(),
       orderCode: order.orderCode,
