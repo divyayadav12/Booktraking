@@ -81,6 +81,17 @@ export async function markOrderEmailSent(req: AuthenticatedRequest, res: Respons
   }
 }
 
+export async function retryOrderWhatsApp(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const result = await orderService.retryOrderWhatsApp(id, req.user?.id || 'system');
+    const status = result.whatsappDelivery.sent ? 'accepted by Teleobi' : 'not sent';
+    return successResponse(res, `WhatsApp notification ${status}.`, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getOrderById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;

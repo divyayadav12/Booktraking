@@ -36,6 +36,7 @@ export const OrderDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
   const [isMarkingEmailSent, setIsMarkingEmailSent] = useState(false);
+  const [isRetryingWhatsApp, setIsRetryingWhatsApp] = useState(false);
 
   // Verification Modal State
   const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
@@ -121,6 +122,30 @@ export const OrderDetailPage: React.FC = () => {
     }
   };
 
+  const handleRetryWhatsApp = async () => {
+    if (!id || !order || order.status !== 'COMPLETED') return;
+
+    if (!window.confirm(`Send the WhatsApp dispatch message again to ${order.studentName}?`)) return;
+
+    setIsRetryingWhatsApp(true);
+    try {
+      const res = await api.post(`/orders/${id}/retry-whatsapp`);
+      if (res.data.success) {
+        const { whatsappDelivery, whatsappSentAt } = res.data.data || {};
+        setOrder((prev) => (prev ? { ...prev, whatsappSentAt: whatsappSentAt || null } : prev));
+        if (whatsappDelivery?.sent) {
+          toastSuccess('Teleobi accepted the WhatsApp request. Check Teleobi delivery logs and the recipient phone.');
+        } else {
+          toastWarning(`WhatsApp was not sent: ${whatsappDelivery?.reason || 'check Render logs/configuration'}.`);
+        }
+      }
+    } catch (err: any) {
+      toastError(err.response?.data?.message || 'Failed to retry the WhatsApp notification.');
+    } finally {
+      setIsRetryingWhatsApp(false);
+    }
+  };
+
   const handleVerifyAndDispatch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedItem || !enteredCode.trim() || isVerifying) return;
@@ -195,6 +220,17 @@ export const OrderDetailPage: React.FC = () => {
           <ArrowLeft className="w-4 h-4" /> Back to Outgoing Orders
         </Link>
         <div className="flex items-center gap-2">
+          {order.status === 'COMPLETED' && (
+            <Button
+              variant="success"
+              size="sm"
+              onClick={handleRetryWhatsApp}
+              isLoading={isRetryingWhatsApp}
+              icon={<Phone className="w-4 h-4" />}
+            >
+              Retry WhatsApp
+            </Button>
+          )}
           {((order.email && !order.emailSentAt) || !order.whatsappSentAt) && (
             <Button
               variant="success"

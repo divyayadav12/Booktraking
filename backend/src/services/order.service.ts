@@ -283,6 +283,83 @@ export async function markOrderEmailSent(orderId: string, actorUserId: string) {
   };
 }
 
+export async function retryOrderWhatsApp(orderId: string, actorUserId: string) {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw { statusCode: 404, message: 'Order not found', code: 'ORDER_NOT_FOUND' };
+  }
+
+  if (computeOrderStatus(order.items) !== 'COMPLETED') {
+    throw {
+      statusCode: 400,
+      message: 'WhatsApp dispatch notification can only be sent after all order items are dispatched.',
+      code: 'ORDER_NOT_COMPLETED',
+    };
+  }
+
+  // Older versions could mark a dev fallback as sent. Clear that unverifiable
+  // status before an explicit retry so it cannot suppress the webhook attempt.
+  order.whatsappSentAt = null;
+  await order.save();
+
+  const items = order.items.map((item: any) => ({
+    bookCode: item.bookCode,
+    bookName: item.bookName,
+    productName: item.productName,
+    requiredQuantity: item.requiredQuantity,
+    dispatchedQuantity: item.dispatchedQuantity,
+  }));
+
+  let whatsappDelivery;
+  try {
+    whatsappDelivery = await sendOrderWhatsAppMessage(
+      {
+        name: order.studentName,
+        mobileNumber: order.mobileNumber,
+        trackingId: order.trackingId,
+        orderCode: order.orderCode,
+        courierName: order.courierName || '',
+        courierTrackingUrl: order.courierTrackingUrl || '',
+        dispatchDate: new Date(),
+        email: order.email,
+      },
+      items
+    );
+  } catch (error) {
+    whatsappDelivery = {
+      sent: false,
+      reason: 'DELIVERY_FAILED',
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  if (whatsappDelivery.sent) {
+    order.whatsappSentAt = new Date();
+    await order.save();
+  }
+
+  await logAudit({
+    actorUserId,
+    action: 'ORDER_WHATSAPP_RETRY',
+    entityType: 'Order',
+    entityId: order._id.toString(),
+    metadata: {
+      trackingId: order.trackingId,
+      whatsappDelivery,
+      whatsappSentAt: order.whatsappSentAt,
+    },
+  });
+
+  return {
+    id: order._id.toString(),
+    studentName: order.studentName,
+    trackingId: order.trackingId,
+    whatsappSentAt: order.whatsappSentAt,
+    whatsappDelivery,
+  };
+}
+
 export async function getOrderById(orderId: string) {
   const order = await Order.findById(orderId).populate('importBatchId', 'originalFileName uploadedAt');
 

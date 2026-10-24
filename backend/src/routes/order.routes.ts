@@ -17,6 +17,7 @@ router.delete('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders
 router.delete('/bulk-delete', requireRole('ADMIN'), orderController.deleteOrders);
 
 router.post('/:id/mark-email-sent', requireRole('ADMIN', 'EMPLOYEE'), orderController.markOrderEmailSent);
+router.post('/:id/retry-whatsapp', requireRole('ADMIN', 'EMPLOYEE'), orderController.retryOrderWhatsApp);
 
 // Order details and items accessible to both
 router.get('/:id', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderById);
