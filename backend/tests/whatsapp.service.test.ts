@@ -1,0 +1,39 @@
+import { describe, expect, it } from 'vitest';
+import { buildTeleobiPayload } from '../src/services/whatsapp.service';
+
+describe('Teleobi WhatsApp payload', () => {
+  it('includes a text value for every template field when optional order data is missing', () => {
+    const payload = buildTeleobiPayload(
+      {
+        name: 'Student Name',
+        mobileNumber: '9892098500',
+        trackingId: 'TRACK-123',
+        dispatchDate: new Date('2026-10-24T12:00:00.000Z'),
+      },
+      [
+        {
+          bookCode: 'BOOK-001',
+          bookName: 'Book One',
+          productName: 'Course One',
+          requiredQuantity: 2,
+          dispatchedQuantity: 2,
+        },
+      ]
+    );
+
+    expect(payload.rowNumber).toBe(2);
+    expect(payload.type).toBe('EDIT');
+    expect(payload.rowData).toHaveLength(19);
+    expect(payload.rowData.every((value) => String(value).trim().length > 0)).toBe(true);
+    expect(payload.rowData[2]).toBe('TRACK-123');
+    expect(payload.rowData[3]).toBe('Student Name');
+    expect(payload.rowData[5]).toBe('Course One');
+    expect(payload.rowData[7]).toBe(2);
+    expect(payload.rowData[9]).toBe('Book One');
+    expect(payload.rowData[11]).toBe('Not provided');
+    expect(payload.rowData[12]).toBe('Not provided');
+    expect(payload.rowData[13]).toBe('Not available');
+    expect(payload.rowData[15]).toBe('Not available');
+    expect(payload.rowData[17]).toBe('919892098500');
+  });
+});
