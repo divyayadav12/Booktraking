@@ -33,6 +33,7 @@ import {
   VolumeX,
   Smartphone,
   QrCode,
+  Mail,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { playSuccessChime, playErrorTone, playOrderCompleteFanfare, speakVoiceAnnouncement, speakVoiceTwice, speakErrorMessage } from '../../utils/sound';
@@ -646,6 +647,28 @@ export const OutgoingOrdersPage: React.FC = () => {
       totalDispatchedCopies: prev.totalDispatchedCopies + 1,
       totalPendingCopies: Math.max(0, prev.totalPendingCopies - 1),
     }));
+  };
+
+  const handleMarkEmailSent = async (orderId: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    const confirmed = window.confirm(
+      `Mark email as sent for ${order.studentName} and remove this order from the outgoing queue?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const res = await api.post(`/orders/${orderId}/mark-email-sent`);
+      if (res.data.success) {
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+        fetchOutgoingOrders(pagination.page);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to mark email as sent.');
+    }
   };
 
   const pendingOrdersList = orders.filter((o) => o.totalPending > 0);
@@ -1481,6 +1504,15 @@ export const OutgoingOrdersPage: React.FC = () => {
                         {/* Action: Open Dispatch Box / Details ("har order ke samne click karne par vha ek box open ho") */}
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => handleMarkEmailSent(order.id)}
+                              icon={<Mail className="w-3.5 h-3.5" />}
+                            >
+                              Email Sent
+                            </Button>
+
                             <Button
                               variant={isPending ? 'primary' : 'outline'}
                               size="sm"

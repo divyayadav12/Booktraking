@@ -36,6 +36,7 @@ export interface Order {
   studentName: string;
   mobileNumber: string;
   email: string | null;
+  emailSentAt?: string | null;
   trackingId: string;
   importBatchId: string;
   createdAt: string;

@@ -217,8 +217,8 @@ export async function verifyAndDispatch(req: AuthenticatedRequest, res: Response
         // C. Scanned code does NOT belong to active order!
         return errorResponse(
           res,
-          `❌ Barcode "${scannedCode}" does NOT belong to order "${activeOrder.orderCode}" for ${activeOrder.studentName}.`,
-          'CODE_MISMATCH_FOR_ORDER',
+          `Warning: Book code does not match this order. Please verify the book.`,
+          'BOOK_CODE_MISMATCH',
           400
         );
       }

@@ -16,6 +16,7 @@ export interface IOrder extends Document {
   studentName: string;
   mobileNumber: string;
   email: string | null;
+  emailSentAt: Date | null;
   trackingId: string;
   importBatchId: mongoose.Types.ObjectId;
   items: IOrderItem[];
@@ -51,6 +52,7 @@ const OrderSchema = new Schema<IOrder>(
     studentName: { type: String, required: true, trim: true, index: true },
     mobileNumber: { type: String, required: true, trim: true, index: true },
     email: { type: String, trim: true, lowercase: true, default: null },
+    emailSentAt: { type: Date, default: null },
     trackingId: { type: String, required: true, trim: true, uppercase: true, index: true },
     importBatchId: { type: Schema.Types.ObjectId, ref: 'ImportBatch', required: true, index: true },
     items: [OrderItemSchema],

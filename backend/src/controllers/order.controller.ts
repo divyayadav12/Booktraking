@@ -69,6 +69,16 @@ export async function getOutgoingOrders(req: AuthenticatedRequest, res: Response
   }
 }
 
+export async function markOrderEmailSent(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const order = await orderService.markOrderEmailSent(id, req.user?.id || 'system');
+    return successResponse(res, 'Student email marked as sent. Order removed from outgoing queue.', order);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getOrderById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;

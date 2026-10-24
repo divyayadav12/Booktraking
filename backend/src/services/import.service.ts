@@ -361,7 +361,10 @@ export async function parseAndPreviewExcel(
     const studentName = studentStr;
     const mobileNumber = normalizeMobileNumber(rawMob as any);
     const rawEmail = columnMap['email'] ? row.getCell(columnMap['email']).value : null;
+    const rawQuantity = columnMap['quantity'] ? row.getCell(columnMap['quantity']).value : 1;
     const email = rawEmail ? normalizeEmail(String(rawEmail)) : null;
+    const parsedQuantity = Number(rawQuantity);
+    const quantity = Number.isFinite(parsedQuantity) ? parsedQuantity : NaN;
 
     if (!studentName) rowErrors.push('Student name is required.');
     if (!mobileNumber) {
@@ -371,6 +374,9 @@ export async function parseAndPreviewExcel(
     }
     if (rawEmail && email && !emailRegex.test(email)) {
       rowErrors.push('Invalid email format.');
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      rowErrors.push('Quantity must be a positive integer greater than 0.');
     }
 
     // Tracking ID: if column present and non-empty, use it; else auto-generate DDMMYYNNN
@@ -439,7 +445,7 @@ export async function parseAndPreviewExcel(
           productName: pName,
           bookCode: cleanBookCode,
           bookName: resolvedBookName,
-          quantity: 1,
+          quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
           errors: [...rowErrors],
         };
 

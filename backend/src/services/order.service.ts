@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { Order, DispatchLog, ImportBatch, VerificationAttempt } from '../models';
 import { logAudit } from '../utils/audit';
 import { parseDateFilter } from '../utils/date';
+import { sendOrderEmail } from './email.service';
+import { sendOrderWhatsAppMessage } from './whatsapp.service';
 
 export type ItemStatus = 'PENDING' | 'PARTIALLY_DISPATCHED' | 'COMPLETED';
 export type OrderStatus = 'PENDING' | 'PARTIALLY_DISPATCHED' | 'COMPLETED';
@@ -42,6 +44,10 @@ export async function listOrders(params: ListOrdersParams) {
   const { startDate, endDate } = parseDateFilter(params.dateFilter, params.startDate, params.endDate);
 
   const query: any = {};
+
+  if (params.outgoingOnly) {
+    query.emailSentAt = null;
+  }
 
   if (params.batchId && params.batchId.trim()) {
     try {
@@ -109,6 +115,7 @@ export async function listOrders(params: ListOrdersParams) {
       studentName: order.studentName,
       mobileNumber: order.mobileNumber,
       email: order.email,
+      emailSentAt: order.emailSentAt,
       trackingId: order.trackingId,
       importBatchId: order.importBatchId?._id?.toString() || order.importBatchId?.toString(),
       importBatch: order.importBatchId && typeof order.importBatchId === 'object'
@@ -164,6 +171,71 @@ export async function listOrders(params: ListOrdersParams) {
   };
 }
 
+export async function markOrderEmailSent(orderId: string, actorUserId: string) {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw { statusCode: 404, message: 'Order not found', code: 'ORDER_NOT_FOUND' };
+  }
+
+  const dispatchItems = order.items.map((item: any) => ({
+    bookCode: item.bookCode,
+    bookName: item.bookName,
+    requiredQuantity: item.requiredQuantity,
+    dispatchedQuantity: item.dispatchedQuantity,
+  }));
+
+  const emailResult = await sendOrderEmail(
+    {
+      name: order.studentName,
+      email: order.email,
+      trackingId: order.trackingId,
+      orderCode: order.orderCode,
+    },
+    dispatchItems
+  );
+
+  const whatsappResult = await sendOrderWhatsAppMessage(
+    {
+      name: order.studentName,
+      mobileNumber: order.mobileNumber,
+      trackingId: order.trackingId,
+      orderCode: order.orderCode,
+    },
+    dispatchItems
+  );
+
+  if (!order.emailSentAt) {
+    order.emailSentAt = new Date();
+    await order.save();
+  }
+
+  await logAudit({
+    actorUserId,
+    action: 'ORDER_EMAIL_SENT',
+    entityType: 'Order',
+    entityId: order._id.toString(),
+    metadata: {
+      studentName: order.studentName,
+      email: order.email,
+      mobileNumber: order.mobileNumber,
+      trackingId: order.trackingId,
+      emailSentAt: order.emailSentAt,
+      emailDelivery: emailResult,
+      whatsappDelivery: whatsappResult,
+    },
+  });
+
+  return {
+    id: order._id.toString(),
+    emailSentAt: order.emailSentAt,
+    studentName: order.studentName,
+    trackingId: order.trackingId,
+    emailDelivery: emailResult,
+    whatsappDelivery: whatsappResult,
+  };
+}
+
 export async function getOrderById(orderId: string) {
   const order = await Order.findById(orderId).populate('importBatchId', 'originalFileName uploadedAt');
 
@@ -215,6 +287,7 @@ export async function getOrderById(orderId: string) {
     studentName: order.studentName,
     mobileNumber: order.mobileNumber,
     email: order.email,
+    emailSentAt: order.emailSentAt,
     trackingId: order.trackingId,
     importBatchId: order.importBatchId?._id?.toString() || order.importBatchId?.toString(),
     importBatch: order.importBatchId,

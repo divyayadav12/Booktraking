@@ -38,7 +38,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'Book Tracking & Dispatch Management System',
+    service: 'FAST DISPATCH PRO',
   });
 });
 

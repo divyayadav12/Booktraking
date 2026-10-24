@@ -1,6 +1,6 @@
-# Book Tracking & Dispatch Management System
+# FAST DISPATCH PRO
 
-A production-ready, full-stack enterprise Book Tracking & Dispatch Management System built with **React, TypeScript, Vite, Tailwind CSS, Node.js, Express, MongoDB, and Mongoose ODM**.
+A production-ready, full-stack dispatch management system built with **React, TypeScript, Vite, Tailwind CSS, Node.js, Express, MongoDB, and Mongoose ODM**.
 
 ---
 

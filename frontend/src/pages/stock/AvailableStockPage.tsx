@@ -295,7 +295,7 @@ export const AvailableStockPage: React.FC = () => {
 
   // Clear All Stock
   const handleClearAllStock = async () => {
-    if (!window.confirm('⚠️ KYA AAP SURE HAIN? Yeh sabhi Books ka Available Stock aur Invert history data delete kar dega!')) {
+    if (!window.confirm('⚠️ KYA AAP SURE HAIN? Yeh sabhi Books ka Available Stock aur stock inward history data delete kar dega!')) {
       return;
     }
     try {
@@ -323,7 +323,7 @@ export const AvailableStockPage: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Warehouse me live bachi hui kitabein. Invert me aane par count badhta hai, Outgoing dispatch hone par count kam hota hai.
+            Warehouse me live bachi hui kitabein. Stock inward hone par count badhta hai, outgoing dispatch hone par count kam hota hai.
           </p>
         </div>
 
@@ -353,7 +353,7 @@ export const AvailableStockPage: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
           >
             <PackagePlus size={15} />
-            <span>📥 Go to Invert (Add Stock)</span>
+            <span>📥 Go to Stock Inward</span>
           </button>
         </div>
       </div>
@@ -548,14 +548,14 @@ export const AvailableStockPage: React.FC = () => {
             <Boxes size={40} className="mx-auto text-slate-300 mb-2" />
             <p className="font-semibold text-sm">Koi stock record nahi mila</p>
             <p className="text-xs text-slate-400 mt-1">
-              Invert page par jakar nayi kitabon ka stock add karein.
+              Stock Inward page par jakar nayi kitabon ka stock add karein.
             </p>
             <button
               onClick={() => navigate(invertUrl)}
               className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 cursor-pointer"
             >
               <PackagePlus size={14} />
-              <span>📥 Go to Invert Entry</span>
+              <span>📥 Go to Stock Inward Entry</span>
             </button>
           </div>
         ) : (

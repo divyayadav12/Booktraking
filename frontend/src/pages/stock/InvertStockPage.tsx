@@ -253,7 +253,7 @@ export const InvertStockPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">📥 Invert (Daily Stock Inward)</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">📥 Stock Inward</h1>
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
               Daily Book Receiving
             </span>

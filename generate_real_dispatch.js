@@ -431,7 +431,7 @@ const rawOrders = [
 
 async function generateDispatchOrders() {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Book Tracking Dispatch System';
+  wb.creator = 'FAST DISPATCH PRO';
   const ws = wb.addWorksheet('Dispatch Orders');
 
   ws.columns = [

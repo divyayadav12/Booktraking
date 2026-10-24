@@ -1,7 +1,7 @@
 {
   "name": "book-tracking-dispatch-system",
   "version": "1.0.0",
-  "description": "Full Stack Book Tracking & Dispatch Management System",
+  "description": "FAST DISPATCH PRO - Full Stack Dispatch Management System",
   "scripts": {
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "db:push": "cd backend && npx prisma db push",

@@ -35,6 +35,7 @@ export const OrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
+  const [isMarkingEmailSent, setIsMarkingEmailSent] = useState(false);
 
   // Verification Modal State
   const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
@@ -82,6 +83,32 @@ export const OrderDetailPage: React.FC = () => {
       return;
     }
     setSelectedItem(item);
+  };
+
+  const handleMarkEmailSent = async () => {
+    if (!id || !order || order.emailSentAt) return;
+
+    const confirmed = window.confirm(
+      `Mark email as sent for ${order.studentName} and remove this order from the outgoing queue?`
+    );
+
+    if (!confirmed) return;
+
+    setIsMarkingEmailSent(true);
+
+    try {
+      const res = await api.post(`/orders/${id}/mark-email-sent`);
+      if (res.data.success) {
+        const sentAt = res.data.data?.emailSentAt || new Date().toISOString();
+        setOrder((prev) => (prev ? { ...prev, emailSentAt: sentAt } : prev));
+        toastSuccess('Student email marked as sent. Order removed from outgoing queue.');
+        navigate(backUrl, { replace: true });
+      }
+    } catch (err: any) {
+      toastError(err.response?.data?.message || 'Failed to mark the student email as sent.');
+    } finally {
+      setIsMarkingEmailSent(false);
+    }
   };
 
   const handleVerifyAndDispatch = async (e?: React.FormEvent) => {
@@ -150,14 +177,30 @@ export const OrderDetailPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Back button & Title */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <Link
           to={backUrl}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Outgoing Orders
         </Link>
-        <Badge status={order.status} size="md" />
+        <div className="flex items-center gap-2">
+          {order.email && !order.emailSentAt && (
+            <Button
+              variant="success"
+              size="sm"
+              onClick={handleMarkEmailSent}
+              isLoading={isMarkingEmailSent}
+              icon={<Mail className="w-4 h-4" />}
+            >
+              Mark Email Sent
+            </Button>
+          )}
+          {order.emailSentAt && (
+            <Badge variant="green">Email Sent</Badge>
+          )}
+          <Badge status={order.status} size="md" />
+        </div>
       </div>
 
       {/* Student & Order Header Card */}

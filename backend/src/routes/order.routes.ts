@@ -11,14 +11,16 @@ router.get('/outgoing', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOut
 // Barcode sheet — all orders with productCode + bookCodes for print/download (Admin & Employee)
 router.get('/barcode-sheet', requireRole('ADMIN', 'EMPLOYEE'), orderController.getBarcodeSheet);
 
-// Order details and items accessible to both
-router.get('/:id', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderById);
-router.get('/:id/items', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderItems);
-
 // Clear all orders and dispatch history (Admin only)
 router.post('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders);
 router.delete('/clear-all', requireRole('ADMIN'), orderController.clearAllOrders);
 router.delete('/bulk-delete', requireRole('ADMIN'), orderController.deleteOrders);
+
+router.post('/:id/mark-email-sent', requireRole('ADMIN', 'EMPLOYEE'), orderController.markOrderEmailSent);
+
+// Order details and items accessible to both
+router.get('/:id', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderById);
+router.get('/:id/items', requireRole('ADMIN', 'EMPLOYEE'), orderController.getOrderItems);
 
 // All orders list is accessible to ADMIN
 router.get('/', requireRole('ADMIN'), orderController.getOrders);

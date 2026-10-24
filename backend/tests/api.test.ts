@@ -6,7 +6,7 @@ import { connectDatabase, disconnectDatabase } from '../src/config/db';
 import { Order, DispatchLog, VerificationAttempt } from '../src/models';
 import ExcelJS from 'exceljs';
 
-describe('Book Tracking System Backend API Tests (MongoDB & Mongoose)', () => {
+describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
   let adminToken = '';
   let employeeToken = '';
 

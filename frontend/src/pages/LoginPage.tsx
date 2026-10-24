@@ -70,7 +70,7 @@ export const LoginPage: React.FC = () => {
             />
           </div>
           <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
-            Student Book Tracking & Dispatch Verification
+            FAST DISPATCH PRO
           </p>
         </div>
 

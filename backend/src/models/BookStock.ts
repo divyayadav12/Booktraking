@@ -4,7 +4,7 @@ export interface IBookStock extends Document {
   bookCode: string;          // Unique book barcode/SKU e.g. IAEBR-001
   bookName: string;          // Book title e.g. Auditing & Ethics Regular
   productCode?: string;      // Associated product combo code (optional)
-  totalInward: number;       // Lifetime total copies received via Invert
+  totalInward: number;       // Lifetime total copies received through stock inward
   totalDispatched: number;   // Lifetime total copies dispatched in outgoing
   availableQuantity: number; // Current live warehouse stock (totalInward - totalDispatched)
   lowStockThreshold: number; // Low stock warning threshold (default: 10)

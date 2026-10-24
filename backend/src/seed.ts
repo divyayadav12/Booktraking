@@ -61,6 +61,7 @@ async function main() {
   // 3. Create Sample Orders
   // Order 1: Rahul Sharma - TR101 (QB101: 2 req, 1 disp; MCQ201: 1 req, 1 disp)
   const order1 = await Order.create({
+    orderCode: 'ORD-0001',
     studentName: 'Rahul Sharma',
     mobileNumber: '9876543210',
     email: 'rahul@example.com',
@@ -84,6 +85,7 @@ async function main() {
 
   // Order 2: Priya Verma - TR102 (QB101: 3 req, 0 disp) - Fully Pending
   const order2 = await Order.create({
+    orderCode: 'ORD-0002',
     studentName: 'Priya Verma',
     mobileNumber: '9876543211',
     email: 'priya@example.com',
@@ -101,6 +103,7 @@ async function main() {
 
   // Order 3: Amit Patel - TR103 (MCQ201: 2 req, 2 disp) - Fully Completed
   const order3 = await Order.create({
+    orderCode: 'ORD-0003',
     studentName: 'Amit Patel',
     mobileNumber: '9876543212',
     email: 'amit@example.com',
@@ -118,6 +121,7 @@ async function main() {
 
   // Order 4: Sneha Roy - TR104 (QB101: 1 req, CS301: 1 req, 0 disp) - Fully Pending
   const order4 = await Order.create({
+    orderCode: 'ORD-0004',
     studentName: 'Sneha Roy',
     mobileNumber: '9876543213',
     email: 'sneha@example.com',

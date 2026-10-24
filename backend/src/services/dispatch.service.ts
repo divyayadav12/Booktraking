@@ -405,7 +405,7 @@ export async function dispatchByOrderCode(params: {
     if (!stock || stock.availableQuantity < remaining) {
       throw {
         statusCode: 400,
-        message: `❌ Out of Stock: Book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Invert" page me stock enter karein.`,
+        message: `❌ Out of Stock: Book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Stock Inward" page me stock enter karein.`,
         code: 'OUT_OF_STOCK',
         bookCode: item.bookCode,
       };
@@ -556,7 +556,7 @@ export async function dispatchByProductCode(params: {
     if (!stock || stock.availableQuantity < remaining) {
       throw {
         statusCode: 400,
-        message: `❌ Out of Stock: Combo book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Invert" page me stock enter karein.`,
+        message: `❌ Out of Stock: Combo book "${item.bookName} (${item.bookCode})" needs ${remaining} copies, but warehouse only has ${stock ? stock.availableQuantity : 0} available! Kripya "Stock Inward" page me stock enter karein.`,
         code: 'OUT_OF_STOCK',
         bookCode: item.bookCode,
       };
