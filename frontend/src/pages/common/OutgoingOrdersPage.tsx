@@ -92,35 +92,6 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [lastScannedOrder, setLastScannedOrder] = useState<any>(null);
   const lastScannedOrderRef = useRef<any>(null);
 
-  // ─── New Order Received Modal State ──────────────────────────────────────────
-  const [newOrderModalData, setNewOrderModalData] = useState<any>(null);
-  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
-
-  const handleConfirmNewOrder = () => {
-    if (newOrderModalData) {
-      lastScannedOrderRef.current = newOrderModalData;
-      setLastScannedOrder(newOrderModalData);
-      setNewOrderModalData(null);
-    }
-    setIsNewOrderModalOpen(false);
-    setTimeout(() => {
-      scanInputRef.current?.focus();
-    }, 50);
-  };
-
-  // Keyboard shortcut: Press Enter or Space to confirm New Order popup
-  useEffect(() => {
-    if (!isNewOrderModalOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleConfirmNewOrder();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isNewOrderModalOpen, newOrderModalData]);
-
   const [showPaytmSuccess, setShowPaytmSuccess] = useState(false);
   const [completedStudentName, setCompletedStudentName] = useState('');
   const [successCountdown, setSuccessCountdown] = useState(15);
@@ -180,7 +151,7 @@ export const OutgoingOrdersPage: React.FC = () => {
   // Auto-focus barcode scanner input perpetually for hands-free scanning
   useEffect(() => {
     const focusTimer = setInterval(() => {
-      if (!isDispatchBoxOpen && !isNewOrderModalOpen) {
+      if (!isDispatchBoxOpen) {
         const activeTag = document.activeElement?.tagName?.toLowerCase();
         if (activeTag !== 'input' && activeTag !== 'textarea' && activeTag !== 'select') {
           scanInputRef.current?.focus();
@@ -188,7 +159,7 @@ export const OutgoingOrdersPage: React.FC = () => {
       }
     }, 1200);
     return () => clearInterval(focusTimer);
-  }, [isDispatchBoxOpen, isNewOrderModalOpen]);
+  }, [isDispatchBoxOpen]);
 
   const handleGlobalScan = useCallback(async (code: string) => {
     if (!code.trim() || isScanning) return;
@@ -274,9 +245,8 @@ export const OutgoingOrdersPage: React.FC = () => {
           };
 
           if (isLoadedOnly) {
-            // New order loaded via barcode: Show Popup first with student name and voice announcement
-            setNewOrderModalData(formattedOrder);
-            setIsNewOrderModalOpen(true);
+            lastScannedOrderRef.current = formattedOrder;
+            setLastScannedOrder(formattedOrder);
             if (soundEnabled) {
               playSuccessChime();
               speakVoiceAnnouncement(`New order received. Order for ${updatedOrder.studentName}`);
@@ -764,92 +734,6 @@ export const OutgoingOrdersPage: React.FC = () => {
                 <span>अगला आर्डर</span>
                 <ArrowRight size={13} />
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── NEW ORDER RECEIVED POPUP MODAL ─── */}
-      {isNewOrderModalOpen && newOrderModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-4 border-red-500 overflow-hidden text-center transform scale-100 transition-all">
-            {/* Header / Brand Banner */}
-            <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-6 py-6">
-              <div className="bg-white rounded-2xl px-5 py-2.5 mx-auto inline-flex items-center justify-center mb-3 shadow-xl border border-white/40">
-                <img src="/fast_logo.png" alt="FAST Education" className="h-10 sm:h-12 w-auto max-w-[220px] object-contain" />
-              </div>
-              <div>
-                <span className="inline-block bg-white text-red-700 text-xs font-black uppercase tracking-widest px-3.5 py-1 rounded-full mb-1 shadow-xs">
-                  ⚡ NEW ORDER RECEIVED (नया आर्डर प्राप्त हुआ)
-                </span>
-              </div>
-              <h2 className="text-sm font-bold text-red-100 tracking-wide mt-1">
-                Dispatch Verification Station
-              </h2>
-            </div>
-
-            {/* Content Body */}
-            <div className="p-6 sm:p-8 space-y-5">
-              {/* Customer / Student Name in BIG prominent font */}
-              <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
-                <div className="text-xs font-bold uppercase tracking-wider text-red-600 mb-1">
-                  Customer / Student Name (छात्र का नाम)
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  {newOrderModalData.studentName}
-                </div>
-                <div className="text-xs font-mono font-semibold text-slate-500 mt-1 flex items-center justify-center gap-3">
-                  <span>📞 {newOrderModalData.mobileNumber}</span>
-                  <span>•</span>
-                  <span>Tracking: <strong>{newOrderModalData.trackingId}</strong></span>
-                </div>
-              </div>
-
-              {/* What is this order for in big highlight */}
-              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-left">
-                <div className="text-xs font-black uppercase tracking-wider text-amber-800 flex items-center gap-1.5 mb-2">
-                  <Sparkles size={16} className="text-amber-600" />
-                  Order Items / Course:
-                </div>
-                {/* Product Name if present */}
-                {(() => {
-                  const productNames = Array.from(new Set(newOrderModalData.items.map((i: any) => i.productName).filter(Boolean)));
-                  if (productNames.length > 0) {
-                    return (
-                      <div className="text-lg font-black text-slate-900 mb-2">
-                        📦 {productNames.join(' + ')}
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-                {/* Book titles */}
-                <div className="space-y-1">
-                  {newOrderModalData.items.map((item: any, idx: number) => (
-                    <div key={item.id || idx} className="text-sm font-bold text-slate-800 flex items-center justify-between border-b border-amber-200/60 pb-1 last:border-0">
-                      <span>📖 {item.bookName}</span>
-                      <span className="font-mono text-xs bg-white text-slate-900 px-2 py-0.5 rounded border border-amber-200 font-bold">
-                        {item.bookCode} (Qty: {item.requiredQuantity})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Big Action Button */}
-              <div>
-                <button
-                  onClick={handleConfirmNewOrder}
-                  autoFocus
-                  className="w-full py-4 px-6 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-lg rounded-2xl shadow-xl hover:shadow-2xl transition-all transform active:scale-98 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={24} />
-                  <span>OK — View Details & Start Verification</span>
-                </button>
-                <p className="text-[11px] text-slate-400 mt-2">
-                  Press <strong>Enter</strong> or click OK to open full order details & scan barcodes
-                </p>
-              </div>
             </div>
           </div>
         </div>
