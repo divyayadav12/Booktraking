@@ -37,6 +37,7 @@ export interface Order {
   mobileNumber: string;
   email: string | null;
   emailSentAt?: string | null;
+  whatsappSentAt?: string | null;
   trackingId: string;
   importBatchId: string;
   createdAt: string;

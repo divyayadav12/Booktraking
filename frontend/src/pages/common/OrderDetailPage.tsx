@@ -86,10 +86,10 @@ export const OrderDetailPage: React.FC = () => {
   };
 
   const handleMarkEmailSent = async () => {
-    if (!id || !order || order.emailSentAt) return;
+    if (!id || !order || (order.emailSentAt && order.whatsappSentAt)) return;
 
     const confirmed = window.confirm(
-      `Mark email as sent for ${order.studentName} and remove this order from the outgoing queue?`
+      `Send or retry pending email/WhatsApp notifications for ${order.studentName}?`
     );
 
     if (!confirmed) return;
@@ -99,10 +99,15 @@ export const OrderDetailPage: React.FC = () => {
     try {
       const res = await api.post(`/orders/${id}/mark-email-sent`);
       if (res.data.success) {
-        const { emailDelivery, whatsappDelivery, emailSentAt } = res.data.data || {};
-        setOrder((prev) => (prev ? { ...prev, emailSentAt: emailSentAt || prev.emailSentAt } : prev));
+        const { emailDelivery, whatsappDelivery, emailSentAt, whatsappSentAt } = res.data.data || {};
+        setOrder((prev) => (prev ? {
+          ...prev,
+          emailSentAt: emailSentAt || prev.emailSentAt,
+          whatsappSentAt: whatsappSentAt || prev.whatsappSentAt,
+        } : prev));
         const deliverySummary = `Email: ${emailDelivery?.sent ? 'sent' : 'not sent'}; WhatsApp: ${whatsappDelivery?.sent ? 'sent' : 'not sent'}.`;
-        if (emailSentAt) {
+        const emailDeliveredOrNotNeeded = !order.email || Boolean(emailSentAt);
+        if (emailDeliveredOrNotNeeded && whatsappSentAt) {
           toastSuccess(deliverySummary);
           navigate(backUrl, { replace: true });
         } else {
@@ -190,7 +195,7 @@ export const OrderDetailPage: React.FC = () => {
           <ArrowLeft className="w-4 h-4" /> Back to Outgoing Orders
         </Link>
         <div className="flex items-center gap-2">
-          {order.email && !order.emailSentAt && (
+          {((order.email && !order.emailSentAt) || !order.whatsappSentAt) && (
             <Button
               variant="success"
               size="sm"
@@ -198,11 +203,14 @@ export const OrderDetailPage: React.FC = () => {
               isLoading={isMarkingEmailSent}
               icon={<Mail className="w-4 h-4" />}
             >
-              Mark Email Sent
+              Send / Retry Notifications
             </Button>
           )}
           {order.emailSentAt && (
             <Badge variant="green">Email Sent</Badge>
+          )}
+          {order.whatsappSentAt && (
+            <Badge variant="green">WhatsApp Sent</Badge>
           )}
           <Badge status={order.status} size="md" />
         </div>

@@ -116,6 +116,7 @@ export async function listOrders(params: ListOrdersParams) {
       mobileNumber: order.mobileNumber,
       email: order.email,
       emailSentAt: order.emailSentAt,
+      whatsappSentAt: order.whatsappSentAt,
       trackingId: order.trackingId,
       importBatchId: order.importBatchId?._id?.toString() || order.importBatchId?.toString(),
       importBatch: order.importBatchId && typeof order.importBatchId === 'object'
@@ -238,6 +239,15 @@ export async function markOrderEmailSent(orderId: string, actorUserId: string) {
     whatsappOutcome.status === 'fulfilled'
       ? whatsappOutcome.value
       : { sent: false, reason: 'DELIVERY_FAILED', error: String(whatsappOutcome.reason) };
+
+  if (!emailResult.sent) {
+    const reason = 'reason' in emailResult ? emailResult.reason : 'unknown reason';
+    console.warn(`[NOTIFICATION] Email not delivered for order ${order._id}: ${reason}`);
+  }
+  if (!whatsappResult.sent) {
+    const reason = 'reason' in whatsappResult ? whatsappResult.reason : 'unknown reason';
+    console.warn(`[NOTIFICATION] WhatsApp not delivered for order ${order._id}: ${reason}`);
+  }
 
   const sentAt = new Date();
   if (emailResult.sent && !order.emailSentAt) order.emailSentAt = sentAt;

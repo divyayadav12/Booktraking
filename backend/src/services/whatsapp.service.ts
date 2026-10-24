@@ -29,7 +29,9 @@ export async function sendOrderWhatsAppMessage(
 
   const webhookUrl = ENV.WHATSAPP_WEBHOOK_URL?.trim();
   if (!ENV.WHATSAPP_ENABLED || !webhookUrl) {
-    console.warn('[WHATSAPP] Not sent: WHATSAPP_ENABLED or WHATSAPP_WEBHOOK_URL is not configured.');
+    console.warn(
+      `[WHATSAPP] Not sent: enabled=${ENV.WHATSAPP_ENABLED}, webhookUrlConfigured=${Boolean(webhookUrl)}`
+    );
     return {
       sent: false,
       fallback: true,
@@ -81,6 +83,8 @@ export async function sendOrderWhatsAppMessage(
   if (!response.ok) {
     throw new Error(`WhatsApp webhook failed: ${response.status} ${text}`);
   }
+
+  console.info(`[WHATSAPP] Teleobi webhook accepted request (HTTP ${response.status}).`);
 
   return {
     sent: true,
