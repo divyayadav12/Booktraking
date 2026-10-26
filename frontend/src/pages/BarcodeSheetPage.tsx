@@ -287,21 +287,22 @@ export const BarcodeSheetPage: React.FC = () => {
         .map((product) => product.productName)
         .filter((name) => name && name !== 'Product' && name !== 'Default Product');
       const courseName = productNames.join(' / ') ||
-        (order.productCode ? 'Course' : order.items.map((item) => item.bookName).join(' / '));
+        (order.productCode ? 'Course' : 'Books');
       const productCode = (order.products || [])
         .map((product) => product.productCode)
         .filter(Boolean)
         .join(', ') || order.productCode || '-';
       const booksHtml = order.items.map((item) => `
-        <div class="book">
-          <span class="book-name">${escapeHtml(item.bookName)}</span>
-        </div>
+        <div class="book">${escapeHtml(item.bookCode)}</div>
       `).join('');
 
       return `
         <article class="student-card">
           <div class="top-row">
-            <div class="barcode">${barcodeSvg}</div>
+            <div class="barcode-group">
+              <div class="barcode">${barcodeSvg}</div>
+              <span class="serial">#${index + 1}</span>
+            </div>
             <div class="student">
               <h2>${escapeHtml(order.studentName)}</h2>
               <p>Tracking ID: <strong>${escapeHtml(order.trackingId || '-')}</strong></p>
@@ -391,11 +392,13 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .top-row {
               display: grid;
-              grid-template-columns: 43% minmax(0, 1fr);
+              grid-template-columns: 47% minmax(0, 1fr);
               align-items: center;
               gap: 5px;
             }
+            .barcode-group { display: flex; min-width: 0; align-items: center; gap: 3px; }
             .barcode { min-width: 0; overflow: hidden; }
+            .serial { flex: none; color: #475569; font-size: 7px; font-weight: 700; }
             .barcode svg {
               display: block;
               width: 100%;
@@ -424,9 +427,7 @@ export const BarcodeSheetPage: React.FC = () => {
               font-size: 7px;
               line-height: 1.2;
             }
-            .book-name { font-weight: 700; }
-            .book strong { color: #b91c1c; font-family: monospace; }
-            .book span:last-child { color: #64748b; }
+            .book { color: #b91c1c; font-family: monospace; font-weight: 700; }
             @media print {
               body { padding: 0; }
               .toolbar { display: none; }
@@ -1216,7 +1217,7 @@ export const BarcodeSheetPage: React.FC = () => {
                   </tr>
                 </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredOrders.map((order) => {
+                {filteredOrders.map((order, index) => {
                   const courseName = order.products?.map((p) => p.productName).join(' / ') || 'Course';
                   const productCode = order.products?.map((p) => p.productCode).join(', ') || order.productCode;
                   const booksString = order.items.map((i) => i.bookCode).join(', ');
@@ -1344,12 +1345,12 @@ export const BarcodeSheetPage: React.FC = () => {
               : 'hidden'
           }
         >
-          {filteredOrders.map((order) => {
+          {filteredOrders.map((order, index) => {
             const orderProductNames = (order.products || [])
               .map((product) => product.productName)
               .filter((name) => name && name !== 'Product' && name !== 'Default Product');
             const courseName = orderProductNames.join(' / ') ||
-              (order.productCode ? 'Course' : order.items.map((item) => item.bookName).join(' / '));
+              (order.productCode ? 'Course' : 'Books');
             const productCode = order.products?.map((p) => p.productCode).filter(Boolean).join(', ') || order.productCode || '';
 
             return (
@@ -1359,9 +1360,12 @@ export const BarcodeSheetPage: React.FC = () => {
                   highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
                 }`}
               >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-                  <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1 flex justify-start">
-                    <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
+                <div className="grid grid-cols-[minmax(0,47%)_minmax(0,1fr)] items-center gap-2">
+                  <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1 flex items-center gap-1">
+                    <div className="min-w-0 overflow-hidden">
+                      <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
+                    </div>
+                    <span className="shrink-0 text-[10px] font-bold text-slate-600">#{index + 1}</span>
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-start justify-between gap-1">
@@ -1400,10 +1404,10 @@ export const BarcodeSheetPage: React.FC = () => {
                       {order.items.map((item) => (
                         <span
                           key={item.id}
-                          className="inline-flex rounded border border-red-200 bg-red-50 px-1.5 py-1"
-                          title={item.bookName}
+                          className="inline-flex rounded border border-red-200 bg-red-50 px-1.5 py-1 font-mono text-[10px] font-bold text-red-700"
+                          title={item.bookCode}
                         >
-                          <span className="font-semibold text-slate-800">{item.bookName}</span>
+                          {item.bookCode}
                         </span>
                       ))}
                     </div>
