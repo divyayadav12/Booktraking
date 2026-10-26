@@ -305,11 +305,7 @@ export const BarcodeSheetPage: React.FC = () => {
               </div>
               <p>Tracking ID: <strong>${escapeHtml(order.trackingId || '-')}</strong></p>
               <p>Student Code: <strong>${escapeHtml(order.orderCode || '-')}</strong></p>
-            </div>
-          </div>
-          <div class="details">
-            <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
-            <div class="product-books-row">
+              <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
               <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
               <p class="product-code"><span>Book Code:</span> <span class="code-value">${escapeHtml(bookCodes)}</span></p>
             </div>
@@ -390,7 +386,7 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .top-row {
               display: grid;
-              grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+              grid-template-columns: minmax(0, 36%) minmax(0, 1fr);
               align-items: start;
               gap: 5px;
             }
@@ -408,12 +404,9 @@ export const BarcodeSheetPage: React.FC = () => {
             .student h2 { min-width: 0; margin: 0 0 4px; font-size: 9px; font-weight: 400; line-height: 1.2; }
             .student p { margin: 1px 0; color: #64748b; font-size: 7px; }
             .student p strong { color: #334155; font-family: monospace; }
-            .details { border-top: 1px solid #e2e8f0; margin-top: 2px; padding-top: 3px; }
-            .details p { margin: 2px 0; font-size: 8px; line-height: 1.25; overflow-wrap: anywhere; }
-            .details p span { color: #64748b; font-weight: 700; }
-            .course { font-weight: 700; }
-            .product-books-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; }
-            .product-code { color: #4338ca; font-family: monospace; }
+            .student .course { margin-top: 3px; color: #334155; font-size: 8px; font-weight: 700; line-height: 1.2; }
+            .student .product-code { color: #4338ca; font-family: monospace; font-size: 7px; line-height: 1.2; }
+            .student .product-code span:first-child { color: #64748b; font-family: Arial, sans-serif; font-weight: 700; }
             .code-value { color: #4338ca !important; font-family: monospace; font-weight: 400 !important; }
             @media print {
               body { padding: 0; }
@@ -1347,7 +1340,7 @@ export const BarcodeSheetPage: React.FC = () => {
                   highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
                 }`}
               >
-                <div className="grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] items-start gap-2">
+                <div className="grid grid-cols-[minmax(0,36%)_minmax(0,1fr)] items-start gap-2">
                   <div className="barcode min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1">
                     <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
                   </div>
@@ -1378,25 +1371,20 @@ export const BarcodeSheetPage: React.FC = () => {
                     <p className="text-[10px] text-slate-500 mt-0.5 break-all">
                       Student Code: <strong className="font-mono text-slate-700">{order.orderCode || '-'}</strong>
                     </p>
-                  </div>
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <p className="font-semibold text-slate-800 leading-snug" title={courseName}>
-                    <span className="text-slate-500">Product:</span> {courseName}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="font-mono text-[11px] text-indigo-700 break-words">
+                    <p className="mt-1 text-[10px] font-semibold leading-tight text-slate-800 break-words" title={courseName}>
+                      <span className="text-slate-500">Product:</span> {courseName}
+                    </p>
+                    <p className="text-[9px] font-mono leading-tight text-indigo-700 break-words">
                       <span className="font-sans font-semibold text-slate-500">Product Code:</span> {productCode || '-'}
                     </p>
-                    <p className="font-mono text-[11px] text-indigo-700 break-words">
+                    <p className="text-[9px] font-mono leading-tight text-indigo-700 break-words">
                       <span className="font-sans font-semibold text-slate-500">Book Code:</span>{' '}
                       {order.items.map((item) => item.bookCode).filter(Boolean).join(', ') || '-'}
                     </p>
                   </div>
                 </div>
 
-                <div className="no-print mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                <div className="no-print flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                   <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
                     order.status === 'COMPLETED'
                       ? 'bg-emerald-100 text-emerald-700'
