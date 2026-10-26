@@ -16,6 +16,7 @@ export const ENV = {
   SMTP_PASS: process.env.SMTP_PASS || '',
   SMTP_FROM: process.env.SMTP_FROM || process.env.SMTP_USER || '',
   EMAIL_ENABLED: process.env.EMAIL_ENABLED === 'true',
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   WHATSAPP_WEBHOOK_URL: process.env.WHATSAPP_WEBHOOK_URL || '',
   WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED === 'true',
 };

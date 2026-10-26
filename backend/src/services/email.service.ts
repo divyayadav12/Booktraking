@@ -1,19 +1,39 @@
-﻿import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';
 import { ENV } from '../config/env';
 
-const hasSmtpConfig = Boolean(ENV.SMTP_HOST && ENV.SMTP_USER && ENV.SMTP_PASS);
+// ─── Resend (HTTP API) transport ─────────────────────────────────────────────
+// Used when RESEND_API_KEY is set — works on Render free plan (no SMTP block)
+function createResendTransport() {
+  if (!ENV.RESEND_API_KEY) return null;
+  return nodemailer.createTransport({
+    host: 'smtp.resend.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: 'resend',
+      pass: ENV.RESEND_API_KEY,
+    },
+  });
+}
 
-const transporter = hasSmtpConfig
-  ? nodemailer.createTransport({
-      host: ENV.SMTP_HOST,
-      port: ENV.SMTP_PORT,
-      secure: ENV.SMTP_PORT === 465,
-      auth: {
-        user: ENV.SMTP_USER,
-        pass: ENV.SMTP_PASS,
-      },
-    })
-  : null;
+// ─── Gmail SMTP transport ─────────────────────────────────────────────────────
+// Used as fallback when SMTP_HOST/USER/PASS are set
+const hasSmtpConfig = Boolean(ENV.SMTP_HOST && ENV.SMTP_USER && ENV.SMTP_PASS);
+function createSmtpTransport() {
+  if (!hasSmtpConfig) return null;
+  return nodemailer.createTransport({
+    host: ENV.SMTP_HOST,
+    port: ENV.SMTP_PORT,
+    secure: ENV.SMTP_PORT === 465,
+    auth: {
+      user: ENV.SMTP_USER,
+      pass: ENV.SMTP_PASS,
+    },
+  });
+}
+
+// Pick the best available transport: Resend first, then SMTP
+const transporter = createResendTransport() || createSmtpTransport();
 
 export async function verifyEmailTransport() {
   if (!ENV.EMAIL_ENABLED) {
@@ -22,21 +42,17 @@ export async function verifyEmailTransport() {
   }
 
   if (!transporter) {
-    const missing = [
-      !ENV.SMTP_HOST && 'SMTP_HOST',
-      !ENV.SMTP_USER && 'SMTP_USER',
-      !ENV.SMTP_PASS && 'SMTP_PASS',
-    ].filter(Boolean);
-    console.error(`[EMAIL] SMTP is not configured. Missing: ${missing.join(', ')}.`);
+    console.error('[EMAIL] No transport configured. Set RESEND_API_KEY or SMTP_HOST+SMTP_USER+SMTP_PASS.');
     return;
   }
 
+  const mode = ENV.RESEND_API_KEY ? 'Resend API' : `SMTP (${ENV.SMTP_USER})`;
   try {
     await transporter.verify();
-    console.info(`[EMAIL] SMTP connection verified for ${ENV.SMTP_USER}.`);
+    console.info(`[EMAIL] Transport verified via ${mode}.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[EMAIL] SMTP connection check failed: ${message}`);
+    console.error(`[EMAIL] Transport check failed (${mode}): ${message}`);
   }
 }
 
@@ -54,18 +70,11 @@ export async function sendOrderEmail(
   }
 
   if (!ENV.EMAIL_ENABLED || !transporter) {
-    console.warn('[EMAIL] Not sent: EMAIL_ENABLED or SMTP configuration is missing.');
-    return {
-      sent: false,
-      fallback: true,
-      reason: 'NOT_CONFIGURED',
-    };
+    console.warn('[EMAIL] Not sent: EMAIL_ENABLED or transport configuration is missing.');
+    return { sent: false, fallback: true, reason: 'NOT_CONFIGURED' };
   }
 
-  if (!ENV.SMTP_FROM) {
-    console.error('[EMAIL] Not sent: SMTP_FROM and SMTP_USER are both missing.');
-    return { sent: false, reason: 'SENDER_NOT_CONFIGURED' };
-  }
+  const fromAddress = ENV.SMTP_FROM || ENV.SMTP_USER || 'noreply@fastdispatch.in';
 
   const itemRows = items
     .map(
@@ -80,7 +89,7 @@ export async function sendOrderEmail(
     .join('');
 
   const info = await transporter.sendMail({
-    from: ENV.SMTP_FROM,
+    from: fromAddress,
     to: student.email,
     subject: `We received your order ${student.orderCode || student.trackingId}`,
     html: `
@@ -103,16 +112,10 @@ export async function sendOrderEmail(
         <p style="margin-top:18px;">Thank you.</p>
       </div>
     `,
-    text: `Hello ${student.name},\n\nWe have received your order ${student.orderCode || student.trackingId} and it is being processed. We will notify you when it has been dispatched.\nTracking ID: ${student.trackingId}\n\nItems:\n${items
-      .map(
-        (item) => `${item.bookCode} - ${item.bookName} (${item.requiredQuantity} required, ${item.dispatchedQuantity} dispatched)`
-      )
+    text: `Hello ${student.name},\n\nWe have received your order ${student.orderCode || student.trackingId} and it is being processed.\nTracking ID: ${student.trackingId}\n\nItems:\n${items
+      .map((item) => `${item.bookCode} - ${item.bookName} (${item.requiredQuantity} required, ${item.dispatchedQuantity} dispatched)`)
       .join('\n')}`,
   });
 
-  return {
-    sent: true,
-    messageId: info.messageId,
-    fallback: false,
-  };
+  return { sent: true, messageId: info.messageId, fallback: false };
 }
