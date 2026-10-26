@@ -282,12 +282,13 @@ export const BarcodeSheetPage: React.FC = () => {
       })[character] || character);
     const cardElements = Array.from(printContent.children);
     const printedAt = new Date().toLocaleString('en-IN');
+    const cardsPerPage = 50;
     const pagesHtml = Array.from(
-      { length: Math.ceil(filteredOrders.length / 20) },
+      { length: Math.ceil(filteredOrders.length / cardsPerPage) },
       (_, pageIndex) => {
-        const pageOrders = filteredOrders.slice(pageIndex * 20, (pageIndex + 1) * 20);
+        const pageOrders = filteredOrders.slice(pageIndex * cardsPerPage, (pageIndex + 1) * cardsPerPage);
         const cardsHtml = pageOrders.map((order, orderIndex) => {
-          const index = pageIndex * 20 + orderIndex;
+          const index = pageIndex * cardsPerPage + orderIndex;
           const barcodeSvg = cardElements[index]?.querySelector('svg')?.outerHTML || '';
           const productNames = (order.products || [])
             .map((product) => product.productName)
@@ -405,9 +406,9 @@ export const BarcodeSheetPage: React.FC = () => {
               flex: 1;
               min-height: 0;
               display: grid;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
+              grid-template-columns: repeat(5, minmax(0, 1fr));
               grid-template-rows: repeat(10, minmax(0, 1fr));
-              gap: 3px 6px;
+              gap: 3px 4px;
             }
             .student-card {
               min-width: 0;
@@ -421,7 +422,7 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .top-row {
               display: grid;
-              grid-template-columns: minmax(0, 25%) minmax(0, 1fr);
+              grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
               align-items: center;
               gap: 4px;
             }
