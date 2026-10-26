@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { ImportBatch, Order, BookStock } from '../models';
 import { normalizeBookCode, normalizeTrackingId, normalizeMobileNumber, normalizeEmail } from '../utils/normalize';
 import { logAudit } from '../utils/audit';
+import { sendOrderEmail } from './email.service';
 import { sendOrderWhatsAppMessage } from './whatsapp.service';
 
 export interface ParsedRowData {
@@ -699,46 +700,76 @@ export async function confirmImport(
   });
 
   const importedOrders = await Order.find({ importBatchId: batch._id });
-  const whatsappOutcomes = await Promise.all(importedOrders.map(async (order) => {
-    try {
-      const delivery = await sendOrderWhatsAppMessage(
-        {
-          name: order.studentName,
-          mobileNumber: order.mobileNumber,
-          trackingId: order.trackingId,
-          orderCode: order.orderCode,
-          courierName: order.courierName || '',
-          courierTrackingUrl: order.courierTrackingUrl || '',
-          dispatchDate: new Date(),
-          email: order.email,
-        },
-        order.items.map((item) => ({
-          bookCode: item.bookCode,
-          bookName: item.bookName,
-          productName: item.productName,
-          requiredQuantity: item.requiredQuantity,
-          dispatchedQuantity: item.dispatchedQuantity,
-        }))
-      );
+  const notificationOutcomes = await Promise.all(importedOrders.map(async (order) => {
+    const items = order.items.map((item) => ({
+      bookCode: item.bookCode,
+      bookName: item.bookName,
+      productName: item.productName,
+      requiredQuantity: item.requiredQuantity,
+      dispatchedQuantity: item.dispatchedQuantity,
+    }));
 
-      if (delivery.sent) {
-        order.whatsappSentAt = new Date();
-        await order.save();
-        return { sent: true };
-      }
+    const [emailOutcome, whatsappOutcome] = await Promise.all([
+      (async () => {
+        try {
+          const delivery = await sendOrderEmail(
+            {
+              name: order.studentName,
+              email: order.email,
+              trackingId: order.trackingId,
+              orderCode: order.orderCode,
+            },
+            items
+          );
+          if (!delivery.sent) {
+            const reason = 'reason' in delivery ? delivery.reason : 'UNKNOWN';
+            console.warn(`[IMPORT] Email not sent for order ${order._id}: ${reason}`);
+          }
+          return delivery;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          console.error(`[IMPORT] Email send failed for order ${order._id}: ${reason}`);
+          return { sent: false, reason: 'DELIVERY_FAILED' };
+        }
+      })(),
+      (async () => {
+        try {
+          const delivery = await sendOrderWhatsAppMessage(
+            {
+              name: order.studentName,
+              mobileNumber: order.mobileNumber,
+              trackingId: order.trackingId,
+              orderCode: order.orderCode,
+              courierName: order.courierName || '',
+              courierTrackingUrl: order.courierTrackingUrl || '',
+              dispatchDate: new Date(),
+              email: order.email,
+            },
+            items
+          );
+          if (!delivery.sent) {
+            const reason = 'reason' in delivery ? delivery.reason : 'UNKNOWN';
+            console.warn(`[IMPORT] WhatsApp not sent for order ${order._id}: ${reason}`);
+          }
+          return delivery;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          console.error(`[IMPORT] WhatsApp send failed for order ${order._id}: ${reason}`);
+          return { sent: false, reason: 'DELIVERY_FAILED' };
+        }
+      })(),
+    ]);
 
-      const reason = 'reason' in delivery ? delivery.reason : 'UNKNOWN';
-      console.warn(`[IMPORT] WhatsApp not sent for order ${order._id}: ${reason}`);
-      return { sent: false, reason };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      console.error(`[IMPORT] WhatsApp send failed for order ${order._id}: ${reason}`);
-      return { sent: false, reason: 'DELIVERY_FAILED' };
-    }
+    const sentAt = new Date();
+    if (emailOutcome.sent) order.emailSentAt = sentAt;
+    if (whatsappOutcome.sent) order.whatsappSentAt = sentAt;
+    if (emailOutcome.sent || whatsappOutcome.sent) await order.save();
+
+    return { emailSent: emailOutcome.sent, whatsappSent: whatsappOutcome.sent };
   }));
 
-  const whatsappSentCount = whatsappOutcomes.filter((outcome) => outcome.sent).length;
-  const whatsappFailedCount = whatsappOutcomes.length - whatsappSentCount;
+  const emailSentCount = notificationOutcomes.filter((outcome) => outcome.emailSent).length;
+  const whatsappSentCount = notificationOutcomes.filter((outcome) => outcome.whatsappSent).length;
 
   return {
     batchId: batch._id.toString(),
@@ -748,7 +779,12 @@ export async function confirmImport(
     whatsappNotifications: {
       total: importedOrders.length,
       accepted: whatsappSentCount,
-      notAccepted: whatsappFailedCount,
+      notAccepted: importedOrders.length - whatsappSentCount,
+    },
+    emailNotifications: {
+      total: importedOrders.length,
+      accepted: emailSentCount,
+      notAccepted: importedOrders.length - emailSentCount,
     },
   };
 }

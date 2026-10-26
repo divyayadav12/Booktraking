@@ -160,8 +160,9 @@ export const ExcelUploadPage: React.FC = () => {
         setConfirmModalOpen(false);
         setCurrentStep(3);
         const whatsappSummary = summary.whatsappNotifications;
+        const emailSummary = summary.emailNotifications;
         toastSuccess(
-          `Orders imported. WhatsApp webhook accepted ${whatsappSummary?.accepted || 0} of ${whatsappSummary?.total || 0} student messages.`
+          `Orders imported. Email accepted ${emailSummary?.accepted || 0} of ${emailSummary?.total || 0}; WhatsApp webhook accepted ${whatsappSummary?.accepted || 0} of ${whatsappSummary?.total || 0}.`
         );
 
         // Fetch newly created orders for this batch so they display in outgoing sheet view immediately
@@ -597,6 +598,15 @@ export const ExcelUploadPage: React.FC = () => {
                       {importSummary.whatsappNotifications.total} messages
                       {importSummary.whatsappNotifications.notAccepted > 0 &&
                         `; ${importSummary.whatsappNotifications.notAccepted} were not accepted`}
+                      .
+                    </p>
+                  )}
+                  {importSummary.emailNotifications && (
+                    <p className="text-xs text-slate-600 mt-1">
+                      Email server accepted {importSummary.emailNotifications.accepted} of{' '}
+                      {importSummary.emailNotifications.total} messages
+                      {importSummary.emailNotifications.notAccepted > 0 &&
+                        `; ${importSummary.emailNotifications.notAccepted} were not accepted`}
                       .
                     </p>
                   )}

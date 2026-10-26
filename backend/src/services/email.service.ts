@@ -52,11 +52,11 @@ export async function sendOrderEmail(
   const info = await transporter.sendMail({
     from: ENV.SMTP_FROM,
     to: student.email,
-    subject: `Your order ${student.orderCode || student.trackingId} has been dispatched`,
+    subject: `We received your order ${student.orderCode || student.trackingId}`,
     html: `
       <div style="font-family:Arial,sans-serif; color:#111827; line-height:1.6;">
         <h2 style="margin-bottom:12px;">Hello ${student.name},</h2>
-        <p>Your books have been dispatched.</p>
+        <p>We have received your order and it is being processed. We will notify you when it has been dispatched.</p>
         <p><strong>Tracking ID:</strong> ${student.trackingId}</p>
         <p><strong>Order Code:</strong> ${student.orderCode || 'N/A'}</p>
         <table style="border-collapse:collapse; width:100%; margin-top:16px;">
@@ -65,7 +65,7 @@ export async function sendOrderEmail(
               <th style="padding:8px 12px; border:1px solid #e5e7eb; background:#f3f4f6; text-align:left;">Book Code</th>
               <th style="padding:8px 12px; border:1px solid #e5e7eb; background:#f3f4f6; text-align:left;">Book Name</th>
               <th style="padding:8px 12px; border:1px solid #e5e7eb; background:#f3f4f6; text-align:center;">Required</th>
-              <th style="padding:8px 12px; border:1px solid #e5e7eb; background:#f3f4f6; text-align:center;">Dispatched</th>
+              <th style="padding:8px 12px; border:1px solid #e5e7eb; background:#f3f4f6; text-align:center;">Dispatched so far</th>
             </tr>
           </thead>
           <tbody>${itemRows}</tbody>
@@ -73,7 +73,7 @@ export async function sendOrderEmail(
         <p style="margin-top:18px;">Thank you.</p>
       </div>
     `,
-    text: `Hello ${student.name},\n\nYour order ${student.orderCode || student.trackingId} has been dispatched.\nTracking ID: ${student.trackingId}\n\nItems:\n${items
+    text: `Hello ${student.name},\n\nWe have received your order ${student.orderCode || student.trackingId} and it is being processed. We will notify you when it has been dispatched.\nTracking ID: ${student.trackingId}\n\nItems:\n${items
       .map(
         (item) => `${item.bookCode} - ${item.bookName} (${item.requiredQuantity} required, ${item.dispatchedQuantity} dispatched)`
       )

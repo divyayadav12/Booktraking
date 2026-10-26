@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from '../src/config/db';
 import { Order, DispatchLog, VerificationAttempt, ImportBatch, BookStock } from '../src/models';
 import ExcelJS from 'exceljs';
 import { ENV } from '../src/config/env';
+import * as emailService from '../src/services/email.service';
 
 describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
   let adminToken = '';
@@ -155,11 +156,15 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
     });
 
     it('should keep a single book order product code blank and preserve its book code', async () => {
+      await Order.deleteMany({ trackingId: 'SINGLEBOOKTEST' });
+      await ImportBatch.deleteMany({ originalFileName: 'single_book_order.xlsx' });
+
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Single Book');
       worksheet.columns = [
         { header: 'Student Name', key: 'studentName' },
         { header: 'Mobile Number', key: 'mobileNumber' },
+        { header: 'Email', key: 'email' },
         { header: 'Tracking ID', key: 'trackingId' },
         { header: 'P_CODE', key: 'productCode' },
         { header: 'Course', key: 'course' },
@@ -169,6 +174,7 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
       worksheet.addRow({
         studentName: 'Single Book Student',
         mobileNumber: '9988776655',
+        email: 'singlebook@example.com',
         trackingId: 'SINGLEBOOKTEST',
         productCode: '',
         course: 'Single Book Course',
@@ -194,6 +200,11 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response('accepted', { status: 200 })
       );
+      const emailSpy = vi.spyOn(emailService, 'sendOrderEmail').mockResolvedValue({
+        sent: true,
+        messageId: 'test-message',
+        fallback: false,
+      });
 
       const confirmed = await request(app)
         .post('/api/imports/confirm')
@@ -211,12 +222,23 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
         accepted: 1,
         notAccepted: 0,
       });
+      expect(emailSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'singlebook@example.com' }),
+        expect.any(Array)
+      );
+      expect(confirmed.body.data.emailNotifications).toEqual({
+        total: 1,
+        accepted: 1,
+        notAccepted: 0,
+      });
       fetchSpy.mockRestore();
+      emailSpy.mockRestore();
       ENV.WHATSAPP_ENABLED = previousWhatsAppEnabled;
       ENV.WHATSAPP_WEBHOOK_URL = previousWebhookUrl;
       const order = await Order.findOne({ trackingId: 'SINGLEBOOKTEST' });
       expect(order).toBeDefined();
       expect(order!.whatsappSentAt).toBeInstanceOf(Date);
+      expect(order!.emailSentAt).toBeInstanceOf(Date);
       expect(order!.productCode).toBe('');
       expect(order!.items).toHaveLength(1);
       expect(order!.items[0].productCode).toBe('');
