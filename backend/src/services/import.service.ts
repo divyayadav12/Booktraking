@@ -209,9 +209,10 @@ export async function parseAndPreviewExcel(
       columnMap['email'] = colNumber;
     }
     // Courier tracking URL / link
+    // Handles: "courier tracking url", "tracking link", "track your package at", "shipment url", etc.
     else if (
-      (val.includes('courier') || val.includes('tracking') || val.includes('track')) &&
-      (val.includes('url') || val.includes('link') || val.includes('website') || val.includes('web site'))
+      (val.includes('courier') || val.includes('tracking') || val.includes('track') || val.includes('package') || val.includes('shipment')) &&
+      (val.includes('url') || val.includes('link') || val.includes('website') || val.includes('web site') || val.includes('at') || val.includes('your'))
     ) {
       columnMap['courierTrackingUrl'] = colNumber;
     }
