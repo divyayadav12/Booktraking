@@ -295,8 +295,6 @@ export const BarcodeSheetPage: React.FC = () => {
       const booksHtml = order.items.map((item) => `
         <div class="book">
           <span class="book-name">${escapeHtml(item.bookName)}</span>
-          <strong>${escapeHtml(item.bookCode)}</strong>
-          <span>${item.dispatchedQuantity}/${item.requiredQuantity}</span>
         </div>
       `).join('');
 
@@ -381,7 +379,7 @@ export const BarcodeSheetPage: React.FC = () => {
               display: grid;
               grid-template-columns: repeat(4, minmax(0, 1fr));
               gap: 7px;
-              align-items: stretch;
+              align-items: start;
             }
             .student-card {
               min-width: 0;
@@ -419,7 +417,6 @@ export const BarcodeSheetPage: React.FC = () => {
               display: flex;
               flex-wrap: wrap;
               align-items: baseline;
-              gap: 2px 4px;
               padding: 3px 4px;
               background: #fff1f2;
               border: 1px solid #fecdd3;
@@ -1343,7 +1340,7 @@ export const BarcodeSheetPage: React.FC = () => {
           ref={printCardsRef}
           className={
             viewMode === 'CARDS'
-              ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-stretch'
+              ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-start'
               : 'hidden'
           }
         >
@@ -1403,14 +1400,10 @@ export const BarcodeSheetPage: React.FC = () => {
                       {order.items.map((item) => (
                         <span
                           key={item.id}
-                          className="inline-flex flex-wrap items-baseline gap-x-1 rounded border border-red-200 bg-red-50 px-1.5 py-1"
+                          className="inline-flex rounded border border-red-200 bg-red-50 px-1.5 py-1"
                           title={item.bookName}
                         >
                           <span className="font-semibold text-slate-800">{item.bookName}</span>
-                          <strong className="font-mono text-[10px] text-red-700">{item.bookCode}</strong>
-                          <span className="text-[10px] text-slate-500">
-                            {item.dispatchedQuantity}/{item.requiredQuantity}
-                          </span>
                         </span>
                       ))}
                     </div>

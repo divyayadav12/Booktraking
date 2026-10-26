@@ -159,7 +159,10 @@ export const ExcelUploadPage: React.FC = () => {
         setImportSummary(summary);
         setConfirmModalOpen(false);
         setCurrentStep(3);
-        toastSuccess('Student orders imported into database successfully!');
+        const whatsappSummary = summary.whatsappNotifications;
+        toastSuccess(
+          `Orders imported. WhatsApp webhook accepted ${whatsappSummary?.accepted || 0} of ${whatsappSummary?.total || 0} student messages.`
+        );
 
         // Fetch newly created orders for this batch so they display in outgoing sheet view immediately
         try {
@@ -588,6 +591,15 @@ export const ExcelUploadPage: React.FC = () => {
                   <p className="text-xs text-slate-500 mt-0.5">
                     Orders have been created and added directly into the Outgoing Sheet queue.
                   </p>
+                  {importSummary.whatsappNotifications && (
+                    <p className="text-xs text-slate-600 mt-1">
+                      WhatsApp webhook accepted {importSummary.whatsappNotifications.accepted} of{' '}
+                      {importSummary.whatsappNotifications.total} messages
+                      {importSummary.whatsappNotifications.notAccepted > 0 &&
+                        `; ${importSummary.whatsappNotifications.notAccepted} were not accepted`}
+                      .
+                    </p>
+                  )}
                 </div>
               </div>
 

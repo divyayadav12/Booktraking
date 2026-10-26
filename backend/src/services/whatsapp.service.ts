@@ -24,12 +24,15 @@ export function buildTeleobiPayload(student: WhatsAppStudent, items: WhatsAppIte
   const normalizedDigits = digits.length === 11 && digits.startsWith('0') ? digits.slice(1) : digits;
   const cleanNumber = normalizedDigits.length === 10 ? `91${normalizedDigits}` : normalizedDigits;
 
-  const dispatchDate = new Intl.DateTimeFormat('en-CA', {
+  const dateParts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(student.dispatchDate || new Date());
+  }).formatToParts(student.dispatchDate || new Date());
+  const datePart = (type: Intl.DateTimeFormatPartTypes) =>
+    dateParts.find((part) => part.type === type)?.value || '';
+  const dispatchDate = `${datePart('day')}/${datePart('month')}/${datePart('year').slice(-2)}`;
   const productNames = [...new Set(
     items
       .map((item) => item.productName?.trim())

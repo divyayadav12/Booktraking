@@ -27,8 +27,8 @@ describe('Teleobi WhatsApp payload', () => {
     expect(payload.rowData.every((value) => String(value).trim().length > 0)).toBe(true);
     expect(payload.rowData[2]).toBe('TRACK-123');
     expect(payload.rowData[3]).toBe('Student Name');
-    expect(payload.rowData[1]).toBe('2026-10-25');
-    expect(payload.rowData[16]).toBe('2026-10-25');
+    expect(payload.rowData[1]).toBe('25/10/26');
+    expect(payload.rowData[16]).toBe('25/10/26');
     expect(payload.rowData[5]).toBe('Course One');
     expect(payload.rowData[7]).toBe(2);
     expect(payload.rowData[9]).toBe('Book One');

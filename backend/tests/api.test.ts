@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import app from '../src/app';
 import { connectDatabase, disconnectDatabase } from '../src/config/db';
 import { Order, DispatchLog, VerificationAttempt, ImportBatch, BookStock } from '../src/models';
 import ExcelJS from 'exceljs';
+import { ENV } from '../src/config/env';
 
 describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
   let adminToken = '';
@@ -186,6 +187,14 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
       expect(preview.body.data.validRows[0].productCode).toBe('');
       expect(preview.body.data.validRows[0].bookCode).toBe('SINGLE-BOOK-001');
 
+      const previousWhatsAppEnabled = ENV.WHATSAPP_ENABLED;
+      const previousWebhookUrl = ENV.WHATSAPP_WEBHOOK_URL;
+      ENV.WHATSAPP_ENABLED = true;
+      ENV.WHATSAPP_WEBHOOK_URL = 'https://example.test/webhook';
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response('accepted', { status: 200 })
+      );
+
       const confirmed = await request(app)
         .post('/api/imports/confirm')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -196,8 +205,18 @@ describe('FAST DISPATCH PRO Backend API Tests (MongoDB & Mongoose)', () => {
         });
 
       expect(confirmed.status).toBe(201);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(confirmed.body.data.whatsappNotifications).toEqual({
+        total: 1,
+        accepted: 1,
+        notAccepted: 0,
+      });
+      fetchSpy.mockRestore();
+      ENV.WHATSAPP_ENABLED = previousWhatsAppEnabled;
+      ENV.WHATSAPP_WEBHOOK_URL = previousWebhookUrl;
       const order = await Order.findOne({ trackingId: 'SINGLEBOOKTEST' });
       expect(order).toBeDefined();
+      expect(order!.whatsappSentAt).toBeInstanceOf(Date);
       expect(order!.productCode).toBe('');
       expect(order!.items).toHaveLength(1);
       expect(order!.items[0].productCode).toBe('');
