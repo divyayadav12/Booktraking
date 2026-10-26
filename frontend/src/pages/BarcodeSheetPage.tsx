@@ -1144,7 +1144,7 @@ export const BarcodeSheetPage: React.FC = () => {
           ref={printCardsRef}
           className={
             viewMode === 'CARDS'
-              ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch'
+              ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-stretch'
               : 'hidden'
           }
         >
@@ -1163,29 +1163,33 @@ export const BarcodeSheetPage: React.FC = () => {
                   highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
+                  <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1 flex justify-start">
+                    <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
+                  </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-slate-900 text-sm truncate" title={order.studentName}>
-                      {order.studentName}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <div className="flex items-start justify-between gap-1">
+                      <h3 className="font-bold text-slate-900 text-sm leading-tight break-words" title={order.studentName}>
+                        {order.studentName}
+                      </h3>
+                      {isAdmin && (
+                        <label className="no-print flex items-center shrink-0" title="Select order">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.has(order.id)}
+                            onChange={() => toggleOrderSelection(order.id)}
+                            aria-label={`Select order for ${order.studentName}`}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1 break-words">
                       Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
                     </p>
+                    <p className="text-[10px] text-slate-500 mt-1 break-all">
+                      Student Code: <strong className="font-mono text-slate-700">{order.orderCode || '-'}</strong>
+                    </p>
                   </div>
-                  {isAdmin && (
-                    <label className="no-print flex items-center shrink-0" title="Select order">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrderIds.has(order.id)}
-                        onChange={() => toggleOrderSelection(order.id)}
-                        aria-label={`Select order for ${order.studentName}`}
-                      />
-                    </label>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-2 flex justify-center">
-                  <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
                 </div>
 
                 <div className="space-y-1 text-xs">
