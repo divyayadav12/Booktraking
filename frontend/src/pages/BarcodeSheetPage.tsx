@@ -292,9 +292,7 @@ export const BarcodeSheetPage: React.FC = () => {
         .map((product) => product.productCode)
         .filter(Boolean)
         .join(', ') || order.productCode || '-';
-      const booksHtml = order.items.map((item) => `
-        <div class="book">${escapeHtml(item.bookCode)}</div>
-      `).join('');
+      const bookCodes = order.items.map((item) => item.bookCode).filter(Boolean).join(', ') || '-';
 
       return `
         <article class="student-card">
@@ -313,7 +311,7 @@ export const BarcodeSheetPage: React.FC = () => {
             <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
             <div class="product-books-row">
               <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
-              <div class="books">${booksHtml}</div>
+              <p class="product-code"><span>Book Code:</span> <span class="code-value">${escapeHtml(bookCodes)}</span></p>
             </div>
           </div>
         </article>
@@ -415,19 +413,7 @@ export const BarcodeSheetPage: React.FC = () => {
             .course { font-weight: 700; }
             .product-books-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; }
             .product-code { color: #4338ca; font-family: monospace; }
-            .books { display: inline-flex; flex-wrap: wrap; gap: 3px; }
-            .book {
-              display: flex;
-              flex-wrap: wrap;
-              align-items: baseline;
-              padding: 3px 4px;
-              background: #fff1f2;
-              border: 1px solid #fecdd3;
-              border-radius: 3px;
-              font-size: 7px;
-              line-height: 1.2;
-            }
-            .book { color: #b91c1c; font-family: monospace; font-weight: 700; }
+            .code-value { color: #4338ca !important; font-family: monospace; font-weight: 400 !important; }
             @media print {
               body { padding: 0; }
               .toolbar { display: none; }
@@ -1369,10 +1355,7 @@ export const BarcodeSheetPage: React.FC = () => {
                       <h3 className="font-bold text-slate-900 text-sm leading-tight break-words" title={order.studentName}>
                         {order.studentName}
                       </h3>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
-                          #{index + 1}
-                        </span>
+                      <div className="flex flex-col items-center gap-1 shrink-0">
                         {isAdmin && (
                           <label className="no-print flex items-center" title="Select order">
                             <input
@@ -1383,6 +1366,9 @@ export const BarcodeSheetPage: React.FC = () => {
                             />
                           </label>
                         )}
+                        <span className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                          #{index + 1}
+                        </span>
                       </div>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-1 break-words">
@@ -1402,17 +1388,10 @@ export const BarcodeSheetPage: React.FC = () => {
                     <p className="font-mono text-[11px] text-indigo-700 break-words">
                       <span className="font-sans font-semibold text-slate-500">Product Code:</span> {productCode || '-'}
                     </p>
-                    <div className="flex flex-wrap gap-1">
-                      {order.items.map((item) => (
-                        <span
-                          key={item.id}
-                          className="inline-flex rounded border border-red-200 bg-red-50 px-1.5 py-1 font-mono text-[10px] font-bold text-red-700"
-                          title={item.bookCode}
-                        >
-                          {item.bookCode}
-                        </span>
-                      ))}
-                    </div>
+                    <p className="font-mono text-[11px] text-indigo-700 break-words">
+                      <span className="font-sans font-semibold text-slate-500">Book Code:</span>{' '}
+                      {order.items.map((item) => item.bookCode).filter(Boolean).join(', ') || '-'}
+                    </p>
                   </div>
                 </div>
 
@@ -1439,16 +1418,6 @@ export const BarcodeSheetPage: React.FC = () => {
                     >
                       <Printer size={13} />
                     </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleDeleteOrderIds([order.id])}
-                        disabled={isDeletingOrders}
-                        className="no-print p-1.5 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 disabled:opacity-50"
-                        title="Delete this order"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
