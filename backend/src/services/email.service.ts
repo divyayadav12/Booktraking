@@ -15,6 +15,31 @@ const transporter = hasSmtpConfig
     })
   : null;
 
+export async function verifyEmailTransport() {
+  if (!ENV.EMAIL_ENABLED) {
+    console.info('[EMAIL] Sending is disabled (EMAIL_ENABLED is not true).');
+    return;
+  }
+
+  if (!transporter) {
+    const missing = [
+      !ENV.SMTP_HOST && 'SMTP_HOST',
+      !ENV.SMTP_USER && 'SMTP_USER',
+      !ENV.SMTP_PASS && 'SMTP_PASS',
+    ].filter(Boolean);
+    console.error(`[EMAIL] SMTP is not configured. Missing: ${missing.join(', ')}.`);
+    return;
+  }
+
+  try {
+    await transporter.verify();
+    console.info(`[EMAIL] SMTP connection verified for ${ENV.SMTP_USER}.`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[EMAIL] SMTP connection check failed: ${message}`);
+  }
+}
+
 export async function sendOrderEmail(
   student: {
     name: string;
@@ -35,6 +60,11 @@ export async function sendOrderEmail(
       fallback: true,
       reason: 'NOT_CONFIGURED',
     };
+  }
+
+  if (!ENV.SMTP_FROM) {
+    console.error('[EMAIL] Not sent: SMTP_FROM and SMTP_USER are both missing.');
+    return { sent: false, reason: 'SENDER_NOT_CONFIGURED' };
   }
 
   const itemRows = items

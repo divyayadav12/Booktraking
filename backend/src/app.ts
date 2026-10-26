@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { ENV } from './config/env';
 import apiRoutes from './routes';
 import { errorHandler } from './middleware/errorHandler';
+import { sendOrderEmail } from './services/email.service';
 
 const app = express();
 
@@ -40,6 +41,33 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'FAST DISPATCH PRO',
   });
+});
+
+// Email Config Diagnostic Route (temporary - for debugging)
+app.get('/api/test-email', async (req, res) => {
+  const config = {
+    EMAIL_ENABLED: ENV.EMAIL_ENABLED,
+    SMTP_HOST: ENV.SMTP_HOST || 'NOT SET',
+    SMTP_PORT: ENV.SMTP_PORT,
+    SMTP_USER: ENV.SMTP_USER ? ENV.SMTP_USER : 'NOT SET',
+    SMTP_FROM: ENV.SMTP_FROM || 'NOT SET',
+    SMTP_PASS: ENV.SMTP_PASS ? `SET (${ENV.SMTP_PASS.length} chars)` : 'NOT SET',
+  };
+
+  const to = (req.query.to as string) || ENV.SMTP_USER;
+  if (!to) {
+    return res.json({ config, error: 'Add ?to=youremail@gmail.com in URL to send test email' });
+  }
+
+  try {
+    const result = await sendOrderEmail(
+      { name: 'Test Student', email: to, trackingId: 'TEST-001', orderCode: 'TEST-001' },
+      [{ bookCode: 'TEST-BK', bookName: 'Test Book', requiredQuantity: 1, dispatchedQuantity: 0 }]
+    );
+    return res.json({ config, emailResult: result });
+  } catch (err: any) {
+    return res.json({ config, emailError: err.message });
+  }
 });
 
 // API Routes

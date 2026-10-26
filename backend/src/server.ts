@@ -1,6 +1,7 @@
 import app from './app';
 import { ENV } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/db';
+import { verifyEmailTransport } from './services/email.service';
 
 async function bootstrap() {
   try {
@@ -8,9 +9,10 @@ async function bootstrap() {
     await connectDatabase();
 
     const server = app.listen(ENV.PORT, () => {
-      console.log(`🚀 FAST DISPATCH PRO Backend running on http://localhost:${ENV.PORT}`);
+      console.log(`🚀 FAST DISPATCH PRO Backend listening on port ${ENV.PORT}`);
       console.log(`📡 Environment: ${ENV.NODE_ENV}`);
       console.log(`🍃 Database: MongoDB via Mongoose`);
+      void verifyEmailTransport();
     });
 
     const shutdown = async () => {
