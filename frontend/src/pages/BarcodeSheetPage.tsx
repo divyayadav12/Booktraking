@@ -281,38 +281,61 @@ export const BarcodeSheetPage: React.FC = () => {
         "'": '&#39;',
       })[character] || character);
     const cardElements = Array.from(printContent.children);
-    const cardsHtml = filteredOrders.map((order, index) => {
-      const barcodeSvg = cardElements[index]?.querySelector('svg')?.outerHTML || '';
-      const productNames = (order.products || [])
-        .map((product) => product.productName)
-        .filter((name) => name && name !== 'Product' && name !== 'Default Product');
-      const courseName = productNames.join(' / ') ||
-        (order.productCode ? 'Course' : 'Books');
-      const productCode = (order.products || [])
-        .map((product) => product.productCode)
-        .filter(Boolean)
-        .join(', ') || order.productCode || '-';
-      const bookCodes = order.items.map((item) => item.bookCode).filter(Boolean).join(', ') || '-';
+    const printedAt = new Date().toLocaleString('en-IN');
+    const pagesHtml = Array.from(
+      { length: Math.ceil(filteredOrders.length / 20) },
+      (_, pageIndex) => {
+        const pageOrders = filteredOrders.slice(pageIndex * 20, (pageIndex + 1) * 20);
+        const cardsHtml = pageOrders.map((order, orderIndex) => {
+          const index = pageIndex * 20 + orderIndex;
+          const barcodeSvg = cardElements[index]?.querySelector('svg')?.outerHTML || '';
+          const productNames = (order.products || [])
+            .map((product) => product.productName)
+            .filter((name) => name && name !== 'Product' && name !== 'Default Product');
+          const courseName = productNames.join(' / ') ||
+            (order.productCode ? 'Course' : 'Books');
+          const productCode = (order.products || [])
+            .map((product) => product.productCode)
+            .filter(Boolean)
+            .join(', ') || order.productCode || '-';
+          const bookCodes = order.items.map((item) => item.bookCode).filter(Boolean).join(', ') || '-';
 
-      return `
-        <article class="student-card">
-          <div class="top-row">
-            <div class="barcode">${barcodeSvg}</div>
-            <div class="student">
-              <div class="student-heading">
-                <h2>${escapeHtml(order.studentName)}</h2>
-                <span class="serial">#${index + 1}</span>
+          return `
+            <article class="student-card">
+              <div class="top-row">
+                <div class="barcode">${barcodeSvg}</div>
+                <div class="student">
+                  <div class="student-heading">
+                    <h2>${escapeHtml(order.studentName)}</h2>
+                    <span class="serial">#${index + 1}</span>
+                  </div>
+                  <p>Tracking ID: <strong>${escapeHtml(order.trackingId || '-')}</strong></p>
+                  <p>Student Code: <strong>${escapeHtml(order.orderCode || '-')}</strong></p>
+                  <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
+                  <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
+                  <p class="product-code"><span>Book Code:</span> <span class="code-value">${escapeHtml(bookCodes)}</span></p>
+                </div>
               </div>
-              <p>Tracking ID: <strong>${escapeHtml(order.trackingId || '-')}</strong></p>
-              <p>Student Code: <strong>${escapeHtml(order.orderCode || '-')}</strong></p>
-              <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
-              <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
-              <p class="product-code"><span>Book Code:</span> <span class="code-value">${escapeHtml(bookCodes)}</span></p>
+            </article>
+          `;
+        }).join('');
+
+        return `
+          <section class="print-page">
+            <div class="sheet-header">
+              <div>
+                <div class="sheet-title">Student Dispatch Barcode Sheet</div>
+                <div class="sheet-meta">
+                  Total Orders: ${filteredOrders.length} | Status: ${statusFilter} | Printed: ${escapeHtml(printedAt)}
+                </div>
+              </div>
+              <div class="brand">BookDispatch Logistics</div>
             </div>
-          </div>
-        </article>
-      `;
-    }).join('');
+            <main class="cards">${cardsHtml}</main>
+          </section>
+        `;
+      }
+    ).join('');
 
     const win = window.open('', '_blank', 'width=1200,height=850');
     if (!win) {
@@ -327,11 +350,11 @@ export const BarcodeSheetPage: React.FC = () => {
           <meta charset="utf-8" />
           <title>Student Dispatch Barcode Cards - ${new Date().toLocaleDateString('en-IN')}</title>
           <style>
-            @page { size: A4 landscape; margin: 6mm; }
+            @page { size: A4 landscape; margin: 5mm; }
             * { box-sizing: border-box; }
             body {
               margin: 0;
-              padding: 10px;
+              padding: 0;
               color: #0f172a;
               font-family: Arial, sans-serif;
               -webkit-print-color-adjust: exact;
@@ -359,53 +382,65 @@ export const BarcodeSheetPage: React.FC = () => {
               cursor: pointer;
             }
             .toolbar .close { background: #475569; }
+            .print-page {
+              height: 200mm;
+              display: flex;
+              flex-direction: column;
+              break-after: page;
+              page-break-after: always;
+            }
+            .print-page:last-child { break-after: auto; page-break-after: auto; }
             .sheet-header {
               display: flex;
               justify-content: space-between;
               align-items: center;
               border-bottom: 1px solid #cbd5e1;
-              padding-bottom: 7px;
-              margin-bottom: 9px;
+              padding-bottom: 3px;
+              margin-bottom: 4px;
             }
-            .sheet-title { font-size: 14px; font-weight: 800; }
-            .sheet-meta { color: #64748b; font-size: 9px; margin-top: 3px; }
-            .brand { color: #1e3a8a; font-size: 10px; font-weight: 800; text-align: right; }
+            .sheet-title { font-size: 11px; font-weight: 800; }
+            .sheet-meta { color: #64748b; font-size: 7px; margin-top: 1px; }
+            .brand { color: #1e3a8a; font-size: 8px; font-weight: 800; text-align: right; }
             .cards {
+              flex: 1;
+              min-height: 0;
               display: grid;
-              grid-template-columns: repeat(4, minmax(0, 1fr));
-              gap: 7px;
-              align-items: start;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              grid-template-rows: repeat(10, minmax(0, 1fr));
+              gap: 3px 6px;
             }
             .student-card {
               min-width: 0;
-              padding: 7px;
+              min-height: 0;
+              overflow: hidden;
+              padding: 3px 5px;
               border: 1px solid #cbd5e1;
-              border-radius: 6px;
+              border-radius: 4px;
               break-inside: avoid;
               page-break-inside: avoid;
             }
             .top-row {
               display: grid;
-              grid-template-columns: minmax(0, 36%) minmax(0, 1fr);
-              align-items: start;
-              gap: 5px;
+              grid-template-columns: minmax(0, 25%) minmax(0, 1fr);
+              align-items: center;
+              gap: 4px;
             }
             .barcode { min-width: 0; max-width: 100%; overflow: hidden; }
             .barcode > div { min-width: 0; max-width: 100%; overflow: hidden; }
-            .student-heading { padding-right: 20px; }
-            .serial { position: absolute; top: 13px; right: 0; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; font-size: 7px; font-weight: 700; }
+            .student-heading { padding-right: 18px; }
+            .serial { position: absolute; top: 0; right: 0; padding: 1px 3px; border: 1px solid #cbd5e1; border-radius: 3px; background: #f8fafc; color: #475569; font-size: 6px; font-weight: 700; }
             .barcode svg {
               display: block;
               width: 100%;
               max-width: 100%;
-              height: 40px;
+              height: 28px;
             }
             .student { position: relative; min-width: 0; overflow-wrap: anywhere; }
-            .student h2 { min-width: 0; margin: 0 0 4px; font-size: 9px; font-weight: 400; line-height: 1.2; }
-            .student p { margin: 1px 0; color: #64748b; font-size: 7px; }
+            .student h2 { min-width: 0; margin: 0 0 1px; font-size: 7px; font-weight: 400; line-height: 1.05; }
+            .student p { margin: 0; color: #64748b; font-size: 5.5px; line-height: 1.05; }
             .student p strong { color: #334155; font-family: monospace; }
-            .student .course { margin-top: 3px; color: #334155; font-size: 8px; font-weight: 700; line-height: 1.2; }
-            .student .product-code { color: #4338ca; font-family: monospace; font-size: 7px; line-height: 1.2; }
+            .student .course { margin-top: 1px; color: #334155; font-size: 6px; font-weight: 700; line-height: 1.05; }
+            .student .product-code { color: #4338ca; font-family: monospace; font-size: 5.5px; line-height: 1.05; overflow-wrap: anywhere; }
             .student .product-code span:first-child { color: #64748b; font-family: Arial, sans-serif; font-weight: 700; }
             .code-value { color: #4338ca !important; font-family: monospace; font-weight: 400 !important; }
             @media print {
@@ -424,16 +459,7 @@ export const BarcodeSheetPage: React.FC = () => {
               <button class="close" onclick="window.close()">Close</button>
             </span>
           </div>
-          <div class="sheet-header">
-            <div>
-              <div class="sheet-title">Student Dispatch Barcode Sheet</div>
-              <div class="sheet-meta">
-                Total Orders: ${filteredOrders.length} | Status: ${statusFilter} | Printed: ${new Date().toLocaleString('en-IN')}
-              </div>
-            </div>
-            <div class="brand">BookDispatch Logistics</div>
-          </div>
-          <main class="cards">${cardsHtml}</main>
+          ${pagesHtml}
           <script>setTimeout(() => window.print(), 500);</script>
         </body>
       </html>
