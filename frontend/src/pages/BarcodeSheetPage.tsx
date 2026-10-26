@@ -265,6 +265,204 @@ export const BarcodeSheetPage: React.FC = () => {
     }
   };
 
+  const handlePrintCards = () => {
+    const printContent = printCardsRef.current;
+    if (!printContent) {
+      warning('Print karne ke liye student cards available nahi hain.');
+      return;
+    }
+
+    const escapeHtml = (value: string) =>
+      value.replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[character] || character);
+    const cardElements = Array.from(printContent.children);
+    const cardsHtml = filteredOrders.map((order, index) => {
+      const barcodeSvg = cardElements[index]?.querySelector('svg')?.outerHTML || '';
+      const productNames = (order.products || [])
+        .map((product) => product.productName)
+        .filter((name) => name && name !== 'Product' && name !== 'Default Product');
+      const courseName = productNames.join(' / ') ||
+        (order.productCode ? 'Course' : order.items.map((item) => item.bookName).join(' / '));
+      const productCode = (order.products || [])
+        .map((product) => product.productCode)
+        .filter(Boolean)
+        .join(', ') || order.productCode || '-';
+      const booksHtml = order.items.map((item) => `
+        <div class="book">
+          <span class="book-name">${escapeHtml(item.bookName)}</span>
+          <strong>${escapeHtml(item.bookCode)}</strong>
+          <span>${item.dispatchedQuantity}/${item.requiredQuantity}</span>
+        </div>
+      `).join('');
+
+      return `
+        <article class="student-card">
+          <div class="top-row">
+            <div class="barcode">${barcodeSvg}</div>
+            <div class="student">
+              <h2>${escapeHtml(order.studentName)}</h2>
+              <p>Tracking ID: <strong>${escapeHtml(order.trackingId || '-')}</strong></p>
+              <p>Student Code: <strong>${escapeHtml(order.orderCode || '-')}</strong></p>
+            </div>
+          </div>
+          <div class="details">
+            <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
+            <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
+            <div class="books-title">Books to dispatch (${order.items.length})</div>
+            <div class="books">${booksHtml}</div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    const win = window.open('', '_blank', 'width=1200,height=850');
+    if (!win) {
+      error('Popup window block ho gayi hai. Kripya browser me popups allow karein.');
+      return;
+    }
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Student Dispatch Barcode Cards - ${new Date().toLocaleDateString('en-IN')}</title>
+          <style>
+            @page { size: A4 landscape; margin: 6mm; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 10px;
+              color: #0f172a;
+              font-family: Arial, sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .toolbar {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+              padding: 10px 14px;
+              color: #fff;
+              background: #0f172a;
+              border-radius: 6px;
+              font-size: 12px;
+            }
+            .toolbar button {
+              border: 0;
+              border-radius: 5px;
+              padding: 7px 12px;
+              margin-left: 6px;
+              color: white;
+              background: #2563eb;
+              font-weight: 700;
+              cursor: pointer;
+            }
+            .toolbar .close { background: #475569; }
+            .sheet-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 7px;
+              margin-bottom: 9px;
+            }
+            .sheet-title { font-size: 14px; font-weight: 800; }
+            .sheet-meta { color: #64748b; font-size: 9px; margin-top: 3px; }
+            .brand { color: #1e3a8a; font-size: 10px; font-weight: 800; text-align: right; }
+            .cards {
+              display: grid;
+              grid-template-columns: repeat(4, minmax(0, 1fr));
+              gap: 7px;
+              align-items: stretch;
+            }
+            .student-card {
+              min-width: 0;
+              padding: 7px;
+              border: 1px solid #cbd5e1;
+              border-radius: 6px;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .top-row {
+              display: grid;
+              grid-template-columns: 43% minmax(0, 1fr);
+              align-items: center;
+              gap: 5px;
+            }
+            .barcode { min-width: 0; overflow: hidden; }
+            .barcode svg {
+              display: block;
+              width: 100%;
+              max-width: 100%;
+              height: 40px;
+            }
+            .student { min-width: 0; overflow-wrap: anywhere; }
+            .student h2 { margin: 0 0 4px; font-size: 10px; line-height: 1.2; }
+            .student p { margin: 2px 0; color: #64748b; font-size: 7px; }
+            .student p strong { color: #334155; font-family: monospace; }
+            .details { border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 5px; }
+            .details p { margin: 2px 0; font-size: 8px; line-height: 1.25; overflow-wrap: anywhere; }
+            .details p span, .books-title { color: #64748b; font-weight: 700; }
+            .course { font-weight: 700; }
+            .product-code { color: #4338ca; font-family: monospace; }
+            .books-title { margin: 4px 0 3px; font-size: 7px; text-transform: uppercase; }
+            .books { display: flex; flex-wrap: wrap; gap: 3px; }
+            .book {
+              display: flex;
+              flex-wrap: wrap;
+              align-items: baseline;
+              gap: 2px 4px;
+              padding: 3px 4px;
+              background: #fff1f2;
+              border: 1px solid #fecdd3;
+              border-radius: 3px;
+              font-size: 7px;
+              line-height: 1.2;
+            }
+            .book-name { font-weight: 700; }
+            .book strong { color: #b91c1c; font-family: monospace; }
+            .book span:last-child { color: #64748b; }
+            @media print {
+              body { padding: 0; }
+              .toolbar { display: none; }
+              .student-card { border-color: #94a3b8; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="toolbar">
+            <strong>Student Dispatch Barcode Cards</strong>
+            <span>
+              ${filteredOrders.length} students
+              <button onclick="window.print()">Print / Save PDF</button>
+              <button class="close" onclick="window.close()">Close</button>
+            </span>
+          </div>
+          <div class="sheet-header">
+            <div>
+              <div class="sheet-title">Student Dispatch Barcode Sheet</div>
+              <div class="sheet-meta">
+                Total Orders: ${filteredOrders.length} | Status: ${statusFilter} | Printed: ${new Date().toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div class="brand">BookDispatch Logistics</div>
+          </div>
+          <main class="cards">${cardsHtml}</main>
+          <script>setTimeout(() => window.print(), 500);</script>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+  };
+
   // Print Complete Tabular Sheet / Save as PDF
   const handlePrintTable = () => {
     const printContent = printTableRef.current;
@@ -777,7 +975,7 @@ export const BarcodeSheetPage: React.FC = () => {
 
           {/* Print / Download PDF Button */}
           <button
-            onClick={handlePrintTable}
+            onClick={viewMode === 'CARDS' ? handlePrintCards : handlePrintTable}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
             title="Print or Save as PDF to send to someone else"
           >
