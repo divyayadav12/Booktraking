@@ -312,9 +312,10 @@ export const BarcodeSheetPage: React.FC = () => {
           </div>
           <div class="details">
             <p class="course"><span>Product:</span> ${escapeHtml(courseName)}</p>
-            <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
-            <div class="books-title">Books to dispatch (${order.items.length})</div>
-            <div class="books">${booksHtml}</div>
+            <div class="product-books-row">
+              <p class="product-code"><span>Product Code:</span> ${escapeHtml(productCode)}</p>
+              <div class="books">${booksHtml}</div>
+            </div>
           </div>
         </article>
       `;
@@ -409,11 +410,11 @@ export const BarcodeSheetPage: React.FC = () => {
             .student p strong { color: #334155; font-family: monospace; }
             .details { border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 5px; }
             .details p { margin: 2px 0; font-size: 8px; line-height: 1.25; overflow-wrap: anywhere; }
-            .details p span, .books-title { color: #64748b; font-weight: 700; }
+            .details p span { color: #64748b; font-weight: 700; }
             .course { font-weight: 700; }
+            .product-books-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; }
             .product-code { color: #4338ca; font-family: monospace; }
-            .books-title { margin: 4px 0 3px; font-size: 7px; text-transform: uppercase; }
-            .books { display: flex; flex-wrap: wrap; gap: 3px; }
+            .books { display: inline-flex; flex-wrap: wrap; gap: 3px; }
             .book {
               display: flex;
               flex-wrap: wrap;
@@ -1394,12 +1395,9 @@ export const BarcodeSheetPage: React.FC = () => {
                   <p className="font-semibold text-slate-800 leading-snug" title={courseName}>
                     <span className="text-slate-500">Product:</span> {courseName}
                   </p>
-                  <p className="font-mono text-[11px] text-indigo-700 break-words">
-                    <span className="font-sans font-semibold text-slate-500">Product Code:</span> {productCode || '-'}
-                  </p>
-                  <div className="border-t border-slate-100 pt-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-                      Books to dispatch ({order.items.length})
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="font-mono text-[11px] text-indigo-700 break-words">
+                      <span className="font-sans font-semibold text-slate-500">Product Code:</span> {productCode || '-'}
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {order.items.map((item) => (
