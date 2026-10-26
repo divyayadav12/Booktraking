@@ -829,7 +829,10 @@ export const OutgoingOrdersPage: React.FC = () => {
                 </div>
                 {scanResult.studentName && (
                   <div className="text-xs mt-1.5 flex flex-wrap gap-4 text-emerald-900 font-medium">
-                    <span>Student: <strong>{scanResult.studentName}</strong></span>
+                    <span>
+                      Student:{' '}
+                      <strong className="text-base sm:text-lg font-black">{scanResult.studentName}</strong>
+                    </span>
                     {scanResult.trackingId && <span>Tracking ID: <strong className="font-mono">{scanResult.trackingId}</strong></span>}
                     {scanResult.itemsDispatched !== undefined && <span>Copies Dispatched: <strong>{scanResult.itemsDispatched}</strong></span>}
                   </div>
