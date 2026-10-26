@@ -67,6 +67,7 @@ export const OutgoingOrdersPage: React.FC = () => {
   const [selectedOrderForDispatch, setSelectedOrderForDispatch] = useState<Order | null>(null);
   const [isDispatchBoxOpen, setIsDispatchBoxOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   const handleClearAllData = async () => {
     const confirmed = window.confirm(
@@ -642,6 +643,28 @@ export const OutgoingOrdersPage: React.FC = () => {
       }
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to mark email as sent.');
+    }
+  };
+
+  const handleDeleteOrder = async (order: Order) => {
+    if (!isAdmin) return;
+
+    const confirmed = window.confirm(
+      `Delete the order for ${order.studentName} and its dispatch history? This cannot be undone, and physical dispatch stock will not be restored.`
+    );
+    if (!confirmed) return;
+
+    setDeletingOrderId(order.id);
+    try {
+      const res = await api.delete('/orders/bulk-delete', { data: { orderIds: [order.id] } });
+      if (res.data.success) {
+        if (selectedOrderForDispatch?.id === order.id) handleCloseDispatchBox();
+        await fetchOutgoingOrders(pagination.page);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete this order.');
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -1420,6 +1443,18 @@ export const OutgoingOrdersPage: React.FC = () => {
                                 <ExternalLink className="w-4 h-4" />
                               </button>
                             </Link>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteOrder(order)}
+                                disabled={deletingOrderId === order.id}
+                                className="p-1.5 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-200 transition-colors disabled:opacity-50"
+                                title="Delete this order"
+                                aria-label={`Delete order for ${order.studentName}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
