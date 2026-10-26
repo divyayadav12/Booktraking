@@ -32,7 +32,7 @@ export function buildTeleobiPayload(student: WhatsAppStudent, items: WhatsAppIte
   }).formatToParts(student.dispatchDate || new Date());
   const datePart = (type: Intl.DateTimeFormatPartTypes) =>
     dateParts.find((part) => part.type === type)?.value || '';
-  const dispatchDate = `${datePart('day')}/${datePart('month')}/${datePart('year').slice(-2)}`;
+  const dispatchDate = `${datePart('day')}/${datePart('month')}/${datePart('year')}`;
   const productNames = [...new Set(
     items
       .map((item) => item.productName?.trim())
