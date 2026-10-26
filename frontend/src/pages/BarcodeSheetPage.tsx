@@ -392,15 +392,15 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .barcode { min-width: 0; max-width: 100%; overflow: hidden; }
             .barcode > div { min-width: 0; max-width: 100%; overflow: hidden; }
-            .student-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 3px; }
-            .serial { flex: none; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; font-size: 7px; font-weight: 700; }
+            .student-heading { padding-right: 20px; }
+            .serial { position: absolute; top: 13px; right: 0; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; font-size: 7px; font-weight: 700; }
             .barcode svg {
               display: block;
               width: 100%;
               max-width: 100%;
               height: 40px;
             }
-            .student { min-width: 0; overflow-wrap: anywhere; }
+            .student { position: relative; min-width: 0; overflow-wrap: anywhere; }
             .student h2 { min-width: 0; margin: 0 0 4px; font-size: 9px; font-weight: 400; line-height: 1.2; }
             .student p { margin: 1px 0; color: #64748b; font-size: 7px; }
             .student p strong { color: #334155; font-family: monospace; }
@@ -1345,25 +1345,25 @@ export const BarcodeSheetPage: React.FC = () => {
                     <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
                   </div>
                   <div className="student min-w-0">
-                    <div className="flex items-start justify-between gap-1">
-                      <h3 className="min-w-0 flex-1 font-normal text-slate-900 text-xs leading-tight break-words" title={order.studentName}>
+                    <div className="pr-6">
+                      <h3 className="min-w-0 font-normal text-slate-900 text-xs leading-tight break-words" title={order.studentName}>
                         {order.studentName}
                       </h3>
-                      <div className="flex flex-col items-center gap-1 shrink-0">
-                        {isAdmin && (
-                          <label className="no-print flex items-center" title="Select order">
-                            <input
-                              type="checkbox"
-                              checked={selectedOrderIds.has(order.id)}
-                              onChange={() => toggleOrderSelection(order.id)}
-                              aria-label={`Select order for ${order.studentName}`}
-                            />
-                          </label>
-                        )}
-                        <span className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
-                          #{index + 1}
-                        </span>
-                      </div>
+                    </div>
+                    <div className="absolute right-0 top-0 flex flex-col items-center gap-1">
+                      {isAdmin && (
+                        <label className="no-print flex items-center" title="Select order">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.has(order.id)}
+                            onChange={() => toggleOrderSelection(order.id)}
+                            aria-label={`Select order for ${order.studentName}`}
+                          />
+                        </label>
+                      )}
+                      <span className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                        #{index + 1}
+                      </span>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-0.5 break-words">
                       Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
