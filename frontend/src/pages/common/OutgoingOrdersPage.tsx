@@ -864,7 +864,7 @@ export const OutgoingOrdersPage: React.FC = () => {
                 <span className="font-mono text-xs font-bold bg-red-600 text-white px-2.5 py-1 rounded">
                   {lastScannedOrder.trackingId}
                 </span>
-                <span className="text-lg font-bold text-white">
+                <span className="text-base sm:text-lg font-black text-white">
                   {lastScannedOrder.studentName}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
