@@ -73,7 +73,7 @@ export const BarcodeSheetPage: React.FC = () => {
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
   const [productCodeFilter, setProductCodeFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
+  const [viewMode, setViewMode] = useState<'TABLE' | 'CARDS'>('CARDS');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [isDeletingOrders, setIsDeletingOrders] = useState(false);
 
@@ -1142,46 +1142,103 @@ export const BarcodeSheetPage: React.FC = () => {
         ═══════════════════════════════════════════════════════════════════════ */}
         <div
           ref={printCardsRef}
-          className={`space-y-4 ${viewMode === 'CARDS' ? 'block' : 'hidden'}`}
+          className={
+            viewMode === 'CARDS'
+              ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch'
+              : 'hidden'
+          }
         >
           {filteredOrders.map((order) => {
-            const courseName = order.products?.map((p) => p.productName).join(' / ') || 'Course';
-            const productCode = order.products?.map((p) => p.productCode).join(', ') || order.productCode;
+            const orderProductNames = (order.products || [])
+              .map((product) => product.productName)
+              .filter((name) => name && name !== 'Product' && name !== 'Default Product');
+            const courseName = orderProductNames.join(' / ') ||
+              (order.productCode ? 'Course' : order.items.map((item) => item.bookName).join(' / '));
+            const productCode = order.products?.map((p) => p.productCode).filter(Boolean).join(', ') || order.productCode || '';
 
             return (
-              <div key={order.id} className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                  <div>
-                    {isAdmin && (
-                      <label className="no-print flex items-center gap-1.5 text-xs text-slate-600 mb-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrderIds.has(order.id)}
-                          onChange={() => toggleOrderSelection(order.id)}
-                        />
-                        Select order for delete
-                      </label>
-                    )}
-                    <h3 className="font-bold text-slate-900 text-base">{order.studentName}</h3>
-                    <p className="text-xs text-slate-500">
-                      Student Code: <strong className="font-mono text-slate-700">{order.orderCode || '-'}</strong>
-                      {' | '}Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
-                      {' | '}Course: {courseName} ({productCode})
+              <div
+                key={order.id}
+                className={`border rounded-xl p-3 bg-white shadow-2xs flex flex-col gap-2.5 ${
+                  highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-900 text-sm truncate" title={order.studentName}>
+                      {order.studentName}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <label className="no-print flex items-center shrink-0" title="Select order">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.has(order.id)}
+                        onChange={() => toggleOrderSelection(order.id)}
+                        aria-label={`Select order for ${order.studentName}`}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-2 flex justify-center">
+                  <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <p className="font-semibold text-slate-800 leading-snug" title={courseName}>
+                    <span className="text-slate-500">Product:</span> {courseName}
+                  </p>
+                  <p className="font-mono text-[11px] text-indigo-700 break-words">
+                    <span className="font-sans font-semibold text-slate-500">Product Code:</span> {productCode || '-'}
+                  </p>
+                  <div className="border-t border-slate-100 pt-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
+                      Books to dispatch ({order.items.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {order.items.map((item) => (
+                        <span
+                          key={item.id}
+                          className="inline-flex flex-wrap items-baseline gap-x-1 rounded border border-red-200 bg-red-50 px-1.5 py-1"
+                          title={item.bookName}
+                        >
+                          <span className="font-semibold text-slate-800">{item.bookName}</span>
+                          <strong className="font-mono text-[10px] text-red-700">{item.bookCode}</strong>
+                          <span className="text-[10px] text-slate-500">
+                            {item.dispatchedQuantity}/{item.requiredQuantity}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="no-print mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                    order.status === 'COMPLETED'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {order.status === 'COMPLETED' ? 'Completed' : 'Pending'}
+                  </span>
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => openDispatchForOrder(order)}
-                      className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg cursor-pointer"
                     >
-                      <Zap size={13} />
-                      <span>Fast Scan Books</span>
+                      <Zap size={12} />
+                      <span>Dispatch</span>
                     </button>
                     <button
                       onClick={() => handlePrintSingleSlip(order)}
                       className="p-1.5 text-slate-600 hover:bg-slate-100 rounded border border-slate-200"
+                      aria-label={`Print ${order.studentName} barcode`}
                     >
-                      <Printer size={14} />
+                      <Printer size={13} />
                     </button>
                     {isAdmin && (
                       <button
@@ -1193,31 +1250,6 @@ export const BarcodeSheetPage: React.FC = () => {
                         <Trash2 size={14} />
                       </button>
                     )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-col items-center">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                      Student Order Barcode
-                    </span>
-                    <BarcodeDisplay value={order.orderCode || ''} height={50} width={1.8} fontSize={12} />
-                  </div>
-
-                  <div className="p-3 bg-red-50/50 rounded-lg border border-red-200">
-                    <span className="text-[11px] font-bold text-red-800 uppercase tracking-wider block mb-1">
-                      Required Books ({order.items.length})
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {order.items.map((i) => (
-                        <span
-                          key={i.id}
-                          className="font-mono text-xs font-bold bg-white px-2 py-0.5 rounded border border-red-200 text-red-900"
-                        >
-                          {i.bookCode} ({i.dispatchedQuantity}/{i.requiredQuantity})
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>
