@@ -391,7 +391,7 @@ export const BarcodeSheetPage: React.FC = () => {
             .top-row {
               display: grid;
               grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
-              align-items: center;
+              align-items: start;
               gap: 5px;
             }
             .barcode { min-width: 0; max-width: 100%; overflow: hidden; }
@@ -406,9 +406,9 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .student { min-width: 0; overflow-wrap: anywhere; }
             .student h2 { min-width: 0; margin: 0 0 4px; font-size: 9px; font-weight: 400; line-height: 1.2; }
-            .student p { margin: 2px 0; color: #64748b; font-size: 7px; }
+            .student p { margin: 1px 0; color: #64748b; font-size: 7px; }
             .student p strong { color: #334155; font-family: monospace; }
-            .details { border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 5px; }
+            .details { border-top: 1px solid #e2e8f0; margin-top: 2px; padding-top: 3px; }
             .details p { margin: 2px 0; font-size: 8px; line-height: 1.25; overflow-wrap: anywhere; }
             .details p span { color: #64748b; font-weight: 700; }
             .course { font-weight: 700; }
@@ -1343,11 +1343,11 @@ export const BarcodeSheetPage: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className={`border rounded-xl p-3 bg-white shadow-2xs flex flex-col gap-2.5 ${
+                className={`border rounded-xl p-3 bg-white shadow-2xs flex flex-col gap-1.5 ${
                   highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
                 }`}
               >
-                <div className="grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] items-center gap-2">
+                <div className="grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] items-start gap-2">
                   <div className="barcode min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1">
                     <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
                   </div>
@@ -1372,10 +1372,10 @@ export const BarcodeSheetPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1 break-words">
+                    <p className="text-[10px] text-slate-500 mt-0.5 break-words">
                       Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-1 break-all">
+                    <p className="text-[10px] text-slate-500 mt-0.5 break-all">
                       Student Code: <strong className="font-mono text-slate-700">{order.orderCode || '-'}</strong>
                     </p>
                   </div>
