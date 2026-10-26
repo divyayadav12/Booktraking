@@ -299,12 +299,12 @@ export const BarcodeSheetPage: React.FC = () => {
       return `
         <article class="student-card">
           <div class="top-row">
-            <div class="barcode-group">
-              <div class="barcode">${barcodeSvg}</div>
-              <span class="serial">#${index + 1}</span>
-            </div>
+            <div class="barcode">${barcodeSvg}</div>
             <div class="student">
-              <h2>${escapeHtml(order.studentName)}</h2>
+              <div class="student-heading">
+                <h2>${escapeHtml(order.studentName)}</h2>
+                <span class="serial">#${index + 1}</span>
+              </div>
               <p>Tracking ID: <strong>${escapeHtml(order.trackingId || '-')}</strong></p>
               <p>Student Code: <strong>${escapeHtml(order.orderCode || '-')}</strong></p>
             </div>
@@ -392,13 +392,13 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .top-row {
               display: grid;
-              grid-template-columns: 47% minmax(0, 1fr);
+              grid-template-columns: 43% minmax(0, 1fr);
               align-items: center;
               gap: 5px;
             }
-            .barcode-group { display: flex; min-width: 0; align-items: center; gap: 3px; }
             .barcode { min-width: 0; overflow: hidden; }
-            .serial { flex: none; color: #475569; font-size: 7px; font-weight: 700; }
+            .student-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 3px; }
+            .serial { flex: none; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; font-size: 7px; font-weight: 700; }
             .barcode svg {
               display: block;
               width: 100%;
@@ -1360,28 +1360,30 @@ export const BarcodeSheetPage: React.FC = () => {
                   highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
                 }`}
               >
-                <div className="grid grid-cols-[minmax(0,47%)_minmax(0,1fr)] items-center gap-2">
-                  <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1 flex items-center gap-1">
-                    <div className="min-w-0 overflow-hidden">
-                      <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
-                    </div>
-                    <span className="shrink-0 text-[10px] font-bold text-slate-600">#{index + 1}</span>
+                <div className="grid grid-cols-[minmax(0,43%)_minmax(0,1fr)] items-center gap-2">
+                  <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1 flex justify-start">
+                    <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-start justify-between gap-1">
                       <h3 className="font-bold text-slate-900 text-sm leading-tight break-words" title={order.studentName}>
                         {order.studentName}
                       </h3>
-                      {isAdmin && (
-                        <label className="no-print flex items-center shrink-0" title="Select order">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrderIds.has(order.id)}
-                            onChange={() => toggleOrderSelection(order.id)}
-                            aria-label={`Select order for ${order.studentName}`}
-                          />
-                        </label>
-                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="rounded border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                          #{index + 1}
+                        </span>
+                        {isAdmin && (
+                          <label className="no-print flex items-center" title="Select order">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrderIds.has(order.id)}
+                              onChange={() => toggleOrderSelection(order.id)}
+                              aria-label={`Select order for ${order.studentName}`}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-1 break-words">
                       Tracking ID: <strong className="font-mono text-red-700">{order.trackingId || '-'}</strong>
