@@ -390,11 +390,12 @@ export const BarcodeSheetPage: React.FC = () => {
             }
             .top-row {
               display: grid;
-              grid-template-columns: 43% minmax(0, 1fr);
+              grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
               align-items: center;
               gap: 5px;
             }
-            .barcode { min-width: 0; overflow: hidden; }
+            .barcode { min-width: 0; max-width: 100%; overflow: hidden; }
+            .barcode > div { min-width: 0; max-width: 100%; overflow: hidden; }
             .student-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 3px; }
             .serial { flex: none; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #475569; font-size: 7px; font-weight: 700; }
             .barcode svg {
@@ -404,7 +405,7 @@ export const BarcodeSheetPage: React.FC = () => {
               height: 40px;
             }
             .student { min-width: 0; overflow-wrap: anywhere; }
-            .student h2 { margin: 0 0 4px; font-size: 10px; line-height: 1.2; }
+            .student h2 { min-width: 0; margin: 0 0 4px; font-size: 9px; font-weight: 400; line-height: 1.2; }
             .student p { margin: 2px 0; color: #64748b; font-size: 7px; }
             .student p strong { color: #334155; font-family: monospace; }
             .details { border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 5px; }
@@ -1346,13 +1347,13 @@ export const BarcodeSheetPage: React.FC = () => {
                   highlightedOrderId === order.id ? 'border-amber-400 ring-2 ring-amber-300' : 'border-slate-200'
                 }`}
               >
-                <div className="grid grid-cols-[minmax(0,43%)_minmax(0,1fr)] items-center gap-2">
-                  <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1 flex justify-start">
+                <div className="grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] items-center gap-2">
+                  <div className="barcode min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 px-1 py-1">
                     <BarcodeDisplay value={order.orderCode || ''} height={40} width={1.4} fontSize={10} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="student min-w-0">
                     <div className="flex items-start justify-between gap-1">
-                      <h3 className="font-bold text-slate-900 text-sm leading-tight break-words" title={order.studentName}>
+                      <h3 className="min-w-0 flex-1 font-normal text-slate-900 text-xs leading-tight break-words" title={order.studentName}>
                         {order.studentName}
                       </h3>
                       <div className="flex flex-col items-center gap-1 shrink-0">
