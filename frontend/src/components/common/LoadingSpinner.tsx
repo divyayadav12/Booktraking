@@ -8,4 +8,4 @@ export const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Load
       <p className="text-sm">{message}</p>
     </div>
   );
-};
+};                       
